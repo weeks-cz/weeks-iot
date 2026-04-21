@@ -1,0 +1,17 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/settings.json
+.idea/
+
+# Node (in case someone ever runs npm later)
+node_modules/
+npm-debug.log*
+
+# Vercel
+.vercel/
+
+# Local
+*.local
