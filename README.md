@@ -126,6 +126,10 @@ window.IotCampScreen.mount("#app", {
 
 Endpoint dostane `POST` JSON s poli `to`, `subject`, `body` a `accessUrl`. Pokud hostující web nechce endpoint, může místo toho předat funkci `sendAccountCreatedEmail(message)`.
 
+Pozor: aktuální e-mailové účty jsou ve frontendu pořád jen preview. E-mail, heslo a postup se ukládají do `localStorage` v prohlížeči, takže to není skutečná databáze a není to bezpečné pro reálné účty. Před veřejným používáním musí hostující web přidat backendovou registraci/přihlášení a ukládat účty v serverové databázi. Frontend pak má posílat jen požadavky na backend, ne držet hesla v prohlížeči.
+
+Pro odkaz z hlavního webu Weeks použij URL `https://iot.weeks.cz/?screen=topics`. Tahle adresa vždy otevře výběr témat, i když už měl návštěvník v prohlížeči dřív vybrané IOT.
+
 ## CLI reference (pro zvědavé, není nutné)
 
 Tytéž akce jako výše, jen v terminálu (VS Code má terminál pod ``Ctrl+` ``):

@@ -47,7 +47,7 @@ const REQUIRE_LECTURER_PIN_FOR_CHECK = false;
 const TOPIC_OPTIONS = [
   { id: "iot", label: "IOT", accent: "green", enabled: true },
   { id: "3d-print", label: "3D tisk", accent: "amber", enabled: false },
-  { id: "programming", label: "Programovani", accent: "blue", enabled: false },
+  { id: "programming", label: "Programování", accent: "blue", enabled: false },
   { id: "blender", label: "Blender", accent: "purple", enabled: false },
 ];
 
@@ -1738,6 +1738,15 @@ function getEmailFromUrl() {
   }
 }
 
+function shouldOpenTopicSelectFromUrl() {
+  try {
+    const params = new URL(window.location.href).searchParams;
+    return params.get("screen") === "topics" || params.get("view") === "topics";
+  } catch (error) {
+    return false;
+  }
+}
+
 function buildAccountAccessUrl(email, accountAccessUrl = null) {
   if (typeof accountAccessUrl === "function") {
     return accountAccessUrl(normalizeEmail(email));
@@ -1766,18 +1775,18 @@ function buildAccountAccessUrl(email, accountAccessUrl = null) {
 function buildAccountCreatedEmail(email, accountAccessUrl = null) {
   const normalizedEmail = normalizeEmail(email);
   const accessUrl = buildAccountAccessUrl(normalizedEmail, accountAccessUrl);
-  const subject = "Tvuj ucet v IoT taboru je pripraveny";
+  const subject = "Tvůj účet v IoT táboru je připravený";
   const body = [
     "Ahoj,",
     "",
-    "tvuj ucet v IoT taboru byl zalozeny a propojeny s timto e-mailem.",
+    "tvůj účet v IoT táboru byl založený a propojený s tímto e-mailem.",
     "",
-    "Do aplikace se dostanes pres tento odkaz:",
+    "Do aplikace se dostaneš přes tento odkaz:",
     accessUrl,
     "",
-    `Pro prihlaseni pouzij e-mail: ${normalizedEmail}`,
+    `Pro přihlášení použij e-mail: ${normalizedEmail}`,
     "",
-    "Dekuji, ze ses prihlasil.",
+    "Děkuji, že ses přihlásil.",
   ].join("\n");
 
   return {
@@ -1826,6 +1835,14 @@ function findTask(taskId) {
 
 function findSectionIndexByTaskId(taskId) {
   return sections.findIndex((section) => section.tasks.some((task) => task.id === taskId));
+}
+
+function getTopicById(topicId) {
+  return TOPIC_OPTIONS.find((topic) => topic.id === topicId) ?? null;
+}
+
+function isTopicEnabled(topicId) {
+  return Boolean(getTopicById(topicId)?.enabled);
 }
 
 function createDefaultTaskState() {
@@ -1908,6 +1925,7 @@ function createIotCampScreen(container, options = {}) {
 
   function loadState() {
     const raw = localStorage.getItem(storageKey);
+    const forceTopicSelect = shouldOpenTopicSelectFromUrl();
 
     if (!raw) {
       return {
@@ -1948,6 +1966,9 @@ function createIotCampScreen(container, options = {}) {
       const emailAccounts = shouldResetConfig ? {} : (parsed.emailAccounts ?? {});
       const currentStudentNumber = shouldResetConfig ? null : (parsed.currentStudentNumber ?? null);
       const currentEmail = shouldResetConfig ? null : normalizeEmail(parsed.currentEmail ?? "");
+      const selectedTopic = shouldResetConfig || forceTopicSelect || !isTopicEnabled(parsed.selectedTopic)
+        ? null
+        : parsed.selectedTopic;
       const currentAccount = currentEmail && emailAccounts[currentEmail]
         ? emailAccounts[currentEmail]
         : currentStudentNumber && accounts[currentStudentNumber]
@@ -1965,7 +1986,7 @@ function createIotCampScreen(container, options = {}) {
         config,
         accounts,
         emailAccounts,
-        selectedTopic: shouldResetConfig ? null : (parsed.selectedTopic ?? null),
+        selectedTopic,
         stars: TEST_MODE
           ? Math.max(
             Number.isFinite(currentAccount.stars)
@@ -2215,19 +2236,19 @@ function createIotCampScreen(container, options = {}) {
     const trimmedPassword = String(password ?? "").trim();
 
     if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
-      return { ok: false, message: "Zadej platny e-mail." };
+      return { ok: false, message: "Zadej platný e-mail." };
     }
 
     if (trimmedPassword.length < 4) {
-      return { ok: false, message: "Heslo musi mit aspon 4 znaky." };
+      return { ok: false, message: "Heslo musí mít aspoň 4 znaky." };
     }
 
     if (state.linkedEmail) {
-      return { ok: false, message: "Tento ucet uz ma propojeny e-mail a nejde prepsat." };
+      return { ok: false, message: "Tento účet už má propojený e-mail a nejde přepsat." };
     }
 
     if (state.emailAccounts[normalizedEmail]) {
-      return { ok: false, message: "Tento e-mail uz je zaregistrovany a nejde pouzit znovu." };
+      return { ok: false, message: "Tento e-mail už je zaregistrovaný a nejde použít znovu." };
     }
 
     const snapshot = {
@@ -2247,20 +2268,20 @@ function createIotCampScreen(container, options = {}) {
         await notifyAccountCreated(normalizedEmail);
         return {
           ok: true,
-          message: "Ucet byl zalozeny a potvrzovaci e-mail byl odeslany.",
+          message: "Účet byl založený a potvrzovací e-mail byl odeslaný.",
         };
       } catch (error) {
         console.error("Account confirmation e-mail failed.", error);
         return {
           ok: true,
-          message: "Ucet byl zalozeny, ale potvrzovaci e-mail se nepodarilo odeslat.",
+          message: "Účet byl založený, ale potvrzovací e-mail se nepodařilo odeslat.",
         };
       }
     }
 
     return {
       ok: true,
-      message: "Ucet byl zalozeny. Po napojeni na web se potvrzovaci e-mail odesle pres backend.",
+      message: "Účet byl založený. Po napojení na web se potvrzovací e-mail odešle přes backend.",
     };
   }
 
@@ -2274,17 +2295,17 @@ function createIotCampScreen(container, options = {}) {
     }
 
     if (!account) {
-      return { ok: false, message: "Tento e-mail neni zaregistrovany." };
+      return { ok: false, message: "Tento e-mail není zaregistrovaný." };
     }
 
     if (account.password !== trimmedPassword) {
-      return { ok: false, message: "Heslo nesouhlasi." };
+      return { ok: false, message: "Heslo nesouhlasí." };
     }
 
     loadEmailAccount(normalizedEmail);
     saveState();
     render();
-    return { ok: true, message: "Prihlaseni pres e-mail bylo uspesne." };
+    return { ok: true, message: "Přihlášení přes e-mail bylo úspěšné." };
   }
 
   function getTaskState(taskId) {
@@ -2939,7 +2960,7 @@ function createIotCampScreen(container, options = {}) {
           return { ok: false, message: "Chybi krok, kde se hodnota promenne zvysi nebo snizi." };
         }
         if (!hasSerialOutput) {
-          return { ok: false, message: "Po zmene by mel program vypsat aktualni cislo do serioveho monitoru." };
+          return { ok: false, message: "Po změně by měl program vypsat aktuální číslo do sériového monitoru." };
         }
         return { ok: true };
       },
@@ -3322,24 +3343,24 @@ function createIotCampScreen(container, options = {}) {
     if (earnedStyleToken) {
       rewardParts.push("1 token stylu");
     }
-    showMessage(`Reseni uspesne. Ziskano ${rewardParts.join(" a ")}.`, "success");
+    showMessage(`Řešení úspěšné. Získáno ${rewardParts.join(" a ")}.`, "success");
   }
 
   function submitDailyChallenge(taskId) {
     const task = findTask(taskId);
 
     if (!task || !isDailyChallengeTask(taskId)) {
-      showMessage("Tento ukol dnes neni denni vyzva.", "error");
+      showMessage("Tento úkol dnes není denní výzva.", "error");
       return;
     }
 
     if (hasClaimedDailyChallengeToday()) {
-      showMessage("Denni vyzva uz je dnes splnena.", "info");
+      showMessage("Denní výzva už je dnes splněná.", "info");
       return;
     }
 
     if (!hasCodeDraft(taskId)) {
-      showMessage("Nejdriv vloz kod pro denni vyzvu.", "error");
+      showMessage("Nejdřív vlož kód pro denní výzvu.", "error");
       return;
     }
 
@@ -3354,7 +3375,7 @@ function createIotCampScreen(container, options = {}) {
     state.stars += REWARD_CONFIG.dailyChallengeStars;
     saveState();
     render();
-    showMessage(`Denni vyzva splnena. Ziskano ${REWARD_CONFIG.dailyChallengeStars} hvezdicek.`, "success");
+    showMessage(`Denní výzva splněná. Získáno ${REWARD_CONFIG.dailyChallengeStars} hvězdiček.`, "success");
   }
 
   function resetProgress() {
@@ -3419,9 +3440,7 @@ function createIotCampScreen(container, options = {}) {
   }
 
   function selectTopic(topicId) {
-    const topic = TOPIC_OPTIONS.find((option) => option.id === topicId);
-
-    if (!topic?.enabled) {
+    if (!isTopicEnabled(topicId)) {
       return;
     }
 
@@ -3605,19 +3624,19 @@ function createIotCampScreen(container, options = {}) {
         const studentNumber = String(formData.get("studentNumber") ?? "").replace(/\D/g, "");
 
         if (!studentNumber) {
-          message.textContent = "Zadej cislo studenta.";
+          message.textContent = "Zadej číslo studenta.";
           return;
         }
 
         const studentNumberValue = Number(studentNumber);
 
         if (studentNumberValue < 1 || studentNumberValue > state.config.maxStudents) {
-          message.textContent = `Cislo studenta musi byt v rozsahu 1 az ${state.config.maxStudents}.`;
+          message.textContent = `Číslo studenta musí být v rozsahu 1 až ${state.config.maxStudents}.`;
           return;
         }
 
         if (!PREVIEW_ALLOW_ANY_PIN && enteredPin !== state.config.dailyPin) {
-          message.textContent = "PIN neni spravny.";
+          message.textContent = "PIN není správný.";
           return;
         }
 
@@ -3654,7 +3673,7 @@ function createIotCampScreen(container, options = {}) {
           submitButton.disabled = true;
         }
 
-        message.textContent = "Zakladam ucet...";
+        message.textContent = "Zakládám účet...";
         const result = await linkAccountToEmail(email, password);
 
         if (submitButton) {
@@ -3695,7 +3714,7 @@ function createIotCampScreen(container, options = {}) {
         const adminPassword = String(formData.get("adminPassword") ?? "").trim();
 
         if (adminPassword !== state.config.adminPassword) {
-          message.textContent = "Admin PIN neni spravny.";
+          message.textContent = "Admin PIN není správný.";
           return;
         }
 
@@ -3865,18 +3884,18 @@ function createIotCampScreen(container, options = {}) {
     return `
       <aside class="shop-panel shop-panel--account">
         <div class="shop-tabs">
-          <button type="button" class="shop-tabs__tab shop-tabs__tab--active">Denni vyzva</button>
+          <button type="button" class="shop-tabs__tab shop-tabs__tab--active">Denní výzva</button>
         </div>
         <div class="shop-panel__intro">
           <p class="eyebrow">FARMA HVEZD</p>
           <h2>${escapeHtml(dailyTask.title)}</h2>
-          <p>Dnesni bonus ziskas za odevzdani platneho kodu k tomuto ukolu. Funguje i u uz driv splnenych ukolu.</p>
+          <p>Dnešní bonus získáš za odevzdání platného kódu k tomuto úkolu. Funguje i u už dřív splněných úkolů.</p>
         </div>
         <div class="account-link-status">
           <strong>${isClaimed ? "Dnes uz splneno" : `Odmena: +${REWARD_CONFIG.dailyChallengeStars} hvezdicek`}</strong>
-          <p>${isClaimed ? "Zitra se objevi nova denni vyzva." : "Otevri tenhle ukol a odevzdej znovu funkcni kod."}</p>
+          <p>${isClaimed ? "Zítra se objeví nová denní výzva." : "Otevři tenhle úkol a odevzdej znovu funkční kód."}</p>
         </div>
-        <button type="button" class="ghost-button" data-action="open-task" data-task-id="${dailyTask.id}">Otevrit denni vyzvu</button>
+        <button type="button" class="ghost-button" data-action="open-task" data-task-id="${dailyTask.id}">Otevřít denní výzvu</button>
       </aside>
     `;
   }
@@ -3942,23 +3961,23 @@ function createIotCampScreen(container, options = {}) {
     return `
       <aside class="shop-panel shop-panel--account">
         <div class="shop-tabs">
-          <button type="button" class="shop-tabs__tab shop-tabs__tab--active">Propojeni uctu</button>
+          <button type="button" class="shop-tabs__tab shop-tabs__tab--active">Propojení účtu</button>
         </div>
         <div class="shop-panel__intro">
-          <p class="eyebrow">UCET</p>
+          <p class="eyebrow">ÚČET</p>
           <h2>E-mail a heslo</h2>
-          <p>Pro dlouhodobe ulozeni si muzes tenhle ucet propojit s e-mailem. Pak se prihlasis i dalsi dny bez denniho PINu.</p>
+          <p>Pro dlouhodobé uložení si můžeš tenhle účet propojit s e-mailem. Pak se přihlásíš i další dny bez denního PINu.</p>
         </div>
         ${linkedEmail ? `
           <div class="account-link-status">
-            <strong>Ucet je propojen</strong>
+            <strong>Účet je propojen</strong>
             <p>${escapeHtml(linkedEmail)}</p>
           </div>
         ` : `
           <form data-role="account-link-form" class="login-form login-form--stack">
             <input name="email" type="email" autocomplete="off" placeholder="E-mail" required>
-            <input name="newPassword" type="password" autocomplete="new-password" placeholder="Nove heslo" required>
-            <button type="submit">Propojit ucet</button>
+            <input name="newPassword" type="password" autocomplete="new-password" placeholder="Nové heslo" required>
+            <button type="submit">Propojit účet</button>
           </form>
           <p data-role="account-link-message" class="account-link-message" aria-live="polite"></p>
         `}
@@ -4311,7 +4330,7 @@ function createIotCampScreen(container, options = {}) {
           >${escapeHtml(codeDraft)}</textarea>
           <p class="code-check-panel__note">Kontrola patri k ukolu, ktery se sklada ze zapojeni obvodu a programu. Bez napovedy ziskas +${REWARD_CONFIG.noHelpBonusStars} a na prvni pokus +${REWARD_CONFIG.firstTryBonusStars}.</p>
           ${isDailyChallengeTask(task.id) ? `
-            <p class="code-check-panel__note">${hasClaimedDailyChallengeToday() ? "Denni vyzva uz je dnes splnena." : `Tenhle ukol je dnesni denni vyzva za +${REWARD_CONFIG.dailyChallengeStars} hvezdicek.`}</p>
+            <p class="code-check-panel__note">${hasClaimedDailyChallengeToday() ? "Denní výzva už je dnes splněná." : `Tenhle úkol je dnešní denní výzva za +${REWARD_CONFIG.dailyChallengeStars} hvězdiček.`}</p>
           ` : ""}
         </div>
         <div class="detail-card__actions detail-card__actions--single">
@@ -4330,7 +4349,7 @@ function createIotCampScreen(container, options = {}) {
               data-role="daily-challenge-submit"
               data-task-id="${task.id}"
               ${canSubmitDailyChallenge ? "" : "disabled"}
-            >Odevzdat denni vyzvu</button>
+            >Odevzdat denní výzvu</button>
           ` : ""}
         </div>
         <div class="task-nav">
@@ -4343,7 +4362,7 @@ function createIotCampScreen(container, options = {}) {
 
   function renderLogin() {
     const prefilledEmail = escapeHtml(getEmailFromUrl());
-    const selectedTopic = TOPIC_OPTIONS.find((topic) => topic.id === state.selectedTopic);
+    const selectedTopic = getTopicById(state.selectedTopic);
     const adminStats = getStudentStats();
     const adminStatsMarkup = adminStats.map((student) => `
       <div class="admin-stats-row">
@@ -4375,17 +4394,17 @@ function createIotCampScreen(container, options = {}) {
               ${state.adminAuthenticated ? `
                 <div class="admin-layout">
                   <div class="admin-layout__main">
-                    <h1>Nastaveni dne</h1>
-                    <p class="admin-panel__note">Po ulozeni budou studenti moci zadat jen cisla od 1 do nastaveneho poctu studentu.</p>
+                    <h1>Nastavení dne</h1>
+                    <p class="admin-panel__note">Po uložení budou studenti moci zadat jen čísla od 1 do nastaveného počtu studentů.</p>
                     <form data-role="admin-form" class="login-form login-form--stack">
                       <input name="nextDailyPin" type="text" autocomplete="off" placeholder="PIN na tento den" value="${escapeHtml(state.config.dailyPin)}" required>
-                      <input name="nextMaxStudents" type="number" min="1" max="${MAX_STUDENTS_LIMIT}" step="1" autocomplete="off" placeholder="Pocet studentu" value="${state.config.maxStudents}" required>
-                      <button type="submit">Ulozit nastaveni dne</button>
+                      <input name="nextMaxStudents" type="number" min="1" max="${MAX_STUDENTS_LIMIT}" step="1" autocomplete="off" placeholder="Počet studentů" value="${state.config.maxStudents}" required>
+                      <button type="submit">Uložit nastavení dne</button>
                     </form>
                     <div class="admin-panel__actions">
                       <button type="button" data-action="enter-admin-preview">Vstoupit jako admin</button>
                     </div>
-                    <p class="admin-panel__note">V admin nahledu uvidis vsechny sekce, vsechny ukoly a reseni bez odemykani.</p>
+                    <p class="admin-panel__note">V admin náhledu uvidíš všechny sekce, všechny úkoly a řešení bez odemykání.</p>
                     <p data-role="admin-message" aria-live="polite"></p>
                   </div>
                   <aside class="admin-stats">
@@ -4393,18 +4412,18 @@ function createIotCampScreen(container, options = {}) {
                       <h2>Statistika</h2>
                       <span>${state.config.maxStudents} studentu</span>
                     </div>
-                    <p class="admin-panel__note">Prehled postupu vsech studentu podle poctu splnenych ukolu.</p>
+                    <p class="admin-panel__note">Přehled postupu všech studentů podle počtu splněných úkolů.</p>
                     <div class="admin-stats__list">
                       ${adminStatsMarkup}
                     </div>
                   </aside>
                 </div>
               ` : `
-                <h1>Prihlaseni admina</h1>
-                <p class="admin-panel__note">Zadej admin PIN a otevres dalsi okno s nastavenim denniho PINu a poctu studentu.</p>
+              <h1>Přihlášení admina</h1>
+              <p class="admin-panel__note">Zadej admin PIN a otevřeš další okno s nastavením denního PINu a počtu studentů.</p>
                 <form data-role="admin-login-form" class="login-form login-form--stack">
                   <input name="adminPassword" type="password" autocomplete="off" placeholder="Admin PIN" required>
-                  <button type="submit">Prihlasit jako admin</button>
+                  <button type="submit">Přihlásit jako admin</button>
                 </form>
                 <p data-role="admin-login-message" aria-live="polite"></p>
               `}
@@ -4412,20 +4431,20 @@ function createIotCampScreen(container, options = {}) {
           ` : `
             <section>
               <p class="eyebrow">${escapeHtml(selectedTopic?.label ?? "IOT TABOR")}</p>
-              <h1>Prihlaseni studenta</h1>
-              <button type="button" class="ghost-button topic-change-button" data-action="change-topic">Zmenit tema</button>
-              <p>Zadej denni PIN a cislo studenta. Povolena cisla jsou od 1 do ${state.config.maxStudents}.</p>
+              <h1>Přihlášení studenta</h1>
+              <button type="button" class="ghost-button topic-change-button" data-action="change-topic">Změnit téma</button>
+              <p>Zadej denní PIN a číslo studenta. Povolená čísla jsou od 1 do ${state.config.maxStudents}.</p>
               <form data-role="daily-pin-form" class="login-form login-form--stack">
-                <input id="daily-pin-input" name="dailyPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Denni PIN" required>
-                <input id="student-number-input" name="studentNumber" type="text" inputmode="numeric" autocomplete="off" placeholder="Cislo studenta" required>
+                <input id="daily-pin-input" name="dailyPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Denní PIN" required>
+                <input id="student-number-input" name="studentNumber" type="text" inputmode="numeric" autocomplete="off" placeholder="Číslo studenta" required>
                 <button type="submit">Vstoupit</button>
               </form>
               <p data-role="daily-pin-message" aria-live="polite"></p>
-              <div class="login-divider"><span>Nebo prihlaseni pres e-mail</span></div>
+              <div class="login-divider"><span>Nebo přihlášení přes e-mail</span></div>
               <form data-role="email-login-form" class="login-form login-form--stack">
                 <input name="email" type="email" autocomplete="username" placeholder="E-mail" value="${prefilledEmail}" required>
                 <input name="password" type="password" autocomplete="current-password" placeholder="Heslo" required>
-                <button type="submit">Prihlasit e-mailem</button>
+                <button type="submit">Přihlásit e-mailem</button>
               </form>
               <p data-role="email-login-message" aria-live="polite"></p>
             </section>
@@ -4447,15 +4466,15 @@ function createIotCampScreen(container, options = {}) {
         ${topic.enabled ? "" : "disabled"}
       >
         <span>${escapeHtml(topic.label)}</span>
-        ${topic.enabled ? "" : '<small>Pripravujeme</small>'}
+        ${topic.enabled ? "" : '<small>Připravujeme</small>'}
       </button>
     `).join("");
 
     container.innerHTML = `
       <section class="topic-screen">
         <div class="topic-panel">
-          <p class="eyebrow">VYBER TEMATU</p>
-          <h1>Co chces dnes delat?</h1>
+          <p class="eyebrow">VÝBĚR TÉMATU</p>
+          <h1>Co chceš dnes dělat?</h1>
           <div class="topic-grid">
             ${topicButtonsMarkup}
           </div>
@@ -4513,7 +4532,7 @@ function createIotCampScreen(container, options = {}) {
   }
 
   function render() {
-    if (!state.selectedTopic) {
+    if (!isTopicEnabled(state.selectedTopic)) {
       renderTopicSelect();
       return;
     }
