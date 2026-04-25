@@ -14,6 +14,16 @@
   --purple-soft: rgba(193, 155, 243, 0.14);
   --blue-soft: rgba(113, 153, 255, 0.18);
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  --page-top: rgba(7, 13, 26, 0.92);
+  --page-mid: rgba(10, 17, 31, 0.9);
+  --page-bottom: rgba(13, 20, 39, 0.96);
+  --page-base-top: #0b1220;
+  --page-base-mid: #0d1427;
+  --page-base-bottom: #10192c;
+  --page-radial-left: rgba(38, 53, 92, 0.55);
+  --page-radial-right: rgba(29, 52, 112, 0.24);
+  --page-shape-left: rgba(36, 54, 87, 0.35);
+  --page-shape-right: rgba(42, 48, 72, 0.42);
 }
 
 * {
@@ -29,11 +39,11 @@ body {
 body {
   font-family: "Outfit", sans-serif;
   background:
-    linear-gradient(180deg, rgba(7, 13, 26, 0.92) 0%, rgba(10, 17, 31, 0.9) 34%, rgba(13, 20, 39, 0.96) 100%),
+    linear-gradient(180deg, var(--page-top) 0%, var(--page-mid) 34%, var(--page-bottom) 100%),
     url("https://weeks.cz/_next/image?q=75&url=%2Fimages%2Fhwlab%2Fhwlab-7976.webp&w=3840"),
-    radial-gradient(circle at top left, rgba(38, 53, 92, 0.55), transparent 34%),
-    radial-gradient(circle at top right, rgba(29, 52, 112, 0.24), transparent 26%),
-    linear-gradient(180deg, #0b1220 0%, #0d1427 46%, #10192c 100%);
+    radial-gradient(circle at top left, var(--page-radial-left), transparent 34%),
+    radial-gradient(circle at top right, var(--page-radial-right), transparent 26%),
+    linear-gradient(180deg, var(--page-base-top) 0%, var(--page-base-mid) 46%, var(--page-base-bottom) 100%);
   background-size: cover, cover, auto, auto, auto;
   background-position: center top, center top, left top, right top, center;
   background-attachment: fixed, fixed, scroll, scroll, scroll;
@@ -55,7 +65,7 @@ body::before {
   left: -4rem;
   width: 28rem;
   height: 18rem;
-  background: rgba(36, 54, 87, 0.35);
+  background: var(--page-shape-left);
   clip-path: polygon(0 50%, 70% 0, 100% 40%, 36% 100%);
 }
 
@@ -64,7 +74,7 @@ body::after {
   top: 10rem;
   width: 26rem;
   height: 28rem;
-  background: rgba(42, 48, 72, 0.42);
+  background: var(--page-shape-right);
   clip-path: polygon(10% 0, 100% 20%, 70% 100%, 0 82%);
 }
 
@@ -80,7 +90,8 @@ body::after {
   position: relative;
 }
 
-.login-screen {
+.login-screen,
+.topic-screen {
   width: min(100%, 760px);
   margin: 0 auto;
   padding: 48px 28px 72px;
@@ -99,7 +110,8 @@ body::after {
 .detail-card,
 .shop-panel,
 .control-panel,
-.login-card {
+.login-card,
+.topic-panel {
   border: 1px solid var(--line);
   border-radius: 28px;
   box-shadow: var(--shadow);
@@ -284,6 +296,10 @@ body::after {
 .account-link-status p,
 .account-link-message {
   color: var(--muted);
+}
+
+.shop-panel--account > button {
+  margin-top: 18px;
 }
 
 .profile-chip {
@@ -527,6 +543,16 @@ body::after {
   --amber: #ffd36f;
   --amber-soft: rgba(255, 211, 111, 0.16);
   --blue-soft: rgba(255, 151, 106, 0.18);
+  --page-top: rgba(36, 18, 12, 0.9);
+  --page-mid: rgba(49, 26, 17, 0.88);
+  --page-bottom: rgba(67, 36, 21, 0.94);
+  --page-base-top: #1d120d;
+  --page-base-mid: #2a1811;
+  --page-base-bottom: #3b2216;
+  --page-radial-left: rgba(255, 160, 102, 0.26);
+  --page-radial-right: rgba(255, 211, 111, 0.18);
+  --page-shape-left: rgba(121, 66, 42, 0.28);
+  --page-shape-right: rgba(144, 85, 48, 0.26);
 }
 
 .theme--forest {
@@ -535,6 +561,16 @@ body::after {
   --amber: #b6db71;
   --amber-soft: rgba(182, 219, 113, 0.16);
   --blue-soft: rgba(91, 190, 151, 0.18);
+  --page-top: rgba(10, 24, 18, 0.92);
+  --page-mid: rgba(13, 33, 24, 0.9);
+  --page-bottom: rgba(17, 47, 33, 0.95);
+  --page-base-top: #0c1912;
+  --page-base-mid: #11241a;
+  --page-base-bottom: #183326;
+  --page-radial-left: rgba(78, 164, 120, 0.24);
+  --page-radial-right: rgba(133, 207, 120, 0.16);
+  --page-shape-left: rgba(33, 88, 63, 0.3);
+  --page-shape-right: rgba(28, 69, 52, 0.28);
 }
 
 .theme--ice {
@@ -543,6 +579,16 @@ body::after {
   --amber: #8bc8ff;
   --amber-soft: rgba(139, 200, 255, 0.16);
   --blue-soft: rgba(139, 200, 255, 0.24);
+  --page-top: rgba(7, 19, 30, 0.92);
+  --page-mid: rgba(10, 29, 43, 0.9);
+  --page-bottom: rgba(13, 40, 58, 0.95);
+  --page-base-top: #091521;
+  --page-base-mid: #0d2131;
+  --page-base-bottom: #123042;
+  --page-radial-left: rgba(109, 193, 255, 0.24);
+  --page-radial-right: rgba(135, 228, 255, 0.18);
+  --page-shape-left: rgba(34, 85, 117, 0.28);
+  --page-shape-right: rgba(32, 72, 101, 0.28);
 }
 
 .theme--ember {
@@ -551,6 +597,16 @@ body::after {
   --amber: #ffc46d;
   --amber-soft: rgba(255, 196, 109, 0.16);
   --blue-soft: rgba(255, 104, 78, 0.2);
+  --page-top: rgba(30, 10, 10, 0.92);
+  --page-mid: rgba(47, 16, 14, 0.9);
+  --page-bottom: rgba(71, 24, 18, 0.95);
+  --page-base-top: #1a0c0d;
+  --page-base-mid: #2a1111;
+  --page-base-bottom: #3d1714;
+  --page-radial-left: rgba(255, 107, 80, 0.24);
+  --page-radial-right: rgba(255, 176, 97, 0.16);
+  --page-shape-left: rgba(116, 44, 34, 0.32);
+  --page-shape-right: rgba(135, 49, 33, 0.28);
 }
 
 .theme--lagoon {
@@ -559,6 +615,16 @@ body::after {
   --amber: #7fdcff;
   --amber-soft: rgba(127, 220, 255, 0.16);
   --blue-soft: rgba(84, 190, 212, 0.22);
+  --page-top: rgba(8, 24, 28, 0.92);
+  --page-mid: rgba(10, 35, 40, 0.9);
+  --page-bottom: rgba(12, 50, 55, 0.95);
+  --page-base-top: #0a171b;
+  --page-base-mid: #0d2328;
+  --page-base-bottom: #11343a;
+  --page-radial-left: rgba(76, 205, 189, 0.24);
+  --page-radial-right: rgba(105, 173, 255, 0.16);
+  --page-shape-left: rgba(24, 102, 96, 0.28);
+  --page-shape-right: rgba(20, 78, 86, 0.28);
 }
 
 .theme--sand {
@@ -567,6 +633,16 @@ body::after {
   --amber: #ffd98f;
   --amber-soft: rgba(255, 217, 143, 0.16);
   --blue-soft: rgba(204, 160, 92, 0.18);
+  --page-top: rgba(29, 22, 13, 0.92);
+  --page-mid: rgba(40, 29, 16, 0.9);
+  --page-bottom: rgba(55, 39, 20, 0.95);
+  --page-base-top: #19130d;
+  --page-base-mid: #241b11;
+  --page-base-bottom: #322517;
+  --page-radial-left: rgba(221, 183, 106, 0.2);
+  --page-radial-right: rgba(255, 218, 154, 0.14);
+  --page-shape-left: rgba(118, 94, 45, 0.28);
+  --page-shape-right: rgba(135, 111, 52, 0.24);
 }
 
 .theme--midnight {
@@ -575,6 +651,16 @@ body::after {
   --amber: #b9c8ff;
   --amber-soft: rgba(185, 200, 255, 0.16);
   --blue-soft: rgba(104, 132, 219, 0.24);
+  --page-top: rgba(6, 10, 23, 0.94);
+  --page-mid: rgba(8, 14, 31, 0.92);
+  --page-bottom: rgba(10, 18, 41, 0.97);
+  --page-base-top: #070b18;
+  --page-base-mid: #0a1020;
+  --page-base-bottom: #0d1730;
+  --page-radial-left: rgba(78, 102, 181, 0.22);
+  --page-radial-right: rgba(111, 132, 255, 0.14);
+  --page-shape-left: rgba(32, 44, 88, 0.28);
+  --page-shape-right: rgba(29, 38, 70, 0.26);
 }
 
 .theme--volt {
@@ -583,6 +669,16 @@ body::after {
   --amber: #d9ff66;
   --amber-soft: rgba(217, 255, 102, 0.16);
   --blue-soft: rgba(120, 255, 94, 0.2);
+  --page-top: rgba(9, 20, 10, 0.92);
+  --page-mid: rgba(11, 31, 12, 0.9);
+  --page-bottom: rgba(14, 45, 16, 0.95);
+  --page-base-top: #0a140a;
+  --page-base-mid: #0d1f0d;
+  --page-base-bottom: #123015;
+  --page-radial-left: rgba(121, 255, 98, 0.22);
+  --page-radial-right: rgba(217, 255, 102, 0.14);
+  --page-shape-left: rgba(48, 105, 42, 0.28);
+  --page-shape-right: rgba(34, 78, 29, 0.26);
 }
 
 .section-stack {
@@ -807,7 +903,8 @@ body::after {
 }
 
 .detail-card,
-.login-card {
+.login-card,
+.topic-panel {
   margin-top: 28px;
   padding: 28px;
   background: rgba(29, 38, 59, 0.92);
@@ -862,7 +959,8 @@ body::after {
 
 .detail-card h2,
 .shop-panel h2,
-.login-card h1 {
+.login-card h1,
+.topic-panel h1 {
   margin: 8px 0 10px;
   font-size: 2.3rem;
 }
@@ -1221,7 +1319,8 @@ button:disabled {
   min-width: 112px;
 }
 
-.login-screen {
+.login-screen,
+.topic-screen {
   display: grid;
   place-items: center;
   min-height: 100vh;
@@ -1230,6 +1329,69 @@ button:disabled {
 .login-card {
   position: relative;
   width: min(100%, 520px);
+}
+
+.topic-panel {
+  width: min(100%, 680px);
+}
+
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.topic-button {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  min-height: 112px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 22px 18px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 1.35rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.topic-button small {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.topic-button--disabled {
+  filter: saturate(0.55);
+}
+
+.topic-button--green {
+  background: linear-gradient(135deg, rgba(45, 212, 166, 0.26), rgba(61, 115, 255, 0.16));
+}
+
+.topic-button--amber {
+  background: linear-gradient(135deg, rgba(255, 188, 91, 0.28), rgba(236, 92, 82, 0.14));
+}
+
+.topic-button--blue {
+  background: linear-gradient(135deg, rgba(61, 115, 255, 0.28), rgba(45, 212, 166, 0.12));
+}
+
+.topic-button--purple {
+  background: linear-gradient(135deg, rgba(193, 155, 243, 0.28), rgba(61, 115, 255, 0.14));
+}
+
+.topic-button:hover {
+  transform: translateY(-2px);
+}
+
+.topic-change-button {
+  margin: 4px 0 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
 }
 
 .login-card--admin {
@@ -1444,7 +1606,8 @@ button:disabled {
 
 @media (max-width: 720px) {
   .dashboard-shell,
-  .login-screen {
+  .login-screen,
+  .topic-screen {
     padding-inline: 18px;
   }
 
@@ -1490,6 +1653,15 @@ button:disabled {
 
   .badge-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topic-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topic-button {
+    min-height: 82px;
+    font-size: 1.12rem;
   }
 
   .section-card__header {

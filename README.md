@@ -113,6 +113,19 @@ Neboj se. Na `dev` branchi nemůžeš rozbít produkci. Kdykoli se něco pokazí
 - Velké binární soubory (>10 MB) — pokud máš, zeptej se
 - Osobní data dětí — platforma má fungovat bez nich (jen lokální progress v prohlížeči)
 
+## Napojení potvrzovacího e-mailu
+
+Po založení/propojení e-mailového účtu umí frontend zavolat backend endpoint, který odešle potvrzovací zprávu. Při mountu předej URL aplikace a endpoint:
+
+```js
+window.IotCampScreen.mount("#app", {
+  accountAccessUrl: "https://iot.weeks.cz",
+  accountCreatedEmailEndpoint: "/api/iot-account-created-email",
+});
+```
+
+Endpoint dostane `POST` JSON s poli `to`, `subject`, `body` a `accessUrl`. Pokud hostující web nechce endpoint, může místo toho předat funkci `sendAccountCreatedEmail(message)`.
+
 ## CLI reference (pro zvědavé, není nutné)
 
 Tytéž akce jako výše, jen v terminálu (VS Code má terminál pod ``Ctrl+` ``):

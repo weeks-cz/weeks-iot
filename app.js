@@ -30,6 +30,12 @@ const REWARD_CONFIG = {
   dailyChallengeStars: 6,
 };
 
+const TEST_MODE = false;
+const TEST_BALANCE = {
+  stars: 999,
+  styleTokens: 25,
+};
+
 const SECTION_UNLOCK_COSTS = {
   advanced: 25,
   expert: 40,
@@ -37,6 +43,13 @@ const SECTION_UNLOCK_COSTS = {
 
 const PREVIEW_ALLOW_ANY_PIN = false;
 const REQUIRE_LECTURER_PIN_FOR_CHECK = false;
+
+const TOPIC_OPTIONS = [
+  { id: "iot", label: "IOT", accent: "green", enabled: true },
+  { id: "3d-print", label: "3D tisk", accent: "amber", enabled: false },
+  { id: "programming", label: "Programovani", accent: "blue", enabled: false },
+  { id: "blender", label: "Blender", accent: "purple", enabled: false },
+];
 
 const LEVEL_BADGES = [
   { id: "prvni-led", label: "PRVNI LED", icon: "&#127942;" },
@@ -643,6 +656,139 @@ void loop()
   }
   delay(100); // Wait for 100 millisecond(s)
 }`,
+};
+
+const STRICT_TASK_RULES = {
+  "beginner-led": [
+    { pattern: /pinmode\s*\(\s*7\s*,\s*input\s*\)/, message: "Chybi blok, ktery nastavi tlacitko jako vstup." },
+    { pattern: /pinmode\s*\(\s*8\s*,\s*output\s*\)/, message: "Chybi blok, ktery nastavi LED jako vystup." },
+    { pattern: /digitalread\s*\(\s*7\s*\)/, message: "Chybi blok pro cteni tlacitka na spravnem pinu." },
+    { pattern: /digitalwrite\s*\(\s*8\s*,\s*high\s*\)/, message: "Chybi blok pro rozsviceni LED." },
+    { pattern: /digitalwrite\s*\(\s*8\s*,\s*low\s*\)/, message: "Chybi blok pro zhasnuti LED." },
+  ],
+  "beginner-potentiometer": [
+    { pattern: /pinmode\s*\(\s*a3\s*,\s*input\s*\)/, message: "Chybi blok, ktery pripravi potenciometr na analogovem vstupu." },
+    { pattern: /serial\.begin\s*\(\s*9600\s*\)/, message: "Chybi blok pro spusteni serioveho monitoru." },
+    { pattern: /analogread\s*\(\s*a3\s*\)/, message: "Chybi blok pro cteni hodnoty z potenciometru." },
+    { pattern: /serial\.println\s*\(/, message: "Chybi blok pro vypsani hodnoty do serioveho monitoru." },
+  ],
+  "beginner-and-or": [
+    { pattern: /digitalread\s*\(\s*2\s*\)/, message: "Chybi blok pro cteni prvniho tlacitka." },
+    { pattern: /digitalread\s*\(\s*3\s*\)/, message: "Chybi blok pro cteni druheho tlacitka." },
+    { pattern: /\|\|/, message: "Chybi logika NEBO pro prvni LED." },
+    { pattern: /&&/, message: "Chybi logika A pro druhou LED." },
+    { pattern: /digitalwrite\s*\(\s*8\s*,\s*high\s*\)/, message: "Chybi krok, ktery rozsviti vystup pro OR." },
+    { pattern: /digitalwrite\s*\(\s*9\s*,\s*high\s*\)/, message: "Chybi krok, ktery rozsviti vystup pro AND." },
+  ],
+  "beginner-traffic-light": [
+    { pattern: /pinmode\s*\(\s*9\s*,\s*output\s*\)/, message: "Chybi nastaveni cervene LED jako vystupu." },
+    { pattern: /pinmode\s*\(\s*8\s*,\s*output\s*\)/, message: "Chybi nastaveni oranzove LED jako vystupu." },
+    { pattern: /pinmode\s*\(\s*7\s*,\s*output\s*\)/, message: "Chybi nastaveni zelene LED jako vystupu." },
+    { pattern: /digitalwrite\s*\(\s*9\s*,\s*high\s*\)/, message: "Chybi krok pro rozsviceni cervene LED." },
+    { pattern: /digitalwrite\s*\(\s*7\s*,\s*high\s*\)/, message: "Chybi krok pro rozsviceni zelene LED." },
+    { pattern: /delay\s*\(\s*3000\s*\)/, message: "Chybi delsi cekani mezi stavy semaforu." },
+  ],
+  "beginner-buzzer-button": [
+    {
+      pattern: /(digitalread\s*\(\s*7\s*\)|digitalread\s*\(\s*8\s*\))/,
+      message: "Chybi blok pro cteni tlacitka.",
+    },
+    {
+      pattern: /(tone\s*\(\s*8\s*,\s*440\s*,\s*200\s*\)|analogwrite\s*\(\s*9\s*,\s*digitalread\s*\(\s*8\s*\)\s*\)|digitalwrite\s*\(\s*9\s*,\s*digitalread\s*\(\s*8\s*\)\s*\))/,
+      message: "Chybi blok, ktery prenese stav tlacitka na bzucak nebo spusti ton.",
+    },
+  ],
+  "beginner-light-sensor": [
+    { pattern: /analogread\s*\(\s*a0\s*\)/, message: "Chybi blok pro cteni fotorezistoru." },
+    { pattern: /svetlo\s*<\s*400/, message: "Chybi porovnani namerene hodnoty s hranici tmy." },
+    { pattern: /digitalwrite\s*\(\s*9\s*,\s*high\s*\)/, message: "Chybi blok pro rozsviceni LED pri tme." },
+    { pattern: /digitalwrite\s*\(\s*9\s*,\s*low\s*\)/, message: "Chybi blok pro zhasnuti LED pri svetle." },
+  ],
+  "advanced-stair-light": [
+    { pattern: /digitalread\s*\(\s*2\s*\)/, message: "Chybi cteni prvniho tlacitka." },
+    { pattern: /digitalread\s*\(\s*3\s*\)/, message: "Chybi cteni druheho tlacitka." },
+    { pattern: /millis\s*\(\s*\)/, message: "Chybi blok pro praci s casem." },
+    { pattern: /casposlednihostisku\s*=\s*millis\s*\(\s*\)/, message: "Chybi ulozeni casu posledniho stisku." },
+    { pattern: /millis\s*\(\s*\)\s*-\s*casposlednihostisku\s*>\s*3000/, message: "Chybi podminka pro zhasnuti po 3 sekundach." },
+  ],
+  "advanced-crosswalk": [
+    { pattern: /digitalread\s*\(\s*2\s*\)/, message: "Chybi blok pro cteni tlacitka pro chodce." },
+    { pattern: /digitalwrite\s*\(\s*7\s*,\s*high\s*\)/, message: "Chybi vychozi zelena pro auta." },
+    { pattern: /digitalwrite\s*\(\s*9\s*,\s*high\s*\)/, message: "Chybi krok pro cervenou LED." },
+    { pattern: /delay\s*\(\s*3000\s*\)/, message: "Chybi delsi cekani v hlavni casti prechodu." },
+  ],
+  "advanced-parking": [
+    { pattern: /readultrasonicdistance\s*\(/, message: "Chybi blok nebo cast programu pro mereni ultrazvukem." },
+    { pattern: /serial\.println\s*\(\s*x\s*\)/, message: "Chybi vypsani namerene vzdalenosti." },
+    { pattern: /x\s*>\s*20/, message: "Chybi hranice pro dalekou vzdalenost." },
+    { pattern: /x\s*>\s*5/, message: "Chybi hranice pro stredni vzdalenost." },
+    { pattern: /digitalwrite\s*\(\s*5\s*,\s*high\s*\)/, message: "Chybi krok pro cervenou signalizaci pri male vzdalenosti." },
+  ],
+  "advanced-motion": [
+    { pattern: /digitalread\s*\(\s*2\s*\)/, message: "Chybi blok pro cteni PIR senzoru." },
+    { pattern: /serial\.println\s*\(\s*""\s*\)/, message: "Chybi blok pro vypis zpravy pri detekci pohybu." },
+    { pattern: /digitalwrite\s*\(\s*8\s*,\s*high\s*\)/, message: "Chybi reakce, ktera pri pohybu rozsviť LED." },
+    { pattern: /digitalwrite\s*\(\s*8\s*,\s*low\s*\)/, message: "Chybi zhasnuti LED bez pohybu." },
+  ],
+  "advanced-temperature-alarm": [
+    { pattern: /analogread\s*\(\s*a1\s*\)/, message: "Chybi blok pro cteni teplotniho senzoru." },
+    { pattern: /teplota\s*<\s*250/, message: "Chybi prvni hranice teploty." },
+    { pattern: /teplota\s*<\s*450/, message: "Chybi druha hranice teploty." },
+    { pattern: /tone\s*\(\s*7\s*,\s*660\s*,\s*150\s*\)/, message: "Chybi zvukove varovani pro vysokou teplotu." },
+  ],
+  "advanced-counter": [
+    { pattern: /digitalread\s*\(\s*6\s*\)/, message: "Chybi blok pro tlacitko plus." },
+    { pattern: /digitalread\s*\(\s*7\s*\)/, message: "Chybi blok pro tlacitko minus." },
+    { pattern: /hodnota\+\+/, message: "Chybi zvetseni hodnoty." },
+    { pattern: /hodnota--/, message: "Chybi zmenseni hodnoty." },
+    { pattern: /serial\.println\s*\(\s*hodnota\s*\)/, message: "Chybi vypsani aktualni hodnoty." },
+  ],
+  "expert-servo": [
+    { pattern: /analogread\s*\(\s*a5\s*\)/, message: "Chybi blok pro cteni potenciometru." },
+    { pattern: /map\s*\(\s*y\s*,\s*0\s*,\s*1023\s*,\s*0\s*,\s*180\s*\)/, message: "Chybi prevedeni hodnoty na uhel serva." },
+    { pattern: /servo_3\.write\s*\(\s*x\s*\)/, message: "Chybi blok pro nastaveni polohy serva." },
+  ],
+  "expert-servo-loop": [
+    { pattern: /while\s*\(\s*x\s*<\s*180\s*\)/, message: "Chybi cast, kde servo jede jednim smerem az do kraje." },
+    { pattern: /while\s*\(\s*x\s*>\s*1\s*\)/, message: "Chybi cast, kde se servo vraci zpet." },
+    { pattern: /servo_3\.write\s*\(\s*x\s*\)/, message: "Chybi posilani uhlu do serva." },
+  ],
+  "expert-rgb-loop": [
+    { pattern: /analogread\s*\(\s*a0\s*\)/, message: "Chybi cteni prvniho potenciometru." },
+    { pattern: /analogread\s*\(\s*a1\s*\)/, message: "Chybi cteni druheho potenciometru." },
+    { pattern: /analogread\s*\(\s*a2\s*\)/, message: "Chybi cteni tretiho potenciometru." },
+    { pattern: /analogwrite\s*\(\s*3\s*,\s*x\s*\/\s*4\s*\)/, message: "Chybi nastaveni cervene slozky RGB LED." },
+    { pattern: /analogwrite\s*\(\s*5\s*,\s*y\s*\/\s*4\s*\)/, message: "Chybi nastaveni zelene slozky RGB LED." },
+    { pattern: /analogwrite\s*\(\s*6\s*,\s*z\s*\/\s*4\s*\)/, message: "Chybi nastaveni modre slozky RGB LED." },
+  ],
+  "expert-reaction-game": [
+    { pattern: /randomseed\s*\(\s*analogread\s*\(\s*a0\s*\)\s*\)/, message: "Chybi priprava nahodneho startu hry." },
+    { pattern: /delay\s*\(\s*random\s*\(\s*2000\s*,\s*5000\s*\)\s*\)/, message: "Chybi nahodne cekani pred startem." },
+    { pattern: /while\s*\(\s*digitalread\s*\(\s*2\s*\)\s*==\s*0\s*\)/, message: "Chybi cekani na reakci hrace po rozsviceni LED." },
+    { pattern: /serial\.println\s*\(\s*""\s*\)/, message: "Chybi vypsani vysledku hry." },
+  ],
+  "expert-led-roulette": [
+    { pattern: /randomseed\s*\(\s*analogread\s*\(\s*a0\s*\)\s*\)/, message: "Chybi priprava nahodneho cisla pro ruletu." },
+    { pattern: /cil\s*=\s*random\s*\(\s*12\s*,\s*24\s*\)/, message: "Chybi nahodny vyber delky rulety." },
+    { pattern: /for\s*\(\s*int\s+krok\s*=\s*0\s*;\s*krok\s*<\s*cil\s*;\s*krok\+\+\s*\)/, message: "Chybi opakovani kroku rulety." },
+    { pattern: /delay\s*\(\s*60\s*\+\s*krok\s*\*\s*20\s*\)/, message: "Chybi zpomalovani rulety." },
+  ],
+  "expert-arduino-piano": [
+    { pattern: /digitalread\s*\(\s*2\s*\)/, message: "Chybi cteni prvniho tlacitka piana." },
+    { pattern: /digitalread\s*\(\s*3\s*\)/, message: "Chybi cteni druheho tlacitka piana." },
+    { pattern: /digitalread\s*\(\s*4\s*\)/, message: "Chybi cteni tretiho tlacitka piana." },
+    { pattern: /tone\s*\(\s*8\s*,\s*262\s*,\s*120\s*\)/, message: "Chybi prvni ton." },
+    { pattern: /tone\s*\(\s*8\s*,\s*330\s*,\s*120\s*\)/, message: "Chybi druhy ton." },
+    { pattern: /tone\s*\(\s*8\s*,\s*392\s*,\s*120\s*\)/, message: "Chybi treti ton." },
+    { pattern: /notone\s*\(\s*8\s*\)/, message: "Chybi vypnuti zvuku, kdyz neni stisknute zadne tlacitko." },
+  ],
+  "expert-smart-barrier": [
+    { pattern: /readultrasonicdistance\s*\(/, message: "Chybi cast programu pro mereni vzdalenosti." },
+    { pattern: /servo_5\.attach\s*\(\s*5\s*,\s*500\s*,\s*2500\s*\)/, message: "Chybi pripojeni serva." },
+    { pattern: /vzdalenost\s*<\s*15/, message: "Chybi podminka, kdy ma zavora otevrit." },
+    { pattern: /servo_5\.write\s*\(\s*90\s*\)/, message: "Chybi otevreni zavory." },
+    { pattern: /servo_5\.write\s*\(\s*0\s*\)/, message: "Chybi zavreni zavory." },
+  ],
 };
 
 const TASK_IMAGE_CONFIG = {
@@ -1584,6 +1730,64 @@ function buildNicknameFromEmail(email) {
   return (localPart || "student").slice(0, 20);
 }
 
+function getEmailFromUrl() {
+  try {
+    return normalizeEmail(new URL(window.location.href).searchParams.get("email") ?? "");
+  } catch (error) {
+    return "";
+  }
+}
+
+function buildAccountAccessUrl(email, accountAccessUrl = null) {
+  if (typeof accountAccessUrl === "function") {
+    return accountAccessUrl(normalizeEmail(email));
+  }
+
+  if (typeof accountAccessUrl === "string" && accountAccessUrl.trim()) {
+    try {
+      const configuredUrl = new URL(accountAccessUrl, window.location.href);
+      configuredUrl.searchParams.set("email", normalizeEmail(email));
+      return configuredUrl.toString();
+    } catch (error) {
+      return accountAccessUrl;
+    }
+  }
+
+  try {
+    const accessUrl = new URL(window.location.href);
+    accessUrl.searchParams.set("email", normalizeEmail(email));
+    accessUrl.hash = "";
+    return accessUrl.toString();
+  } catch (error) {
+    return window.location.href;
+  }
+}
+
+function buildAccountCreatedEmail(email, accountAccessUrl = null) {
+  const normalizedEmail = normalizeEmail(email);
+  const accessUrl = buildAccountAccessUrl(normalizedEmail, accountAccessUrl);
+  const subject = "Tvuj ucet v IoT taboru je pripraveny";
+  const body = [
+    "Ahoj,",
+    "",
+    "tvuj ucet v IoT taboru byl zalozeny a propojeny s timto e-mailem.",
+    "",
+    "Do aplikace se dostanes pres tento odkaz:",
+    accessUrl,
+    "",
+    `Pro prihlaseni pouzij e-mail: ${normalizedEmail}`,
+    "",
+    "Dekuji, ze ses prihlasil.",
+  ].join("\n");
+
+  return {
+    to: normalizedEmail,
+    subject,
+    body,
+    accessUrl,
+  };
+}
+
 function buildDateSeed(dateKey) {
   return Array.from(String(dateKey ?? ""))
     .reduce((sum, character) => sum + character.charCodeAt(0), 0);
@@ -1654,8 +1858,8 @@ function createDefaultScreenState() {
 
 function createDefaultAccountState() {
   return {
-    stars: 20,
-    styleTokens: 0,
+    stars: TEST_MODE ? TEST_BALANCE.stars : 20,
+    styleTokens: TEST_MODE ? TEST_BALANCE.styleTokens : 0,
     selectedStyleId: "classic",
     unlockedStyleIds: ["classic"],
     unlockedSectionIds: [],
@@ -1671,6 +1875,36 @@ function createDefaultAccountState() {
 
 function createIotCampScreen(container, options = {}) {
   const storageKey = options.storageKey ?? IOT_CAMP_STORAGE_KEY;
+  const sendAccountCreatedEmail = typeof options.sendAccountCreatedEmail === "function"
+    ? options.sendAccountCreatedEmail
+    : null;
+  const accountCreatedEmailEndpoint = typeof options.accountCreatedEmailEndpoint === "string"
+    ? options.accountCreatedEmailEndpoint
+    : null;
+  const accountAccessUrl = options.accountAccessUrl ?? null;
+
+  async function notifyAccountCreated(email) {
+    const emailMessage = buildAccountCreatedEmail(email, accountAccessUrl);
+
+    if (sendAccountCreatedEmail) {
+      await sendAccountCreatedEmail(emailMessage);
+      return;
+    }
+
+    if (accountCreatedEmailEndpoint) {
+      const response = await fetch(accountCreatedEmailEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(emailMessage),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Account confirmation e-mail endpoint failed with ${response.status}.`);
+      }
+    }
+  }
 
   function loadState() {
     const raw = localStorage.getItem(storageKey);
@@ -1687,8 +1921,9 @@ function createIotCampScreen(container, options = {}) {
         adminPanelOpen: false,
         adminAuthenticated: false,
         adminPreviewActive: false,
-        stars: 20,
-        styleTokens: 0,
+        selectedTopic: null,
+        stars: TEST_MODE ? TEST_BALANCE.stars : 20,
+        styleTokens: TEST_MODE ? TEST_BALANCE.styleTokens : 0,
         selectedStyleId: "classic",
         unlockedStyleIds: ["classic"],
         unlockedSectionIds: [],
@@ -1730,16 +1965,30 @@ function createIotCampScreen(container, options = {}) {
         config,
         accounts,
         emailAccounts,
-        stars: Number.isFinite(currentAccount.stars)
-          ? currentAccount.stars
-          : Number.isFinite(parsed.stars)
-            ? parsed.stars
-            : Number.isFinite(parsed.points)
-              ? parsed.points
-              : 20,
-        styleTokens: Number.isFinite(currentAccount.styleTokens)
-          ? currentAccount.styleTokens
-          : 0,
+        selectedTopic: shouldResetConfig ? null : (parsed.selectedTopic ?? null),
+        stars: TEST_MODE
+          ? Math.max(
+            Number.isFinite(currentAccount.stars)
+              ? currentAccount.stars
+              : Number.isFinite(parsed.stars)
+                ? parsed.stars
+                : Number.isFinite(parsed.points)
+                  ? parsed.points
+                  : 20,
+            TEST_BALANCE.stars,
+          )
+          : Number.isFinite(currentAccount.stars)
+            ? currentAccount.stars
+            : Number.isFinite(parsed.stars)
+              ? parsed.stars
+              : Number.isFinite(parsed.points)
+                ? parsed.points
+                : 20,
+        styleTokens: TEST_MODE
+          ? Math.max(Number.isFinite(currentAccount.styleTokens) ? currentAccount.styleTokens : 0, TEST_BALANCE.styleTokens)
+          : Number.isFinite(currentAccount.styleTokens)
+            ? currentAccount.styleTokens
+            : 0,
         selectedStyleId: typeof currentAccount.selectedStyleId === "string"
           ? currentAccount.selectedStyleId
           : "classic",
@@ -1781,8 +2030,9 @@ function createIotCampScreen(container, options = {}) {
         adminPanelOpen: false,
         adminAuthenticated: false,
         adminPreviewActive: false,
-        stars: 20,
-        styleTokens: 0,
+        selectedTopic: null,
+        stars: TEST_MODE ? TEST_BALANCE.stars : 20,
+        styleTokens: TEST_MODE ? TEST_BALANCE.styleTokens : 0,
         selectedStyleId: "classic",
         unlockedStyleIds: ["classic"],
         unlockedSectionIds: [],
@@ -1861,8 +2111,12 @@ function createIotCampScreen(container, options = {}) {
 
   function applyAccountSnapshot(account) {
     const source = account ?? createDefaultAccountState();
-    state.stars = Number.isFinite(source.stars) ? source.stars : 20;
-    state.styleTokens = Number.isFinite(source.styleTokens) ? source.styleTokens : 0;
+    state.stars = Number.isFinite(source.stars) ? source.stars : (TEST_MODE ? TEST_BALANCE.stars : 20);
+    state.styleTokens = Number.isFinite(source.styleTokens) ? source.styleTokens : (TEST_MODE ? TEST_BALANCE.styleTokens : 0);
+    if (TEST_MODE) {
+      state.stars = Math.max(state.stars, TEST_BALANCE.stars);
+      state.styleTokens = Math.max(state.styleTokens, TEST_BALANCE.styleTokens);
+    }
     state.selectedStyleId = typeof source.selectedStyleId === "string" ? source.selectedStyleId : "classic";
     state.unlockedStyleIds = Array.isArray(source.unlockedStyleIds) && source.unlockedStyleIds.length
       ? source.unlockedStyleIds
@@ -1920,6 +2174,7 @@ function createIotCampScreen(container, options = {}) {
       authenticatedForDay: state.authenticatedForDay,
       currentStudentNumber: state.currentStudentNumber,
       currentEmail: state.currentEmail,
+      selectedTopic: state.selectedTopic,
     }));
   }
 
@@ -1955,7 +2210,7 @@ function createIotCampScreen(container, options = {}) {
     return true;
   }
 
-  function linkAccountToEmail(email, password) {
+  async function linkAccountToEmail(email, password) {
     const normalizedEmail = normalizeEmail(email);
     const trimmedPassword = String(password ?? "").trim();
 
@@ -1986,8 +2241,27 @@ function createIotCampScreen(container, options = {}) {
     state.nickname = snapshot.nickname;
     state.emailAccounts[normalizedEmail] = snapshot;
     saveState();
-    render();
-    return { ok: true, message: "Ucet byl propojen s e-mailem." };
+
+    if (sendAccountCreatedEmail || accountCreatedEmailEndpoint) {
+      try {
+        await notifyAccountCreated(normalizedEmail);
+        return {
+          ok: true,
+          message: "Ucet byl zalozeny a potvrzovaci e-mail byl odeslany.",
+        };
+      } catch (error) {
+        console.error("Account confirmation e-mail failed.", error);
+        return {
+          ok: true,
+          message: "Ucet byl zalozeny, ale potvrzovaci e-mail se nepodarilo odeslat.",
+        };
+      }
+    }
+
+    return {
+      ok: true,
+      message: "Ucet byl zalozeny. Po napojeni na web se potvrzovaci e-mail odesle pres backend.",
+    };
   }
 
   function loginWithEmail(email, password) {
@@ -2461,11 +2735,14 @@ function createIotCampScreen(container, options = {}) {
     return getCodeDraft(taskId).trim().length > 0;
   }
 
-  function isCodeSubmissionValid(taskId) {
+  function getCodeValidationResult(taskId) {
     const code = getCodeDraft(taskId).trim();
 
     if (!code) {
-      return false;
+      return {
+        ok: false,
+        message: "Nejdriv sloz aspon zaklad programu v blocich a preved ho do kodu.",
+      };
     }
 
     const normalized = normalizeCodeForValidation(code);
@@ -2481,7 +2758,28 @@ function createIotCampScreen(container, options = {}) {
     const baseArduinoShape = hasSetup && hasLoop && hasArduinoAction;
 
     if (!baseArduinoShape) {
-      return false;
+      if (!hasSetup || !hasLoop) {
+        return {
+          ok: false,
+          message: "V blocich ti nejspis chybi zakladni cast programu: blok pro start a blok, ktery se porad opakuje.",
+        };
+      }
+
+      return {
+        ok: false,
+        message: "Program zatim nevypada jako Arduino reseni. Zkus pridat bloky pro cteni, rozhodovani nebo ovladani soucastek.",
+      };
+    }
+
+    const strictRules = STRICT_TASK_RULES[taskId];
+    if (strictRules?.length) {
+      const failedRule = strictRules.find((rule) => !rule.pattern.test(normalized));
+      if (failedRule) {
+        return {
+          ok: false,
+          message: failedRule.message,
+        };
+      }
     }
 
     const taskSpecificChecks = {
@@ -2489,102 +2787,257 @@ function createIotCampScreen(container, options = {}) {
         const readsInput = countMatches(normalized, /digitalread\s*\(/g) >= 1;
         const writesOutput = normalized.includes("digitalwrite");
         const hasCondition = hasAny(normalized, ["if(", "if (", "?", " else "]);
-        return readsInput && writesOutput && hasCondition;
+        if (!readsInput) {
+          return { ok: false, message: "U LED ukolu ti chybi blok, ktery cte stav tlacitka nebo jineho vstupu." };
+        }
+        if (!hasCondition) {
+          return { ok: false, message: "Zkus pridat podminku typu kdyz plati..., aby se podle tlacitka rozhodlo, co ma LED delat." };
+        }
+        if (!writesOutput) {
+          return { ok: false, message: "V programu chybi blok, ktery nastavi LED na zapnuto nebo vypnuto." };
+        }
+        return { ok: true };
       },
       "beginner-potentiometer": () => {
-        return countMatches(normalized, /analogread\s*\(/g) >= 1
-          && hasAny(normalized, ["serial.begin", "serial.println", "serial.print"]);
+        if (countMatches(normalized, /analogread\s*\(/g) < 1) {
+          return { ok: false, message: "Zkus pridat blok pro cteni analogove hodnoty z potenciometru." };
+        }
+        if (!hasAny(normalized, ["serial.begin", "serial.println", "serial.print"])) {
+          return { ok: false, message: "Chybi blok, ktery vypise namerenou hodnotu do serioveho monitoru." };
+        }
+        return { ok: true };
       },
       "beginner-and-or": () => {
         const reads = countMatches(normalized, /digitalread\s*\(/g);
         const writes = countMatches(normalized, /digitalwrite\s*\(/g);
         const hasLogic = hasAny(normalized, ["&&", "||"]);
-        return reads >= 2 && writes >= 1 && hasLogic;
+        if (reads < 2) {
+          return { ok: false, message: "Tady potrebujes precist dva vstupy. Zkontroluj, ze mas bloky pro obe tlacitka." };
+        }
+        if (!hasLogic) {
+          return { ok: false, message: "Zkus v blocich pouzit logiku A nebo NEBO, aby program dokazal porovnat oba vstupy." };
+        }
+        if (writes < 1) {
+          return { ok: false, message: "Program by mel podle vysledku logiky ovladat aspon jednu LED." };
+        }
+        return { ok: true };
       },
       "beginner-traffic-light": () => {
         const outputWrites = countMatches(normalized, /digitalwrite\s*\(/g);
         const delays = countMatches(normalized, /delay\s*\(/g);
-        return outputWrites >= 3 && delays >= 2;
+        if (outputWrites < 3) {
+          return { ok: false, message: "Semafor potrebuje vic kroku pro prepinani svetel. Pridej dalsi bloky pro zapnuti a vypnuti LED." };
+        }
+        if (delays < 2) {
+          return { ok: false, message: "Mezi zmenami svetel ti nejspis chybi blok cekani." };
+        }
+        return { ok: true };
       },
       "beginner-buzzer-button": () => {
         const buttonReads = countMatches(normalized, /digitalread\s*\(/g);
-        const hasSound = hasAny(normalized, ["tone(", "notone(", "digitalwrite("]);
-        return buttonReads >= 1 && hasSound && hasAny(normalized, ["if(", "if ("]);
+        const hasSound = hasAny(normalized, ["tone(", "notone(", "digitalwrite(", "analogwrite("]);
+        if (buttonReads < 1) {
+          return { ok: false, message: "Nejdriv potrebujes blok, ktery precte stav tlacitka." };
+        }
+        const hasDirectMirror = /(?:analogwrite|digitalwrite)\s*\(\s*9\s*,\s*digitalread\s*\(\s*8\s*\)\s*\)/.test(normalized);
+        if (!hasAny(normalized, ["if(", "if ("]) && !hasDirectMirror) {
+          return { ok: false, message: "Pridej podminku, aby zvuk bezel jen kdyz je tlacitko stisknute, nebo primo prenes stav tlacitka na vystup." };
+        }
+        if (!hasSound) {
+          return { ok: false, message: "Chybi blok, ktery spusti nebo vypne zvuk na bzucaku." };
+        }
+        return { ok: true };
       },
       "beginner-light-sensor": () => {
         const lightRead = countMatches(normalized, /analogread\s*\(/g) >= 1;
         const ledReaction = hasAny(normalized, ["digitalwrite(", "analogwrite("]);
-        return lightRead && ledReaction && hasAny(normalized, ["if(", "if ("]);
+        if (!lightRead) {
+          return { ok: false, message: "Chybi blok pro cteni hodnoty z fotorezistoru." };
+        }
+        if (!hasAny(normalized, ["if(", "if ("])) {
+          return { ok: false, message: "Zkus pridat podminku, ktera rozhodne, kdy je uz dost tma na rozsviceni LED." };
+        }
+        if (!ledReaction) {
+          return { ok: false, message: "Program by mel podle svetla zmenit stav LED." };
+        }
+        return { ok: true };
       },
       "advanced-stair-light": () => {
         const reads = countMatches(normalized, /digitalread\s*\(/g);
         const hasTiming = hasAny(normalized, ["millis(", "delay("]);
-        return reads >= 2 && hasTiming && hasAny(normalized, ["if(", "if ("]);
+        if (reads < 2) {
+          return { ok: false, message: "Schodistove svetlo potrebuje cist dve tlacitka nebo dva vstupy." };
+        }
+        if (!hasTiming) {
+          return { ok: false, message: "Chybi blok pro casovani, aby LED nezhasla hned." };
+        }
+        if (!hasAny(normalized, ["if(", "if ("])) {
+          return { ok: false, message: "Zkus pridat podminky pro rozsviceni a pozdejsi zhasnuti svetla." };
+        }
+        return { ok: true };
       },
       "advanced-crosswalk": () => {
         const outputWrites = countMatches(normalized, /digitalwrite\s*\(/g);
         const inputReads = countMatches(normalized, /digitalread\s*\(/g);
-        return outputWrites >= 4 && inputReads >= 1 && hasAny(normalized, ["if(", "if ("]);
+        if (inputReads < 1) {
+          return { ok: false, message: "Prechod potrebuje blok, ktery cte tlacitko pro chodce." };
+        }
+        if (outputWrites < 4) {
+          return { ok: false, message: "Cyklus semaforu je zatim moc kratky. Pridej vic kroku pro prepinani svetel." };
+        }
+        if (!hasAny(normalized, ["if(", "if ("])) {
+          return { ok: false, message: "Nejdriv rozhodni podminkou, kdy se ma spustit semaforovy cyklus." };
+        }
+        return { ok: true };
       },
       "advanced-parking": () => {
         const hasDistanceMeasure = hasAny(normalized, ["pulsein(", "ultrasonic", "distance", "readultrasonicdistance"]);
         const hasReaction = hasAny(normalized, ["digitalwrite(", "tone(", "serial.println", "serial.print"]);
-        return hasDistanceMeasure && hasReaction;
+        if (!hasDistanceMeasure) {
+          return { ok: false, message: "Chybi cast programu, ktera zmeri vzdalenost ze senzoru." };
+        }
+        if (!hasReaction) {
+          return { ok: false, message: "Po mereni by mel program nejak reagovat: LED, bzucak nebo vypis hodnoty." };
+        }
+        return { ok: true };
       },
       "advanced-motion": () => {
-        return countMatches(normalized, /digitalread\s*\(/g) >= 1
-          && hasAny(normalized, ["if(", "if (", "serial.println", "serial.print", "digitalwrite("]);
+        if (countMatches(normalized, /digitalread\s*\(/g) < 1) {
+          return { ok: false, message: "Chybi blok, ktery cte signal z PIR senzoru." };
+        }
+        if (!hasAny(normalized, ["if(", "if ("])) {
+          return { ok: false, message: "Pridej podminku, ktera rozpozna pohyb a spusti reakci." };
+        }
+        if (!hasAny(normalized, ["serial.println", "serial.print", "digitalwrite("])) {
+          return { ok: false, message: "Po detekci pohybu by mel program neco udelat: rozsviť LED nebo vypis zpravu." };
+        }
+        return { ok: true };
       },
       "advanced-temperature-alarm": () => {
         const tempRead = countMatches(normalized, /analogread\s*\(/g) >= 1;
         const hasDecision = hasAny(normalized, ["if(", "if (", " else "]);
         const hasAlarmOutput = hasAny(normalized, ["digitalwrite(", "analogwrite(", "tone(", "serial.println", "serial.print"]);
-        return tempRead && hasDecision && hasAlarmOutput;
+        if (!tempRead) {
+          return { ok: false, message: "Nejdriv potrebujes precist hodnotu z teplotniho senzoru." };
+        }
+        if (!hasDecision) {
+          return { ok: false, message: "Zkus rozdelit teplotu do vice stavu pomoci podminek kdyz - jinak kdyz - jinak." };
+        }
+        if (!hasAlarmOutput) {
+          return { ok: false, message: "Program by mel podle teploty ovladat LED nebo bzucak." };
+        }
+        return { ok: true };
       },
       "advanced-counter": () => {
         const reads = countMatches(normalized, /digitalread\s*\(/g);
         const hasCounterChange = hasAny(normalized, ["++", "--", "+=", "-="]);
         const hasSerialOutput = hasAny(normalized, ["serial.println", "serial.print"]);
-        return reads >= 2 && hasCounterChange && hasSerialOutput;
+        if (reads < 2) {
+          return { ok: false, message: "Pocitadlo potrebuje dva vstupy: jeden pro plus a druhy pro minus." };
+        }
+        if (!hasCounterChange) {
+          return { ok: false, message: "Chybi krok, kde se hodnota promenne zvysi nebo snizi." };
+        }
+        if (!hasSerialOutput) {
+          return { ok: false, message: "Po zmene by mel program vypsat aktualni cislo do serioveho monitoru." };
+        }
+        return { ok: true };
       },
       "expert-servo": () => {
-        return hasAll(normalized, ["servo", "attach", "write"])
-          && hasAny(normalized, ["analogread(", "map("]);
+        if (!hasAll(normalized, ["servo", "attach", "write"])) {
+          return { ok: false, message: "U serva ti chybi bloky pro pripojeni serva a nastaveni jeho polohy." };
+        }
+        if (!hasAny(normalized, ["analogread(", "map("])) {
+          return { ok: false, message: "Zkus precist vstup z potenciometru a prevest ho na uhel serva." };
+        }
+        return { ok: true };
       },
       "expert-servo-loop": () => {
         const hasLooping = hasAny(normalized, ["while(", "for("]);
-        return hasAll(normalized, ["servo", "attach", "write"]) && hasLooping;
+        if (!hasAll(normalized, ["servo", "attach", "write"])) {
+          return { ok: false, message: "Servo potrebuje blok pro pripojeni a bloky pro zmenu polohy." };
+        }
+        if (!hasLooping) {
+          return { ok: false, message: "Plynuly pohyb chce opakovani vice kroku za sebou. Pridej smycku nebo opakovani." };
+        }
+        return { ok: true };
       },
       "expert-rgb-loop": () => {
         const analogReads = countMatches(normalized, /analogread\s*\(/g);
         const analogWrites = countMatches(normalized, /analogwrite\s*\(/g);
-        return analogReads >= 3 && analogWrites >= 3;
+        if (analogReads < 3) {
+          return { ok: false, message: "RGB mixer potrebuje precist tri vstupy, jeden pro kazdou barvu." };
+        }
+        if (analogWrites < 3) {
+          return { ok: false, message: "Chybi bloky, ktere nastavi cervenou, zelenou i modrou slozku LED." };
+        }
+        return { ok: true };
       },
       "expert-reaction-game": () => {
         const hasDelayOrTime = hasAny(normalized, ["random(", "millis(", "delay("]);
         const hasButtonRead = countMatches(normalized, /digitalread\s*\(/g) >= 1;
         const hasOutputReaction = hasAny(normalized, ["digitalwrite(", "serial.println", "serial.print"]);
-        return hasDelayOrTime && hasButtonRead && hasOutputReaction;
+        if (!hasDelayOrTime) {
+          return { ok: false, message: "Reakcni hra potrebuje cekani nebo nahodny cas pred startem kola." };
+        }
+        if (!hasButtonRead) {
+          return { ok: false, message: "Chybi blok, ktery precte reakci hrace na tlacitku." };
+        }
+        if (!hasOutputReaction) {
+          return { ok: false, message: "Po startu hry by se mela LED rozsvitit nebo by se mel vypsat vysledek." };
+        }
+        return { ok: true };
       },
       "expert-led-roulette": () => {
         const outputWrites = countMatches(normalized, /digitalwrite\s*\(/g);
         const hasLooping = hasAny(normalized, ["for(", "while("]);
-        return outputWrites >= 2 && hasLooping && hasAny(normalized, ["random(", "delay("]);
+        if (outputWrites < 2) {
+          return { ok: false, message: "Ruleta potrebuje vic kroku pro prepinani LED mezi sebou." };
+        }
+        if (!hasLooping) {
+          return { ok: false, message: "Animace se nejlip sklada opakovanim. Pridej smycku nebo vice opakovanych kroku." };
+        }
+        if (!hasAny(normalized, ["random(", "delay("])) {
+          return { ok: false, message: "Zkus pridat cekani mezi kroky a nejaky nahodny prvek pro finalni zastaveni." };
+        }
+        return { ok: true };
       },
       "expert-arduino-piano": () => {
         const buttonReads = countMatches(normalized, /digitalread\s*\(/g);
         const hasToneControl = hasAny(normalized, ["tone(", "notone("]);
-        return buttonReads >= 2 && hasToneControl && hasAny(normalized, ["if(", "if ("]);
+        if (buttonReads < 2) {
+          return { ok: false, message: "Piano potrebuje cist vic tlacitek, aby kazde hralo jiny ton." };
+        }
+        if (!hasAny(normalized, ["if(", "if ("])) {
+          return { ok: false, message: "Pridej podminky, ktere podle stisku vyberou spravny ton." };
+        }
+        if (!hasToneControl) {
+          return { ok: false, message: "Chybi bloky pro prehrani a zastaveni tonu." };
+        }
+        return { ok: true };
       },
       "expert-smart-barrier": () => {
         const hasServoControl = hasAll(normalized, ["servo", "attach", "write"]);
         const hasDistanceMeasure = hasAny(normalized, ["pulsein(", "distance", "readultrasonicdistance"]);
-        return hasServoControl && hasDistanceMeasure && hasAny(normalized, ["if(", "if ("]);
+        if (!hasDistanceMeasure) {
+          return { ok: false, message: "Automaticka zavora potrebuje nejdriv zmerit vzdalenost senzorem." };
+        }
+        if (!hasServoControl) {
+          return { ok: false, message: "Chybi bloky, ktere servu reknou, kdy ma otevrit a kdy zavrit." };
+        }
+        if (!hasAny(normalized, ["if(", "if ("])) {
+          return { ok: false, message: "Pridej podminku, ktera rozhodne, kdy je auto dost blizko na otevreni zavory." };
+        }
+        return { ok: true };
       },
     };
 
     const taskCheck = taskSpecificChecks[taskId];
-    return taskCheck ? taskCheck() : baseArduinoShape;
+    return taskCheck ? taskCheck() : { ok: true };
+  }
+
+  function isCodeSubmissionValid(taskId) {
+    return getCodeValidationResult(taskId).ok;
   }
 
   function syncCodeTextareaHeight(textarea) {
@@ -2814,9 +3267,11 @@ function createIotCampScreen(container, options = {}) {
 
     taskProgress.submitAttempts = Number(taskProgress.submitAttempts ?? 0) + 1;
 
-    if (!isCodeSubmissionValid(taskId)) {
+    const validationResult = getCodeValidationResult(taskId);
+
+    if (!validationResult.ok) {
       saveState();
-      showMessage("Reseni zatim nevypada jako uspesny Arduino program.", "error");
+      showMessage(validationResult.message, "error");
       return;
     }
 
@@ -2888,8 +3343,10 @@ function createIotCampScreen(container, options = {}) {
       return;
     }
 
-    if (!isCodeSubmissionValid(taskId)) {
-      showMessage("Kod pro denni vyzvu zatim nevypada spravne.", "error");
+    const validationResult = getCodeValidationResult(taskId);
+
+    if (!validationResult.ok) {
+      showMessage(validationResult.message, "error");
       return;
     }
 
@@ -2961,6 +3418,26 @@ function createIotCampScreen(container, options = {}) {
     render();
   }
 
+  function selectTopic(topicId) {
+    const topic = TOPIC_OPTIONS.find((option) => option.id === topicId);
+
+    if (!topic?.enabled) {
+      return;
+    }
+
+    state.selectedTopic = topicId;
+    saveState();
+    render();
+  }
+
+  function changeTopic() {
+    state.selectedTopic = null;
+    state.adminPanelOpen = false;
+    state.adminAuthenticated = false;
+    saveState();
+    render();
+  }
+
   function bindEvents() {
     const actionButtons = container.querySelectorAll("[data-action]");
 
@@ -2969,6 +3446,16 @@ function createIotCampScreen(container, options = {}) {
         const action = button.dataset.action;
         const sectionId = button.dataset.sectionId;
         const taskId = button.dataset.taskId;
+
+        if (action === "select-topic" && button.dataset.topicId) {
+          selectTopic(button.dataset.topicId);
+          return;
+        }
+
+        if (action === "change-topic") {
+          changeTopic();
+          return;
+        }
 
         if (action === "open-section" && sectionId) {
           openSection(sectionId);
@@ -3155,14 +3642,32 @@ function createIotCampScreen(container, options = {}) {
     }
 
     if (accountLinkForm) {
-      accountLinkForm.addEventListener("submit", (event) => {
+      accountLinkForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         const message = container.querySelector('[data-role="account-link-message"]');
         const formData = new FormData(accountLinkForm);
         const email = String(formData.get("email") ?? "");
         const password = String(formData.get("newPassword") ?? "");
-        const result = linkAccountToEmail(email, password);
-        message.textContent = result.message;
+        const submitButton = accountLinkForm.querySelector('button[type="submit"]');
+
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
+
+        message.textContent = "Zakladam ucet...";
+        const result = await linkAccountToEmail(email, password);
+
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
+
+        if (!result.ok) {
+          message.textContent = result.message;
+          return;
+        }
+
+        render();
+        showMessage(result.message, "success");
       });
     }
 
@@ -3223,8 +3728,8 @@ function createIotCampScreen(container, options = {}) {
           state.authenticatedForDay = null;
           state.currentStudentNumber = null;
           state.currentEmail = null;
-          state.stars = 20;
-          state.styleTokens = 0;
+          state.stars = TEST_MODE ? TEST_BALANCE.stars : 20;
+          state.styleTokens = TEST_MODE ? TEST_BALANCE.styleTokens : 0;
           state.selectedStyleId = "classic";
           state.unlockedStyleIds = ["classic"];
           state.dailyChallengeClaimDate = null;
@@ -3837,6 +4342,8 @@ function createIotCampScreen(container, options = {}) {
   }
 
   function renderLogin() {
+    const prefilledEmail = escapeHtml(getEmailFromUrl());
+    const selectedTopic = TOPIC_OPTIONS.find((topic) => topic.id === state.selectedTopic);
     const adminStats = getStudentStats();
     const adminStatsMarkup = adminStats.map((student) => `
       <div class="admin-stats-row">
@@ -3904,8 +4411,9 @@ function createIotCampScreen(container, options = {}) {
             </section>
           ` : `
             <section>
-              <p class="eyebrow">IOT TABOR</p>
+              <p class="eyebrow">${escapeHtml(selectedTopic?.label ?? "IOT TABOR")}</p>
               <h1>Prihlaseni studenta</h1>
+              <button type="button" class="ghost-button topic-change-button" data-action="change-topic">Zmenit tema</button>
               <p>Zadej denni PIN a cislo studenta. Povolena cisla jsou od 1 do ${state.config.maxStudents}.</p>
               <form data-role="daily-pin-form" class="login-form login-form--stack">
                 <input id="daily-pin-input" name="dailyPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Denni PIN" required>
@@ -3915,13 +4423,42 @@ function createIotCampScreen(container, options = {}) {
               <p data-role="daily-pin-message" aria-live="polite"></p>
               <div class="login-divider"><span>Nebo prihlaseni pres e-mail</span></div>
               <form data-role="email-login-form" class="login-form login-form--stack">
-                <input name="email" type="email" autocomplete="username" placeholder="E-mail" required>
+                <input name="email" type="email" autocomplete="username" placeholder="E-mail" value="${prefilledEmail}" required>
                 <input name="password" type="password" autocomplete="current-password" placeholder="Heslo" required>
                 <button type="submit">Prihlasit e-mailem</button>
               </form>
               <p data-role="email-login-message" aria-live="polite"></p>
             </section>
           `}
+        </div>
+      </section>
+    `;
+
+    bindEvents();
+  }
+
+  function renderTopicSelect() {
+    const topicButtonsMarkup = TOPIC_OPTIONS.map((topic) => `
+      <button
+        type="button"
+        class="topic-button topic-button--${topic.accent} ${topic.enabled ? "" : "topic-button--disabled"}"
+        data-action="select-topic"
+        data-topic-id="${topic.id}"
+        ${topic.enabled ? "" : "disabled"}
+      >
+        <span>${escapeHtml(topic.label)}</span>
+        ${topic.enabled ? "" : '<small>Pripravujeme</small>'}
+      </button>
+    `).join("");
+
+    container.innerHTML = `
+      <section class="topic-screen">
+        <div class="topic-panel">
+          <p class="eyebrow">VYBER TEMATU</p>
+          <h1>Co chces dnes delat?</h1>
+          <div class="topic-grid">
+            ${topicButtonsMarkup}
+          </div>
         </div>
       </section>
     `;
@@ -3976,6 +4513,11 @@ function createIotCampScreen(container, options = {}) {
   }
 
   function render() {
+    if (!state.selectedTopic) {
+      renderTopicSelect();
+      return;
+    }
+
     if (!isAuthenticated()) {
       renderLogin();
       return;
