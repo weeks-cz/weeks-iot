@@ -25,6 +25,7 @@ export function AvatarShop() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       className="mx-auto max-w-6xl p-6 space-y-6"
     >
       <header className="flex items-center justify-between">

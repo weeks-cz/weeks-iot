@@ -59,6 +59,7 @@ export function PinEntry() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       className="flex min-h-screen items-center justify-center p-4"
     >
       <PanelGlass className="w-full max-w-sm">

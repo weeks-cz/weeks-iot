@@ -37,6 +37,7 @@ export function TaskDetail() {
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       className="mx-auto max-w-3xl p-6 space-y-6"
     >
       <header className="flex items-center justify-between">

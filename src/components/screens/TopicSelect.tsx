@@ -19,6 +19,7 @@ export function TopicSelect() {
       className="topic-screen flex min-h-screen items-center justify-center p-4"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
     >
       <PanelGlass className="topic-panel w-full max-w-3xl">
         <h1 className="mb-2 text-3xl font-bold">Vyber si téma tábora</h1>
