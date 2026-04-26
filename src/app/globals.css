@@ -3,3 +3,246 @@
 @theme inline {
   --font-sans: var(--font-outfit), system-ui, sans-serif;
 }
+
+:root,
+[data-theme="classic"] {
+  --theme-bg: #0d1427;
+  --theme-panel: rgba(31, 40, 63, 0.6);
+  --theme-panel-rgb: 31, 40, 63;
+  --theme-accent: #71b0ff;
+  --theme-accent-soft: rgba(113, 176, 255, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(7, 13, 26, 0.92);
+  --page-mid: rgba(10, 17, 31, 0.9);
+  --page-bottom: rgba(13, 20, 39, 0.96);
+  --page-base-top: #0b1220;
+  --page-base-mid: #0d1427;
+  --page-base-bottom: #10192c;
+  --page-radial-left: rgba(38, 53, 92, 0.55);
+  --page-radial-right: rgba(29, 52, 112, 0.24);
+  --page-shape-left: rgba(36, 54, 87, 0.35);
+  --page-shape-right: rgba(42, 48, 72, 0.42);
+}
+
+[data-theme="sunrise"] {
+  --theme-bg: #2a1811;
+  --theme-panel: rgba(60, 36, 24, 0.6);
+  --theme-panel-rgb: 60, 36, 24;
+  --theme-accent: #ffaa66;
+  --theme-accent-soft: rgba(255, 170, 102, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(36, 18, 12, 0.9);
+  --page-mid: rgba(49, 26, 17, 0.88);
+  --page-bottom: rgba(67, 36, 21, 0.94);
+  --page-base-top: #1d120d;
+  --page-base-mid: #2a1811;
+  --page-base-bottom: #3b2216;
+  --page-radial-left: rgba(255, 160, 102, 0.26);
+  --page-radial-right: rgba(255, 211, 111, 0.18);
+  --page-shape-left: rgba(121, 66, 42, 0.28);
+  --page-shape-right: rgba(144, 85, 48, 0.26);
+}
+
+[data-theme="forest"] {
+  --theme-bg: #11241a;
+  --theme-panel: rgba(28, 56, 40, 0.6);
+  --theme-panel-rgb: 28, 56, 40;
+  --theme-accent: #4ea478;
+  --theme-accent-soft: rgba(78, 164, 120, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(10, 24, 18, 0.92);
+  --page-mid: rgba(13, 33, 24, 0.9);
+  --page-bottom: rgba(17, 47, 33, 0.95);
+  --page-base-top: #0c1912;
+  --page-base-mid: #11241a;
+  --page-base-bottom: #183326;
+  --page-radial-left: rgba(78, 164, 120, 0.24);
+  --page-radial-right: rgba(133, 207, 120, 0.16);
+  --page-shape-left: rgba(33, 88, 63, 0.3);
+  --page-shape-right: rgba(28, 69, 52, 0.28);
+}
+
+[data-theme="ice"] {
+  --theme-bg: #0d2131;
+  --theme-panel: rgba(28, 56, 80, 0.6);
+  --theme-panel-rgb: 28, 56, 80;
+  --theme-accent: #6dc1ff;
+  --theme-accent-soft: rgba(109, 193, 255, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(7, 19, 30, 0.92);
+  --page-mid: rgba(10, 29, 43, 0.9);
+  --page-bottom: rgba(13, 40, 58, 0.95);
+  --page-base-top: #091521;
+  --page-base-mid: #0d2131;
+  --page-base-bottom: #123042;
+  --page-radial-left: rgba(109, 193, 255, 0.24);
+  --page-radial-right: rgba(135, 228, 255, 0.18);
+  --page-shape-left: rgba(34, 85, 117, 0.28);
+  --page-shape-right: rgba(32, 72, 101, 0.28);
+}
+
+[data-theme="ember"] {
+  --theme-bg: #2a1111;
+  --theme-panel: rgba(64, 28, 28, 0.6);
+  --theme-panel-rgb: 64, 28, 28;
+  --theme-accent: #ff6b50;
+  --theme-accent-soft: rgba(255, 107, 80, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(30, 10, 10, 0.92);
+  --page-mid: rgba(47, 16, 14, 0.9);
+  --page-bottom: rgba(71, 24, 18, 0.95);
+  --page-base-top: #1a0c0d;
+  --page-base-mid: #2a1111;
+  --page-base-bottom: #3d1714;
+  --page-radial-left: rgba(255, 107, 80, 0.24);
+  --page-radial-right: rgba(255, 176, 97, 0.16);
+  --page-shape-left: rgba(116, 44, 34, 0.32);
+  --page-shape-right: rgba(135, 49, 33, 0.28);
+}
+
+[data-theme="lagoon"] {
+  --theme-bg: #0d2328;
+  --theme-panel: rgba(28, 60, 66, 0.6);
+  --theme-panel-rgb: 28, 60, 66;
+  --theme-accent: #4ccdbd;
+  --theme-accent-soft: rgba(76, 205, 189, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(8, 24, 28, 0.92);
+  --page-mid: rgba(10, 35, 40, 0.9);
+  --page-bottom: rgba(12, 50, 55, 0.95);
+  --page-base-top: #0a171b;
+  --page-base-mid: #0d2328;
+  --page-base-bottom: #11343a;
+  --page-radial-left: rgba(76, 205, 189, 0.24);
+  --page-radial-right: rgba(105, 173, 255, 0.16);
+  --page-shape-left: rgba(24, 102, 96, 0.28);
+  --page-shape-right: rgba(20, 78, 86, 0.28);
+}
+
+[data-theme="sand"] {
+  --theme-bg: #241b11;
+  --theme-panel: rgba(58, 44, 28, 0.6);
+  --theme-panel-rgb: 58, 44, 28;
+  --theme-accent: #ddb76a;
+  --theme-accent-soft: rgba(221, 183, 106, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(29, 22, 13, 0.92);
+  --page-mid: rgba(40, 29, 16, 0.9);
+  --page-bottom: rgba(55, 39, 20, 0.95);
+  --page-base-top: #19130d;
+  --page-base-mid: #241b11;
+  --page-base-bottom: #322517;
+  --page-radial-left: rgba(221, 183, 106, 0.2);
+  --page-radial-right: rgba(255, 218, 154, 0.14);
+  --page-shape-left: rgba(118, 94, 45, 0.28);
+  --page-shape-right: rgba(135, 111, 52, 0.24);
+}
+
+[data-theme="midnight"] {
+  --theme-bg: #0a1020;
+  --theme-panel: rgba(26, 32, 56, 0.6);
+  --theme-panel-rgb: 26, 32, 56;
+  --theme-accent: #9ea3ff;
+  --theme-accent-soft: rgba(158, 163, 255, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(6, 10, 23, 0.94);
+  --page-mid: rgba(8, 14, 31, 0.92);
+  --page-bottom: rgba(10, 18, 41, 0.97);
+  --page-base-top: #070b18;
+  --page-base-mid: #0a1020;
+  --page-base-bottom: #0d1730;
+  --page-radial-left: rgba(78, 102, 181, 0.22);
+  --page-radial-right: rgba(111, 132, 255, 0.14);
+  --page-shape-left: rgba(32, 44, 88, 0.28);
+  --page-shape-right: rgba(29, 38, 70, 0.26);
+}
+
+body {
+  color: var(--theme-text);
+  background:
+    linear-gradient(180deg, var(--page-top) 0%, var(--page-mid) 34%, var(--page-bottom) 100%),
+    url("https://weeks.cz/_next/image?q=75&url=%2Fimages%2Fhwlab%2Fhwlab-7976.webp&w=3840"),
+    radial-gradient(circle at top left, var(--page-radial-left), transparent 34%),
+    radial-gradient(circle at top right, var(--page-radial-right), transparent 26%),
+    linear-gradient(180deg, var(--page-base-top) 0%, var(--page-base-mid) 46%, var(--page-base-bottom) 100%);
+  background-size: cover, cover, auto, auto, auto;
+  background-position: center top, center top, left top, right top, center;
+  background-attachment: fixed, fixed, scroll, scroll, scroll;
+  min-height: 100vh;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.2;
+}
+
+body::before {
+  top: 8rem;
+  left: -4rem;
+  width: 28rem;
+  height: 18rem;
+  background: var(--page-shape-left);
+  clip-path: polygon(0 50%, 70% 0, 100% 40%, 36% 100%);
+}
+
+body::after {
+  right: -2rem;
+  top: 10rem;
+  width: 26rem;
+  height: 28rem;
+  background: var(--page-shape-right);
+  clip-path: polygon(10% 0, 100% 20%, 70% 100%, 0 82%);
+}
+
+.panel-glass {
+  background: var(--theme-panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  box-shadow: var(--theme-shadow);
+}
