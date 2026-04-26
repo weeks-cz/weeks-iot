@@ -27,8 +27,10 @@ export function TaskDetail() {
     });
   }
 
+  const completeId = taskId;
+  const reward = task.reward;
   function handleSuccess() {
-    dispatch({ type: "COMPLETE_TASK", taskId, reward: task.reward });
+    dispatch({ type: "COMPLETE_TASK", taskId: completeId, reward });
   }
 
   return (
