@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const ALLOWED_ORIGINS = [
+// Allowlist for both `accessUrl` host AND request `Origin` header.
+// Tightened from `/\.vercel\.app$/` to a project-prefix regex (audit finding #9):
+// only weeks-iot's own Vercel deployments are accepted, not arbitrary third-party
+// `*.vercel.app` deployments that an attacker could spin up to phish kids.
+const ALLOWED_HOSTS = [
   /\.weeks\.cz$/,
+  /^weeks\.cz$/,
   /^localhost(:\d+)?$/,
   /^127\.0\.0\.1(:\d+)?$/,
-  /\.vercel\.app$/,
+  /^weeks-iot(-[\w-]+)*\.vercel\.app$/,
 ];
 
 interface NotifyPayload {
@@ -18,16 +23,41 @@ interface NotifyPayload {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function isAllowedHost(host: string): boolean {
+  return ALLOWED_HOSTS.some((re) => re.test(host));
+}
+
 function isAllowedAccessUrl(value: string): boolean {
   try {
     const u = new URL(value);
-    return ALLOWED_ORIGINS.some((re) => re.test(u.host));
+    return isAllowedHost(u.host);
+  } catch {
+    return false;
+  }
+}
+
+// Origin gate (audit finding #10): browsers send `Origin` automatically on
+// cross-origin POSTs and on same-origin POSTs from a different scheme/port.
+// Rejecting unknown origins blocks drive-by bots and curl-without-headers
+// scanners. Determined attackers can fake the header — this is a soft gate,
+// not a security boundary, and is paired with input validation + provider quota.
+function isAllowedOrigin(originHeader: string | null): boolean {
+  // No Origin header at all → accept (server-to-server callers, healthchecks).
+  // The actual abuse vector is browser-driven mass POSTs, which always carry Origin.
+  if (!originHeader) return true;
+  try {
+    const u = new URL(originHeader);
+    return isAllowedHost(u.host);
   } catch {
     return false;
   }
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAllowedOrigin(req.headers.get("origin"))) {
+    return NextResponse.json({ ok: false, error: "Origin not allowed" }, { status: 403 });
+  }
+
   let payload: NotifyPayload;
   try {
     payload = (await req.json()) as NotifyPayload;
