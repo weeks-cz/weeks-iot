@@ -12,7 +12,7 @@ import type { Config } from "@/types";
 export const CONFIG_VERSION = 6;
 export const STORAGE_KEY = "iot-camp-screen-state-v6";
 
-export const DAILY_ACCESS_MODE = "manual" as const;
+export const DAILY_ACCESS_MODE: "manual" | "date-based" = "manual";
 export const MAX_STUDENTS_LIMIT = 25;
 
 // TEST_MODE — dev-only override that seeds new accounts with TEST_BALANCE.
