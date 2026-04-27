@@ -72,7 +72,9 @@ export type Action =
   | { type: "SET_CODE_DRAFT"; taskId: string; draft: string }
   | { type: "RESET_STUDENT"; studentNumber: string }
   | { type: "MARK_WELCOME_SEEN" }
-  | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string };
+  | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string }
+  | { type: "SET_LINKED_USER"; userId: string }
+  | { type: "CLEAR_LINKED_USER" };
 
 function syncCurrentStudent(state: GameState): GameState {
   if (!state.currentStudentNumber) return state;
@@ -342,6 +344,11 @@ function reducer(state: GameState, action: Action): GameState {
         screen: { ...state.screen, currentScreen: "task-list" as const, pinLevel: "daily" as const },
       };
     }
+
+    case "SET_LINKED_USER":
+      return { ...state, linkedUserId: action.userId };
+    case "CLEAR_LINKED_USER":
+      return { ...state, linkedUserId: null };
 
     default:
       return state;

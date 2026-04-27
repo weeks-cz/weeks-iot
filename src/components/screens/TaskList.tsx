@@ -13,7 +13,7 @@ import { SECTIONS, getAllTasks, getDailyChallengeTaskId, hasClaimedDailyChalleng
 import { LEVEL_BADGES, REWARD_CONFIG } from "@/lib/rewards";
 import { STYLE_SHOP_CONFIG } from "@/lib/config";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
-import { notifyAccountCreated } from "@/lib/account-email";
+import { LinkAccountModal } from "@/components/screens/LinkAccountModal";
 import { WelcomeModal } from "@/components/screens/WelcomeModal";
 import type { Task } from "@/types";
 
@@ -25,9 +25,7 @@ export function TaskList() {
 
   const [nicknameInput, setNicknameInput] = useState(account.nickname ?? "");
   const [nickMsg, setNickMsg] = useState<string | null>(null);
-  const [emailInput, setEmailInput] = useState(state.accountEmail ?? "");
-  const [emailBusy, setEmailBusy] = useState(false);
-  const [emailMsg, setEmailMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
 
   const allTasks = getAllTasks();
   const completedCount = Object.values(state.tasks).filter((t) => t.status === "completed").length;
@@ -68,16 +66,6 @@ export function TaskList() {
     if (nick.length < 2) { setNickMsg("Nick musí mít aspoň 2 znaky."); return; }
     dispatch({ type: "SET_NICKNAME", nickname: nick });
     setNickMsg("Nick byl uložen.");
-  }
-
-  async function handleAccountLink(e: FormEvent) {
-    e.preventDefault();
-    setEmailBusy(true);
-    setEmailMsg(null);
-    const result = await notifyAccountCreated(emailInput);
-    setEmailMsg({ ok: result.ok, text: result.message ?? (result.ok ? "Hotovo." : "Nepodařilo se.") });
-    if (result.ok) dispatch({ type: "SET_ACCOUNT_EMAIL", email: emailInput });
-    setEmailBusy(false);
   }
 
   return (
@@ -371,38 +359,25 @@ export function TaskList() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
                 Propojit účet
               </p>
-              {state.accountEmail ? (
+              {state.linkedUserId ? (
                 <p className="text-xs text-[color:var(--theme-success)]">
-                  Účet propojený: {state.accountEmail}
+                  Účet propojený ✓
                 </p>
               ) : (
                 <>
                   <p className="text-xs text-[color:var(--theme-muted)]">
-                    Pošleme ti odkaz pro pokračování na jiném zařízení.
+                    Email + heslo pro pokračování doma. Tvůj postup se nahraje do cloudu.
                   </p>
-                  <form onSubmit={handleAccountLink} className="space-y-2">
-                    <input
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => { setEmailInput(e.target.value); setEmailMsg(null); }}
-                      placeholder="jmeno@example.com"
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
-                    />
-                    {emailMsg && (
-                      <p className={`text-xs ${emailMsg.ok ? "text-[color:var(--theme-success)]" : "text-red-400"}`}>
-                        {emailMsg.text}
-                      </p>
-                    )}
-                    <Button type="submit" variant="ghost" size="sm" disabled={emailBusy || !emailInput} className="w-full">
-                      {emailBusy ? "Odesílám…" : "Poslat odkaz"}
-                    </Button>
-                  </form>
+                  <Button onClick={() => setLinkModalOpen(true)} variant="ghost" size="sm" className="w-full">
+                    Propojit účet
+                  </Button>
                 </>
               )}
             </PanelGlass>
           </aside>
         )}
       </div>
+      <LinkAccountModal open={linkModalOpen} onClose={() => setLinkModalOpen(false)} />
     </motion.div>
   );
 }
