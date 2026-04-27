@@ -87,33 +87,34 @@ export function LinkAccountModal({ open, onClose }: Props) {
           onClick={onClose}
         >
           <motion.div
-            className="panel-glass w-full max-w-md p-6 space-y-4"
+            className="panel-glass w-full max-w-md p-8 space-y-5"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
-              <h2 className="text-xl font-bold">Propojit účet</h2>
-              <button onClick={onClose} aria-label="Zavřít" className="rounded p-1 hover:bg-white/10">
+              <h2 className="text-2xl font-bold">Propojit účet</h2>
+              <button onClick={onClose} aria-label="Zavřít" className="rounded-lg p-1.5 hover:bg-white/10">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <p className="text-sm text-[color:var(--theme-muted)]">
+            <p className="text-[color:var(--theme-muted)]">
               Vytvoř si účet emailem a heslem pro pokračování doma. Tvůj současný postup
               ({state.currentStudentNumber ? `Student ${state.currentStudentNumber}` : ""}) zůstane.
             </p>
 
-            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs">
+            {/* Pill tabs */}
+            <div className="flex gap-2 p-1 bg-black/20 rounded-2xl">
               {(["register", "login", "magic"] as SubMode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
-                  className={`flex-1 py-2 transition-colors ${
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                     subMode === m
-                      ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
-                      : "hover:bg-white/5"
+                      ? "bg-[color:var(--theme-accent)] text-[#0d1427]"
+                      : "text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)]"
                   }`}
                   onClick={() => { setSubMode(m); setMsg(null); }}
                 >
@@ -127,14 +128,14 @@ export function LinkAccountModal({ open, onClose }: Props) {
                 type="email" autoComplete="email" required
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 h-12 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
               />
               {subMode !== "magic" && (
                 <input
                   type="password" autoComplete={subMode === "register" ? "new-password" : "current-password"} required
                   value={password} onChange={(e) => setPassword(e.target.value)}
                   placeholder="Heslo"
-                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 h-12 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
                 />
               )}
               {subMode === "register" && (
@@ -142,7 +143,7 @@ export function LinkAccountModal({ open, onClose }: Props) {
                   type="password" autoComplete="new-password" required
                   value={password2} onChange={(e) => setPassword2(e.target.value)}
                   placeholder="Heslo znovu"
-                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 h-12 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
                 />
               )}
               {msg && (
@@ -150,7 +151,7 @@ export function LinkAccountModal({ open, onClose }: Props) {
                   {msg.text}
                 </p>
               )}
-              <Button type="submit" className="w-full" disabled={busy}>
+              <Button type="submit" size="lg" className="w-full" disabled={busy}>
                 {busy ? "Pracuji…" : subMode === "register" ? "Vytvořit účet" : subMode === "login" ? "Přihlásit" : "Poslat odkaz"}
               </Button>
             </form>

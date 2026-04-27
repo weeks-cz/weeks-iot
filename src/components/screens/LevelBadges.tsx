@@ -37,10 +37,10 @@ export function LevelBadges() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-auto max-w-3xl p-6 space-y-6"
+      className="mx-auto max-w-3xl px-4 py-6 space-y-6"
     >
       <header className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={goBack}>
+        <Button variant="ghost" size="md" onClick={goBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Zpět
         </Button>
