@@ -114,6 +114,29 @@ export interface GameState {
   tasks: Record<string, TaskState>;
   sections: Record<SectionId, { unlocked: boolean }>;
   screen: ScreenState;
+  // Set když user propojil Supabase účet. null = PIN-only / anonymous.
+  linkedUserId?: string | null;
+}
+
+// JSONB shape uložený v learning_accounts.state
+export interface SyncableState {
+  account: AccountState;
+  tasks: Record<string, TaskState>;
+  sections: Record<SectionId, { unlocked: boolean }>;
+}
+
+// Event types posílané do learning_events
+export type LearningEventType =
+  | "signup" | "login"
+  | "task_complete" | "task_skip"
+  | "section_unlock"
+  | "theme_purchase" | "avatar_purchase"
+  | "daily_challenge_claim";
+
+export interface LearningEvent {
+  event_type: LearningEventType;
+  task_id?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface Config {
