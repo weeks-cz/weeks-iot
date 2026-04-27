@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useReducer,
@@ -35,7 +36,7 @@ import {
   computeLevelBadges,
 } from "@/lib/rewards";
 import { MAX_STUDENTS_LIMIT, SECTION_UNLOCK_COSTS, STYLE_SHOP_CONFIG } from "@/lib/config";
-import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday } from "@/lib/tasks";
+import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday, getDailyChallengeTaskId } from "@/lib/tasks";
 import { isTopicEnabled } from "@/lib/topics";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchCloudState, emitEvent, syncToCloud } from "@/lib/cloud-sync";
@@ -468,8 +469,79 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("beforeunload", handler);
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const dispatchWithEvents = useCallback((action: Action) => {
+    dispatch(action);
+    if (!state.linkedUserId) return;
+
+    switch (action.type) {
+      case "COMPLETE_TASK": {
+        const task = state.tasks[action.taskId];
+        emitEvent(state.linkedUserId, {
+          event_type: "task_complete",
+          task_id: action.taskId,
+          metadata: {
+            stars_awarded: action.reward,
+            first_try: task?.firstTry ?? false,
+            no_help: task ? !task.helpCodeUsed && !task.helpWiringUsed : false,
+          },
+        });
+        break;
+      }
+      case "USE_SKIP": {
+        emitEvent(state.linkedUserId, {
+          event_type: "task_skip",
+          task_id: action.taskId,
+          metadata: { cost: state.config.skipCost },
+        });
+        break;
+      }
+      case "UNLOCK_SECTION": {
+        emitEvent(state.linkedUserId, {
+          event_type: "section_unlock",
+          metadata: { section_id: action.sectionId },
+        });
+        break;
+      }
+      case "PURCHASE_THEME": {
+        emitEvent(state.linkedUserId, {
+          event_type: "theme_purchase",
+          metadata: { theme_id: action.themeId, method: "direct" },
+        });
+        break;
+      }
+      case "SPIN_STYLE": {
+        emitEvent(state.linkedUserId, {
+          event_type: "theme_purchase",
+          metadata: { method: "spin" },
+        });
+        break;
+      }
+      case "PURCHASE_AVATAR": {
+        emitEvent(state.linkedUserId, {
+          event_type: "avatar_purchase",
+          metadata: { avatar_id: action.avatarId, method: "direct" },
+        });
+        break;
+      }
+      case "SPIN_AVATAR": {
+        emitEvent(state.linkedUserId, {
+          event_type: "avatar_purchase",
+          metadata: { method: "spin" },
+        });
+        break;
+      }
+      case "AWARD_DAILY_CHALLENGE": {
+        emitEvent(state.linkedUserId, {
+          event_type: "daily_challenge_claim",
+          task_id: getDailyChallengeTaskId() ?? null,
+        });
+        break;
+      }
+    }
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <GameStateContext.Provider value={{ state, dispatch, emailFromUrl }}>
+    <GameStateContext.Provider value={{ state, dispatch: dispatchWithEvents, emailFromUrl }}>
       {syncFailed && !storageFailed && !offline && (
         <div className="fixed bottom-16 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300 shadow-lg">
           Cloud sync selhal — postup je uložen lokálně, zkusím za chvíli.
