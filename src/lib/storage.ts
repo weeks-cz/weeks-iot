@@ -71,7 +71,7 @@ export function loadGameState(): GameState {
       config: { ...DEFAULT_CONFIG, ...(parsed.config ?? {}) },
       accounts: parsed.accounts ?? {},
       currentStudentNumber: parsed.currentStudentNumber ?? null,
-      adminPreviewActive: parsed.adminPreviewActive ?? false,
+      adminPreviewActive: false,
       adminAuthenticated: false,
       codeDrafts: parsed.codeDrafts ?? {},
     };

@@ -66,7 +66,8 @@ export type Action =
   | { type: "EXIT_ADMIN_PREVIEW" }
   | { type: "UPDATE_DAY_CONFIG"; dailyPin: string; maxStudents: number }
   | { type: "SET_NICKNAME"; nickname: string }
-  | { type: "SET_CODE_DRAFT"; taskId: string; draft: string };
+  | { type: "SET_CODE_DRAFT"; taskId: string; draft: string }
+  | { type: "RESET_STUDENT"; studentNumber: string };
 
 function syncCurrentStudent(state: GameState): GameState {
   if (!state.currentStudentNumber) return state;
@@ -298,6 +299,12 @@ function reducer(state: GameState, action: Action): GameState {
     case "SET_CODE_DRAFT":
       return { ...state, codeDrafts: { ...state.codeDrafts, [action.taskId]: action.draft } };
 
+    case "RESET_STUDENT": {
+      const next = { ...state.accounts };
+      delete next[action.studentNumber];
+      return { ...state, accounts: next };
+    }
+
     case "UPDATE_DAY_CONFIG": {
       const pinChanged = action.dailyPin !== state.config.dailyPin;
       const newConfig = {
@@ -342,6 +349,7 @@ const GameStateContext = createContext<GameStateContextValue | null>(null);
 export function GameStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, createDefaultGameState());
   const [emailFromUrl, setEmailFromUrl] = useState<string | null>(null);
+  const [storageFailed, setStorageFailed] = useState(false);
 
   useEffect(() => {
     const loaded = loadGameState();
@@ -376,8 +384,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    saveGameState(state);
-  }, [state]);
+    const result = saveGameState(state);
+    if (!result.ok) setStorageFailed(true);
+    else if (storageFailed) setStorageFailed(false);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     applyTheme(state.account.currentTheme);
@@ -385,6 +395,11 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
 
   return (
     <GameStateContext.Provider value={{ state, dispatch, emailFromUrl }}>
+      {storageFailed && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-400 shadow-lg">
+          Ukládání selhalo — zkontroluj úložiště zařízení. Postup se neukládá.
+        </div>
+      )}
       {children}
     </GameStateContext.Provider>
   );

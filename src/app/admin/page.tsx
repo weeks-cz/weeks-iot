@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useGameState } from "@/components/providers/GameStateProvider";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { Button } from "@/components/ui/Button";
@@ -22,8 +22,10 @@ function getStudentStats(
       : 0;
     const stars = stored?.account.stars ?? 0;
     const tokens = stored?.account.tokens ?? 0;
+    const nickname = stored?.account.nickname;
     const percent = totalTasks ? Math.round((completed / totalTasks) * 100) : 0;
-    return { num, completed, totalTasks, stars, tokens, percent };
+    const hasData = !!stored;
+    return { num, completed, totalTasks, stars, tokens, percent, nickname, hasData };
   });
 }
 
@@ -37,6 +39,8 @@ export default function AdminPage() {
   const [dailyPinInput, setDailyPinInput] = useState(state.config.dailyPin);
   const [maxStudentsInput, setMaxStudentsInput] = useState(String(state.config.maxStudents));
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  const [confirmReset, setConfirmReset] = useState<string | null>(null);
 
   function handleAdminLogin(e: FormEvent) {
     e.preventDefault();
@@ -52,13 +56,9 @@ export default function AdminPage() {
     e.preventDefault();
     setSaveMsg(null);
     const nextMaxStudents = Number(maxStudentsInput);
-    if (!dailyPinInput.trim()) {
-      setSaveMsg("PIN nesmí být prázdný.");
-      return;
-    }
+    if (!dailyPinInput.trim()) { setSaveMsg("PIN nesmí být prázdný."); return; }
     if (!Number.isFinite(nextMaxStudents) || nextMaxStudents < 1) {
-      setSaveMsg("Počet studentů musí být aspoň 1.");
-      return;
+      setSaveMsg("Počet studentů musí být aspoň 1."); return;
     }
     const pinChanged = dailyPinInput !== state.config.dailyPin;
     dispatch({
@@ -73,6 +73,12 @@ export default function AdminPage() {
     );
   }
 
+  function handleResetStudent(num: string) {
+    if (confirmReset !== num) { setConfirmReset(num); return; }
+    dispatch({ type: "RESET_STUDENT", studentNumber: num });
+    setConfirmReset(null);
+  }
+
   function enterPreview() {
     dispatch({ type: "ENTER_ADMIN_PREVIEW" });
     router.push("/");
@@ -85,8 +91,8 @@ export default function AdminPage() {
   }
 
   const stats = getStudentStats(state.accounts, state.config.maxStudents);
+  const activeCount = stats.filter((s) => s.hasData).length;
 
-  // Not yet authenticated — show PIN form
   if (!state.adminAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
@@ -127,7 +133,6 @@ export default function AdminPage() {
     );
   }
 
-  // Authenticated — show full admin panel
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-6">
       <header className="flex items-center justify-between">
@@ -148,7 +153,7 @@ export default function AdminPage() {
         <PanelGlass className="space-y-4">
           <h2 className="text-lg font-semibold">Nastavení</h2>
           <p className="text-sm text-[color:var(--theme-muted)]">
-            Po uložení budou studenti moci zadat jen čísla od 1 do nastaveného počtu studentů.
+            Po uložení budou studenti moci zadat jen čísla od 1 do nastaveného počtu.
             Změna denního PINu resetuje všechny studentské statistiky.
           </p>
           <form onSubmit={handleSaveConfig} className="space-y-3">
@@ -176,9 +181,7 @@ export default function AdminPage() {
                 required
               />
             </div>
-            {saveMsg && (
-              <p className="text-sm text-[color:var(--theme-success)]">{saveMsg}</p>
-            )}
+            {saveMsg && <p className="text-sm text-[color:var(--theme-success)]">{saveMsg}</p>}
             <Button type="submit" className="w-full">
               Uložit nastavení dne
             </Button>
@@ -191,7 +194,7 @@ export default function AdminPage() {
               Vstoupit jako admin (náhled)
             </Button>
             <p className="text-xs text-[color:var(--theme-muted)]">
-              V admin náhledu uvidíš všechny sekce, všechny úkoly a řešení bez odemykání.
+              V admin náhledu uvidíš všechny sekce a úkoly bez odemykání.
             </p>
           </div>
 
@@ -211,6 +214,7 @@ export default function AdminPage() {
           <Button
             variant="danger"
             onClick={() => {
+              if (!window.confirm("Opravdu smazat veškerý postup všech studentů?")) return;
               dispatch({ type: "RESET" });
               router.push("/");
             }}
@@ -224,30 +228,53 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Statistika</h2>
             <span className="text-sm text-[color:var(--theme-muted)]">
-              {state.config.maxStudents} studentů
+              {activeCount}/{state.config.maxStudents} aktivních
             </span>
           </div>
-          <p className="text-xs text-[color:var(--theme-muted)]">
-            Přehled postupu všech studentů podle počtu splněných úkolů.
-          </p>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             {stats.map((s) => (
-              <div key={s.num}>
-                <div className="flex items-center justify-between text-sm">
-                  <strong>Student {s.num}</strong>
-                  <span className="text-[color:var(--theme-muted)]">
-                    {s.completed}/{s.totalTasks} úkolů
-                  </span>
+              <div
+                key={s.num}
+                className={`rounded-lg border p-3 ${
+                  s.hasData
+                    ? "border-white/10 bg-white/5"
+                    : "border-white/5 opacity-40"
+                }`}
+              >
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <strong>
+                    Student {s.num}
+                    {s.nickname && (
+                      <span className="ml-2 font-normal text-[color:var(--theme-muted)]">
+                        ({s.nickname})
+                      </span>
+                    )}
+                  </strong>
+                  {s.hasData && (
+                    <button
+                      type="button"
+                      onClick={() => handleResetStudent(s.num)}
+                      title="Reset tohoto studenta"
+                      className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${
+                        confirmReset === s.num
+                          ? "bg-red-500/20 text-red-400"
+                          : "text-[color:var(--theme-muted)] hover:text-red-400"
+                      }`}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      {confirmReset === s.num ? "Potvrdit?" : "Reset"}
+                    </button>
+                  )}
                 </div>
                 <div className="my-1 h-2 rounded-full bg-white/10 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[color:var(--theme-accent)]"
+                    className="h-full rounded-full bg-[color:var(--theme-accent)] transition-all"
                     style={{ width: `${s.percent}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between text-xs text-[color:var(--theme-muted)]">
-                  <span>{s.percent}% hotovo</span>
-                  <span>⭐ {s.stars} | T {s.tokens}</span>
+                  <span>{s.completed}/{s.totalTasks} úkolů · {s.percent}%</span>
+                  <span>⭐ {s.stars} · ✦ {s.tokens}</span>
                 </div>
               </div>
             ))}

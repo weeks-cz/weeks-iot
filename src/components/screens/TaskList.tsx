@@ -183,6 +183,30 @@ export function TaskList() {
         </div>
       </PanelGlass>
 
+      {/* Mobile: daily challenge strip (hidden on lg where sidebar shows it) */}
+      {!isAdmin && dailyChallengeTask && (
+        <div className="lg:hidden">
+          <button
+            type="button"
+            onClick={() => !dailyClaimed && openTask(dailyChallengeTask)}
+            className={`w-full rounded-lg border px-4 py-3 text-left text-sm ${
+              dailyClaimed
+                ? "border-white/10 bg-white/5 text-[color:var(--theme-muted)]"
+                : "border-amber-400/30 bg-amber-400/10 text-amber-300"
+            }`}
+          >
+            <span className="font-semibold">
+              {dailyClaimed
+                ? "✓ Denní výzva splněna"
+                : `Denní výzva: ${dailyChallengeTask.title} → +${REWARD_CONFIG.dailyChallengeStars} ⭐`}
+            </span>
+            {!dailyClaimed && (
+              <span className="ml-2 text-[10px] uppercase tracking-wider opacity-70">Otevřít →</span>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Two-column layout for tasks + sidebar */}
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         {/* Task sections */}
@@ -243,9 +267,9 @@ export function TaskList() {
           })}
         </div>
 
-        {/* Sidebar panels */}
+        {/* Sidebar panels — desktop only */}
         {!isAdmin && (
-          <aside className="space-y-4">
+          <aside className="hidden lg:block space-y-4">
             {/* Daily challenge panel */}
             {dailyChallengeTask && (
               <PanelGlass className="space-y-3">
