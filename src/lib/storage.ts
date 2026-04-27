@@ -56,6 +56,7 @@ export function createDefaultGameState(): GameState {
     tasks: createDefaultTasks(),
     sections: createDefaultSections(),
     screen: createDefaultScreenState(),
+    linkedUserId: null,
   };
 }
 
@@ -75,6 +76,7 @@ export function loadGameState(): GameState {
       adminPreviewActive: false,
       adminAuthenticated: false,
       codeDrafts: parsed.codeDrafts ?? {},
+      linkedUserId: parsed.linkedUserId ?? null,
     };
   } catch (err) {
     console.warn("[storage] corrupt state, resetting:", err);
