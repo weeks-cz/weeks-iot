@@ -463,7 +463,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   // Flush on tab close (best-effort — browser won't wait for async)
   useEffect(() => {
     if (!state.linkedUserId) return;
-    const handler = () => { syncToCloud(state); };
+    const handler = () => { void syncToCloud(state); };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
