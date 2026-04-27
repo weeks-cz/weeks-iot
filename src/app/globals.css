@@ -270,3 +270,57 @@ body::after {
   border-radius: 0.75rem;
   box-shadow: var(--theme-shadow);
 }
+
+/* ── Bento stat cell ── */
+.bento-cell {
+  background: var(--theme-accent-soft);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+/* ── Task list row ── */
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1.1rem;
+  min-height: 64px;
+  border-radius: 0.75rem;
+  background: rgba(var(--theme-panel-rgb), 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.task-row:hover {
+  background: var(--theme-accent-soft);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateX(3px);
+}
+.task-row.task-done {
+  background: var(--theme-accent-soft);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.task-row.task-locked {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ── Task status dots ── */
+.task-dot-done {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--theme-accent);
+  box-shadow: 0 0 8px var(--theme-accent);
+}
+.task-dot-open {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
