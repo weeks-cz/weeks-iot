@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
+import { isValidEmail } from "@/lib/validation";
 
 type SubMode = "login" | "register" | "magic";
 
@@ -27,34 +28,33 @@ export function EmailLoginTab() {
     if (subMode !== "magic" && password.length === 0) {
       setMsg({ ok: false, text: "Zadej heslo." }); return;
     }
-    if (!email.includes("@")) { setMsg({ ok: false, text: "Zadej platný email." }); return; }
+    if (!isValidEmail(email)) { setMsg({ ok: false, text: "Zadej platný email." }); return; }
 
     const supabase = createClient();
     setBusy(true);
 
-    try {
-      if (subMode === "register") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { nickname: nickname.trim() } },
-        });
-        if (error) { setMsg({ ok: false, text: error.message }); return; }
-        setMsg({ ok: true, text: "Účet vytvořen, přihlašuji…" });
-      } else if (subMode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) { setMsg({ ok: false, text: error.message }); return; }
-        setMsg({ ok: true, text: "Přihlášeno, načítám…" });
-      } else {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-        });
-        if (error) { setMsg({ ok: false, text: error.message }); return; }
-        setMsg({ ok: true, text: "Mrkni do mailu — poslali jsme ti přihlašovací odkaz." });
-      }
-    } finally {
-      setBusy(false);
+    if (subMode === "register") {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { nickname: nickname.trim() } },
+      });
+      if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
+      setMsg({ ok: true, text: "Účet vytvořen, přihlašuji…" });
+      // leave busy=true — component unmounts on SIGNED_IN
+    } else if (subMode === "login") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
+      setMsg({ ok: true, text: "Přihlášeno, načítám…" });
+      // leave busy=true — component unmounts on SIGNED_IN
+    } else {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
+      setBusy(false); // magic link: no navigation, user stays on screen
+      setMsg({ ok: true, text: "Mrkni do mailu — poslali jsme ti přihlašovací odkaz." });
     }
   }
 
