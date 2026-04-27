@@ -9,7 +9,7 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import type { GameState, PerStudentAccount, SectionId, ThemeId } from "@/types";
+import type { GameState, PerStudentAccount, SectionId, SyncableState, ThemeId } from "@/types";
 import {
   createDefaultGameState,
   createDefaultAccountState,
@@ -70,7 +70,8 @@ export type Action =
   | { type: "SET_NICKNAME"; nickname: string }
   | { type: "SET_CODE_DRAFT"; taskId: string; draft: string }
   | { type: "RESET_STUDENT"; studentNumber: string }
-  | { type: "MARK_WELCOME_SEEN" };
+  | { type: "MARK_WELCOME_SEEN" }
+  | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string };
 
 function syncCurrentStudent(state: GameState): GameState {
   if (!state.currentStudentNumber) return state;
@@ -325,6 +326,22 @@ function reducer(state: GameState, action: Action): GameState {
       };
     }
 
+    case "CLOUD_HYDRATE": {
+      const merged = action.cloudData
+        ? {
+            ...state,
+            account: action.cloudData.account,
+            tasks: action.cloudData.tasks,
+            sections: action.cloudData.sections,
+          }
+        : state;
+      return {
+        ...merged,
+        linkedUserId: action.userId,
+        screen: { ...state.screen, currentScreen: "task-list" as const, pinLevel: "daily" as const },
+      };
+    }
+
     default:
       return state;
   }
@@ -419,30 +436,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     fetchCloudState(user.id).then((cloud) => {
       if (cancelled) return;
-      if (!cloud) {
-        // New user — no cloud row yet. Set linkedUserId so write path (Task 9) can create the row.
-        dispatch({
-          type: "HYDRATE",
-          state: {
-            ...state,
-            linkedUserId: user.id,
-            screen: { ...state.screen, currentScreen: "task-list", pinLevel: "daily" },
-          },
-        });
-        return;
+      dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud, userId: user.id });
+      if (cloud) {
+        emitEvent(user.id, { event_type: "login", metadata: { method: "password" } });
       }
-      dispatch({
-        type: "HYDRATE",
-        state: {
-          ...state,
-          account: cloud.account,
-          tasks: cloud.tasks,
-          sections: cloud.sections,
-          linkedUserId: user.id,
-          screen: { ...state.screen, currentScreen: "task-list", pinLevel: "daily" },
-        },
-      });
-      emitEvent(user.id, { event_type: "login", metadata: { method: "password" } });
     });
     return () => { cancelled = true; };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
