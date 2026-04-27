@@ -7,7 +7,7 @@ import { useGameState } from "@/components/providers/GameStateProvider";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { Button } from "@/components/ui/Button";
 import { getAllTasks } from "@/lib/tasks";
-import { MAX_STUDENTS_LIMIT } from "@/lib/config";
+import { DEFAULT_CONFIG, MAX_STUDENTS_LIMIT } from "@/lib/config";
 
 function getStudentStats(
   accounts: ReturnType<typeof useGameState>["state"]["accounts"],
@@ -93,6 +93,12 @@ export default function AdminPage() {
   const stats = getStudentStats(state.accounts, state.config.maxStudents);
   const activeCount = stats.filter((s) => s.hasData).length;
 
+  const defaultPinsInUse = [
+    state.config.dailyPin === DEFAULT_CONFIG.dailyPin && "denní",
+    state.config.lecturerPin === DEFAULT_CONFIG.lecturerPin && "lektorský",
+    state.config.adminPassword === DEFAULT_CONFIG.adminPassword && "admin",
+  ].filter(Boolean) as string[];
+
   if (!state.adminAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
@@ -147,6 +153,34 @@ export default function AdminPage() {
           Odhlásit a zpět
         </Button>
       </header>
+
+      {defaultPinsInUse.length > 0 && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm">
+          <p className="font-semibold text-red-300">
+            ⚠ Používáš výchozí PIN ({defaultPinsInUse.join(", ")})
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-red-200/80">
+            {defaultPinsInUse.includes("denní") && (
+              <li>
+                Denní PIN změň níž v sekci „Nastavení" (uložením rovnou
+                resetuje studenty).
+              </li>
+            )}
+            {(defaultPinsInUse.includes("lektorský") ||
+              defaultPinsInUse.includes("admin")) && (
+              <li>
+                Lektorský a admin PIN přepiš v{" "}
+                <code className="text-[color:var(--theme-text)]">src/lib/config.ts</code>{" "}
+                (<code className="text-[color:var(--theme-text)]">DEFAULT_CONFIG</code>) a redeployni.
+              </li>
+            )}
+            <li className="text-red-200/60">
+              PINy jsou v JS bundlu — kdokoli si je přečte v devtools, takže
+              defaulty nesmí jít do produkce.
+            </li>
+          </ul>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         {/* Main: day settings */}

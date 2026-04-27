@@ -79,6 +79,9 @@ export interface AccountState {
   currentTheme: ThemeId;
   dailyChallengeDate: string | null; // date key when last claimed (YYYY-MM-DD), null = never
   levelBadges: string[];
+  // false = new account, show welcome modal once. undefined on accounts created before this field
+  // was introduced — treated as seen (don't ambush returning students).
+  welcomeSeen?: boolean;
 }
 
 export interface ScreenState {

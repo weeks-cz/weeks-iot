@@ -23,6 +23,7 @@ export function createDefaultAccountState(): AccountState {
     currentTheme: "classic",
     dailyChallengeDate: null,
     levelBadges: ["prvni-led"],
+    welcomeSeen: false,
   };
 }
 

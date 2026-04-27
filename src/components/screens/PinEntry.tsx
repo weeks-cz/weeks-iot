@@ -151,9 +151,18 @@ export function PinEntry() {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={3}
+              maxLength={String(state.config.maxStudents).length}
               value={studentNumber}
-              onChange={(e) => setStudentNumber(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "");
+                if (!digits) { setStudentNumber(""); return; }
+                const n = Number(digits);
+                if (n > state.config.maxStudents) {
+                  setStudentNumber(String(state.config.maxStudents));
+                } else {
+                  setStudentNumber(digits);
+                }
+              }}
               className="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-center text-xl tracking-widest focus:border-[color:var(--theme-accent)] focus:outline-none"
               placeholder={`Číslo studenta (1–${state.config.maxStudents})`}
             />

@@ -14,6 +14,7 @@ import { LEVEL_BADGES, REWARD_CONFIG } from "@/lib/rewards";
 import { STYLE_SHOP_CONFIG } from "@/lib/config";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
 import { notifyAccountCreated } from "@/lib/account-email";
+import { WelcomeModal } from "@/components/screens/WelcomeModal";
 import type { Task } from "@/types";
 
 export function TaskList() {
@@ -37,8 +38,12 @@ export function TaskList() {
   const dailyClaimed = hasClaimedDailyChallengeToday(account);
 
   const selectedAvatar = AVATAR_OPTIONS.find((a) => a.id === account.avatarId) ?? AVATAR_OPTIONS[0]!;
-  // Nickname: custom nick → student number → "Lektor"
-  const profileLabel = account.nickname || (state.currentStudentNumber ? `Student ${state.currentStudentNumber}` : "Lektor");
+  // Profile chip always shows student number (so lektor pozná koho má před sebou),
+  // nick je v závorce když je vyplněný. Pro lektorské sezení jen "Lektor".
+  const profileLabel = state.currentStudentNumber
+    ? `Student ${state.currentStudentNumber}`
+    : "Lektor";
+  const profileSubtitle = account.nickname && state.currentStudentNumber ? account.nickname : null;
 
   function openTask(t: Task) {
     dispatch({ type: "OPEN_TASK", taskId: t.id });
@@ -82,6 +87,12 @@ export function TaskList() {
       exit={{ opacity: 0, y: -20 }}
       className="mx-auto max-w-6xl p-4 space-y-6"
     >
+      <WelcomeModal
+        open={!isAdmin && !!state.currentStudentNumber && account.welcomeSeen === false}
+        studentNumber={state.currentStudentNumber ?? ""}
+        onClose={() => dispatch({ type: "MARK_WELCOME_SEEN" })}
+      />
+
       {/* Admin preview banner */}
       {isAdmin && (
         <div className="flex items-center justify-between rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm">
@@ -123,7 +134,14 @@ export function TaskList() {
                   className="h-full w-full object-cover"
                 />
               </span>
-              <span className="font-medium">{profileLabel}</span>
+              <span className="flex flex-col leading-tight text-left">
+                <span className="font-medium">{profileLabel}</span>
+                {profileSubtitle && (
+                  <span className="text-[10px] text-[color:var(--theme-muted)]">
+                    {profileSubtitle}
+                  </span>
+                )}
+              </span>
             </button>
           )}
         </div>
