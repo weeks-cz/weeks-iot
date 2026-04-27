@@ -252,9 +252,10 @@ export function TaskList() {
               const done = state.tasks[t.id]?.status === "completed";
               const isDaily = t.id === dailyChallengeTaskId;
               return (
-                <div
+                <button
                   key={t.id}
-                  className={`task-row ${done ? "task-done" : ""} ${!unlocked ? "task-locked" : ""}`}
+                  type="button"
+                  className={`task-row w-full text-left ${done ? "task-done" : ""} ${!unlocked ? "task-locked" : ""}`}
                   onClick={() => unlocked && openTask(t)}
                 >
                   <div className={done ? "task-dot-done" : "task-dot-open"} />
@@ -281,7 +282,7 @@ export function TaskList() {
                     </div>
                     <StarBadge count={t.reward} />
                   </div>
-                </div>
+                </button>
               );
             })}
 
