@@ -13,19 +13,15 @@ function createDefaultTaskState(): TaskState {
   };
 }
 
-function createDefaultAccountState(): AccountState {
+export function createDefaultAccountState(): AccountState {
   return {
     avatarId: DEFAULT_AVATAR_ID,
-    // TEST_MODE seeds new accounts with TEST_BALANCE for dev exploration of
-    // shop/badges (added 2026-04-26 — Štěpán's TEST_BALANCE constant). NEVER
-    // triggers in production because NEXT_PUBLIC_TEST_MODE is read at build
-    // time and unset on Vercel.
     stars: TEST_MODE ? TEST_BALANCE.stars : 0,
     tokens: TEST_MODE ? TEST_BALANCE.styleTokens : 0,
     unlockedThemes: ["classic"],
     unlockedAvatars: [DEFAULT_AVATAR_ID],
     currentTheme: "classic",
-    dailyChallengeCompleted: false,
+    dailyChallengeDate: null,
     levelBadges: ["prvni-led"],
   };
 }

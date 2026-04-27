@@ -12,6 +12,7 @@ import {
 import type { GameState, PerStudentAccount, SectionId, ThemeId } from "@/types";
 import {
   createDefaultGameState,
+  createDefaultAccountState,
   createDefaultTasks,
   createDefaultSections,
   loadGameState,
@@ -21,16 +22,19 @@ import { applyTheme } from "@/lib/themes";
 import {
   computeTaskReward,
   awardStars,
+  addToken,
   purchaseHelpCode,
   purchaseHelpWiring,
   purchaseSkip,
   purchaseThemeDirect,
   purchaseAvatarDirect,
+  spinRandomStyle,
+  spinRandomAvatar,
   awardDailyChallenge,
   deductStars,
   computeLevelBadges,
 } from "@/lib/rewards";
-import { MAX_STUDENTS_LIMIT, SECTION_UNLOCK_COSTS, TEST_MODE } from "@/lib/config";
+import { MAX_STUDENTS_LIMIT, SECTION_UNLOCK_COSTS, STYLE_SHOP_CONFIG } from "@/lib/config";
 import { findTask } from "@/lib/tasks";
 import { isTopicEnabled } from "@/lib/topics";
 
@@ -52,6 +56,8 @@ export type Action =
   | { type: "SET_AVATAR"; avatarId: string }
   | { type: "UNLOCK_SECTION"; sectionId: "advanced" | "expert" }
   | { type: "AWARD_DAILY_CHALLENGE" }
+  | { type: "SPIN_STYLE" }
+  | { type: "SPIN_AVATAR" }
   | { type: "RESET" }
   | { type: "LOGIN_STUDENT"; studentNumber: string }
   | { type: "LOGOUT_STUDENT" }
@@ -112,16 +118,16 @@ function reducer(state: GameState, action: Action): GameState {
       const ts = state.tasks[action.taskId];
       if (!ts || ts.status === "completed") return state;
       const reward = computeTaskReward({ reward: action.reward }, ts);
-      const accountWithStars = awardStars(state.account, reward);
-      const newAccount = {
-        ...accountWithStars,
-        levelBadges: computeLevelBadges(accountWithStars.stars),
-      };
-      return syncCurrentStudent({
-        ...state,
-        account: newAccount,
-        tasks: { ...state.tasks, [action.taskId]: { ...ts, status: "completed" } },
-      });
+      const newTasks = { ...state.tasks, [action.taskId]: { ...ts, status: "completed" as const } };
+      let accountWithStars = awardStars(state.account, reward);
+      // Token milestone: every Nth verified (non-skipped) completed task awards 1 token
+      const oldVerified = Object.values(state.tasks).filter((t) => t.status === "completed" && !t.skipUsed).length;
+      const newVerified = !ts.skipUsed ? oldVerified + 1 : oldVerified;
+      if (newVerified > oldVerified && newVerified % STYLE_SHOP_CONFIG.tokenMilestone === 0) {
+        accountWithStars = addToken(accountWithStars);
+      }
+      const newAccount = { ...accountWithStars, levelBadges: computeLevelBadges(accountWithStars.stars) };
+      return syncCurrentStudent({ ...state, account: newAccount, tasks: newTasks });
     }
 
     case "USE_HELP_CODE": {
@@ -218,22 +224,25 @@ function reducer(state: GameState, action: Action): GameState {
     case "AWARD_DAILY_CHALLENGE":
       return syncCurrentStudent({ ...state, account: awardDailyChallenge(state.account) });
 
+    case "SPIN_STYLE": {
+      const result = spinRandomStyle(state.account);
+      if (!result) return state;
+      return syncCurrentStudent({ ...state, account: result.account });
+    }
+
+    case "SPIN_AVATAR": {
+      const result = spinRandomAvatar(state.account);
+      if (!result) return state;
+      return syncCurrentStudent({ ...state, account: result.account });
+    }
+
     case "RESET":
       return createDefaultGameState();
 
     case "LOGIN_STUDENT": {
       const num = action.studentNumber;
       const stored = state.accounts[num];
-      const account = stored?.account ?? {
-        avatarId: state.account.avatarId,
-        stars: TEST_MODE ? 80 : 0,
-        tokens: TEST_MODE ? 6 : 0,
-        unlockedThemes: ["classic" as const],
-        unlockedAvatars: [state.account.avatarId],
-        currentTheme: state.account.currentTheme,
-        dailyChallengeCompleted: false,
-        levelBadges: ["prvni-led"],
-      };
+      const account = stored?.account ?? createDefaultAccountState();
       const tasks = stored?.tasks ?? createDefaultTasks();
       const sections = stored?.sections ?? createDefaultSections();
       return {

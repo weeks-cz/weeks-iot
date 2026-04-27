@@ -197,6 +197,30 @@
   --page-shape-right: rgba(29, 38, 70, 0.26);
 }
 
+[data-theme="volt"] {
+  --theme-bg: #0d1a0d;
+  --theme-panel: rgba(28, 52, 24, 0.6);
+  --theme-panel-rgb: 28, 52, 24;
+  --theme-accent: #a3e635;
+  --theme-accent-soft: rgba(163, 230, 53, 0.18);
+  --theme-text: #f8fafc;
+  --theme-muted: #a6b2c8;
+  --theme-star: #ffbc5b;
+  --theme-success: #2dd4a6;
+  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+
+  --page-top: rgba(8, 20, 8, 0.92);
+  --page-mid: rgba(10, 28, 10, 0.9);
+  --page-bottom: rgba(13, 38, 12, 0.95);
+  --page-base-top: #0a160a;
+  --page-base-mid: #0d1a0d;
+  --page-base-bottom: #132614;
+  --page-radial-left: rgba(163, 230, 53, 0.2);
+  --page-radial-right: rgba(190, 255, 90, 0.14);
+  --page-shape-left: rgba(60, 115, 40, 0.28);
+  --page-shape-right: rgba(80, 130, 45, 0.24);
+}
+
 body {
   color: var(--theme-text);
   background:

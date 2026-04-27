@@ -9,6 +9,7 @@ export const STYLE_OPTIONS: ThemeOption[] = [
   { id: "lagoon",   label: "Lagoon",   description: "Tyrkysový styl inspirovaný vodou a laboratorní grafikou.",           accent: "teal",   unlockType: "shop" },
   { id: "sand",     label: "Sand",     description: "Světlejší pískový motiv s teplými akcenty.",                          accent: "sand",   unlockType: "shop" },
   { id: "midnight", label: "Midnight", description: "Hluboká noční paleta s tmavými odstíny.",                            accent: "purple", unlockType: "shop" },
+  { id: "volt",     label: "Volt",     description: "Elektricky zelený styl s ostřejším game-lab feelingem.",              accent: "lime",   unlockType: "shop" },
 ];
 
 export function getTheme(id: string): ThemeOption | undefined {

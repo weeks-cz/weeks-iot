@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Smile, Star } from "lucide-react";
+import { ArrowLeft, Check, Lock, Shuffle, Smile, Star } from "lucide-react";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { StarBadge } from "@/components/ui/StarBadge";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,14 @@ import { AVATAR_SHOP_CONFIG } from "@/lib/config";
 
 export function AvatarShop() {
   const { state, dispatch } = useGameState();
+  const account = state.account;
   const cost = AVATAR_SHOP_CONFIG.directUnlockCost;
+  const spinCost = AVATAR_SHOP_CONFIG.randomSpinCost;
+
+  const lockedCount = AVATAR_OPTIONS.filter(
+    (a) => a.unlockType === "shop" && !account.unlockedAvatars.includes(a.id),
+  ).length;
+  const canSpin = account.stars >= spinCost && lockedCount > 0;
 
   function goBack() {
     dispatch({
@@ -37,8 +44,28 @@ export function AvatarShop() {
           <Smile className="h-6 w-6" />
           Obchod s avatary
         </h1>
-        <StarBadge count={state.account.stars} />
+        <StarBadge count={account.stars} />
       </header>
+
+      {/* Random spin card */}
+      <PanelGlass className="flex items-center justify-between gap-4">
+        <div>
+          <strong className="block">Náhodný avatar</strong>
+          <p className="text-sm text-[color:var(--theme-muted)]">
+            Vytoč nový avatar za {spinCost} ⭐.
+            {lockedCount === 0 && " Všechny avatary jsou odemčeny."}
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          disabled={!canSpin}
+          onClick={() => dispatch({ type: "SPIN_AVATAR" })}
+          className="shrink-0"
+        >
+          <Shuffle className="mr-2 h-4 w-4" />
+          Vytoč avatar
+        </Button>
+      </PanelGlass>
 
       <div className="grid gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
         {AVATAR_OPTIONS.map((opt) => {

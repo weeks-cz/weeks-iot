@@ -1,12 +1,12 @@
 export type ThemeId =
   | "classic" | "sunrise" | "forest" | "ice"
-  | "ember" | "lagoon" | "sand" | "midnight";
+  | "ember" | "lagoon" | "sand" | "midnight" | "volt";
 
 export type SectionId = "beginner" | "advanced" | "expert";
 
 export type ThemeAccent =
   | "blue" | "orange" | "green" | "cyan"
-  | "red" | "teal" | "sand" | "purple";
+  | "red" | "teal" | "sand" | "purple" | "lime";
 
 export type UnlockType = "default" | "shop";
 
@@ -77,8 +77,7 @@ export interface AccountState {
   unlockedThemes: ThemeId[];
   unlockedAvatars: string[];
   currentTheme: ThemeId;
-  dailyChallengeDate?: string;
-  dailyChallengeCompleted: boolean;
+  dailyChallengeDate: string | null; // date key when last claimed (YYYY-MM-DD), null = never
   levelBadges: string[];
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Palette } from "lucide-react";
+import { ArrowLeft, Check, Palette, Shuffle } from "lucide-react";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { StarBadge } from "@/components/ui/StarBadge";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +11,15 @@ import { STYLE_SHOP_CONFIG } from "@/lib/config";
 
 export function StyleShop() {
   const { state, dispatch } = useGameState();
+  const account = state.account;
   const cost = STYLE_SHOP_CONFIG.directUnlockCost;
+  const spinStarCost = STYLE_SHOP_CONFIG.randomSpinStarCost;
+  const spinTokenCost = STYLE_SHOP_CONFIG.randomSpinTokenCost;
+
+  const lockedCount = STYLE_OPTIONS.filter(
+    (s) => s.unlockType === "shop" && !account.unlockedThemes.includes(s.id),
+  ).length;
+  const canSpin = account.stars >= spinStarCost && account.tokens >= spinTokenCost && lockedCount > 0;
 
   function goBack() {
     dispatch({
@@ -36,8 +44,33 @@ export function StyleShop() {
           <Palette className="h-6 w-6" />
           Obchod se styly
         </h1>
-        <StarBadge count={state.account.stars} />
+        <div className="flex items-center gap-3">
+          <StarBadge count={account.stars} />
+          <span className="flex items-center gap-1 rounded-full bg-[color:var(--theme-panel)] px-3 py-1 text-sm font-semibold border border-white/10">
+            <span>✦</span> {account.tokens}
+          </span>
+        </div>
       </header>
+
+      {/* Random spin card */}
+      <PanelGlass className="flex items-center justify-between gap-4">
+        <div>
+          <strong className="block">Náhodný styl</strong>
+          <p className="text-sm text-[color:var(--theme-muted)]">
+            Vytoč nový styl za {spinStarCost} ⭐ + {spinTokenCost} ✦.
+            {lockedCount === 0 && " Všechny styly jsou odemčeny."}
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          disabled={!canSpin}
+          onClick={() => dispatch({ type: "SPIN_STYLE" })}
+          className="shrink-0"
+        >
+          <Shuffle className="mr-2 h-4 w-4" />
+          Vytoč styl
+        </Button>
+      </PanelGlass>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {STYLE_OPTIONS.map((opt) => {

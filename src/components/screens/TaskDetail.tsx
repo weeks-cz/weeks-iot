@@ -9,7 +9,8 @@ import { CodeValidator } from "@/components/task/CodeValidator";
 import { HelpCards } from "@/components/task/HelpCards";
 import { TaskImage } from "@/components/task/TaskImage";
 import { useGameState } from "@/components/providers/GameStateProvider";
-import { findTask } from "@/lib/tasks";
+import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday } from "@/lib/tasks";
+import { REWARD_CONFIG } from "@/lib/rewards";
 
 export function TaskDetail() {
   const { state, dispatch } = useGameState();
@@ -27,10 +28,19 @@ export function TaskDetail() {
     });
   }
 
+  const isDaily = isDailyChallengeTask(taskId);
+  const dailyClaimed = hasClaimedDailyChallengeToday(state.account);
+
   const completeId = taskId;
   const reward = task.reward;
   function handleSuccess() {
     dispatch({ type: "COMPLETE_TASK", taskId: completeId, reward });
+  }
+
+  function handleDailyChallenge() {
+    if (isDaily && !dailyClaimed) {
+      dispatch({ type: "AWARD_DAILY_CHALLENGE" });
+    }
   }
 
   return (
@@ -76,6 +86,27 @@ export function TaskDetail() {
           <p className="text-sm text-[color:var(--theme-muted)]">
             {task.hints.wiring}
           </p>
+        </PanelGlass>
+      )}
+
+      {/* Daily challenge note */}
+      {isDaily && (
+        <PanelGlass className="flex items-center justify-between gap-4 border-amber-400/30 bg-amber-400/5">
+          <div>
+            <strong className="block text-sm text-amber-300">
+              {dailyClaimed ? "Denní výzva dnes splněna ✓" : `Dnešní denní výzva — +${REWARD_CONFIG.dailyChallengeStars} hvězdiček`}
+            </strong>
+            <p className="text-xs text-[color:var(--theme-muted)]">
+              {dailyClaimed
+                ? "Zítra se objeví nová denní výzva."
+                : "Odevzdej funkční kód a získej bonusové hvězdičky."}
+            </p>
+          </div>
+          {!dailyClaimed && (
+            <Button variant="secondary" size="sm" onClick={handleDailyChallenge}>
+              Odevzdat výzvu
+            </Button>
+          )}
         </PanelGlass>
       )}
 

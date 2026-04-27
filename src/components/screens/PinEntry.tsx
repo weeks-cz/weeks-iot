@@ -114,7 +114,7 @@ export function PinEntry() {
             type="button"
             className={`flex-1 py-2 transition-colors ${
               mode === "student"
-                ? "bg-[color:var(--theme-accent-bg)] text-[color:var(--theme-accent)]"
+                ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
                 : "hover:bg-white/5"
             }`}
             onClick={() => { setMode("student"); setError(null); }}
@@ -125,7 +125,7 @@ export function PinEntry() {
             type="button"
             className={`flex-1 py-2 transition-colors ${
               mode === "lecturer"
-                ? "bg-[color:var(--theme-accent-bg)] text-[color:var(--theme-accent)]"
+                ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
                 : "hover:bg-white/5"
             }`}
             onClick={() => { setMode("lecturer"); setError(null); }}

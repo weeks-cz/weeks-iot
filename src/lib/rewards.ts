@@ -6,6 +6,9 @@ import {
   SECTION_UNLOCK_COSTS,
   STYLE_SHOP_CONFIG,
 } from "./config";
+import { STYLE_OPTIONS } from "./themes";
+import { AVATAR_OPTIONS } from "./avatars";
+import { getTodayKey } from "./pin";
 
 export const LEVEL_BADGES: LevelBadge[] = [
   { id: "prvni-led", label: "PRVNÍ LED",  icon: "🏆", minStars: 0 },
@@ -93,13 +96,58 @@ export function purchaseAvatarDirect(
   return {
     ...deductStars(account, cost),
     unlockedAvatars: [...account.unlockedAvatars, avatarId],
+    avatarId,
+  };
+}
+
+export function spinRandomStyle(
+  account: AccountState,
+): { account: AccountState; themeId: ThemeId; label: string } | null {
+  const locked = STYLE_OPTIONS.filter(
+    (s) => s.unlockType === "shop" && !account.unlockedThemes.includes(s.id as ThemeId),
+  );
+  if (!locked.length) return null;
+  const cost = STYLE_SHOP_CONFIG.randomSpinStarCost;
+  const tokenCost = STYLE_SHOP_CONFIG.randomSpinTokenCost;
+  if (!canAfford(account, cost) || account.tokens < tokenCost) return null;
+  const chosen = locked[Math.floor(Math.random() * locked.length)]!;
+  return {
+    account: {
+      ...deductStars(account, cost),
+      tokens: account.tokens - tokenCost,
+      unlockedThemes: [...account.unlockedThemes, chosen.id as ThemeId],
+      currentTheme: chosen.id as ThemeId,
+    },
+    themeId: chosen.id as ThemeId,
+    label: chosen.label,
+  };
+}
+
+export function spinRandomAvatar(
+  account: AccountState,
+): { account: AccountState; avatarId: string; label: string } | null {
+  const locked = AVATAR_OPTIONS.filter(
+    (a) => a.unlockType === "shop" && !account.unlockedAvatars.includes(a.id),
+  );
+  if (!locked.length) return null;
+  const cost = AVATAR_SHOP_CONFIG.randomSpinCost;
+  if (!canAfford(account, cost)) return null;
+  const chosen = locked[Math.floor(Math.random() * locked.length)]!;
+  return {
+    account: {
+      ...deductStars(account, cost),
+      unlockedAvatars: [...account.unlockedAvatars, chosen.id],
+      avatarId: chosen.id,
+    },
+    avatarId: chosen.id,
+    label: chosen.label,
   };
 }
 
 export function awardDailyChallenge(account: AccountState): AccountState {
   return {
     ...awardStars(account, REWARD_CONFIG.dailyChallengeStars),
-    dailyChallengeCompleted: true,
+    dailyChallengeDate: getTodayKey(),
   };
 }
 

@@ -1,5 +1,6 @@
-import type { Section, Task } from "@/types";
+import type { AccountState, Section, Task } from "@/types";
 import { SECTION_UNLOCK_COSTS } from "./config";
+import { getTodayKey } from "./pin";
 
 /**
  * Tasks data ported 1:1 from `legacy-vanilla/app.js` (lines ~794-1675).
@@ -685,4 +686,25 @@ export function findTask(id: string): Task | undefined {
 
 export function findSectionByTaskId(id: string): Section | undefined {
   return SECTIONS.find((s) => s.tasks.some((t) => t.id === id));
+}
+
+// --- Daily challenge helpers (ported from vanilla app.js buildDateSeed) ---
+
+export function buildDateSeed(dateKey: string): number {
+  return Array.from(String(dateKey ?? "")).reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+}
+
+export function getDailyChallengeTaskId(): string | null {
+  const all = getAllTasks();
+  if (!all.length) return null;
+  const seed = buildDateSeed(getTodayKey());
+  return all[seed % all.length]?.id ?? null;
+}
+
+export function isDailyChallengeTask(taskId: string): boolean {
+  return taskId === getDailyChallengeTaskId();
+}
+
+export function hasClaimedDailyChallengeToday(account: AccountState): boolean {
+  return account.dailyChallengeDate === getTodayKey();
 }
