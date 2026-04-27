@@ -37,6 +37,8 @@ import {
 import { MAX_STUDENTS_LIMIT, SECTION_UNLOCK_COSTS, STYLE_SHOP_CONFIG } from "@/lib/config";
 import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday } from "@/lib/tasks";
 import { isTopicEnabled } from "@/lib/topics";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchCloudState, emitEvent } from "@/lib/cloud-sync";
 
 export type Action =
   | { type: "HYDRATE"; state: GameState }
@@ -409,6 +411,41 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", update);
     };
   }, []);
+
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchCloudState(user.id).then((cloud) => {
+      if (cancelled) return;
+      if (!cloud) {
+        // New user — no cloud row yet. Set linkedUserId so write path (Task 9) can create the row.
+        dispatch({
+          type: "HYDRATE",
+          state: {
+            ...state,
+            linkedUserId: user.id,
+            screen: { ...state.screen, currentScreen: "task-list", pinLevel: "daily" },
+          },
+        });
+        return;
+      }
+      dispatch({
+        type: "HYDRATE",
+        state: {
+          ...state,
+          account: cloud.account,
+          tasks: cloud.tasks,
+          sections: cloud.sections,
+          linkedUserId: user.id,
+          screen: { ...state.screen, currentScreen: "task-list", pinLevel: "daily" },
+        },
+      });
+      emitEvent(user.id, { event_type: "login", metadata: { method: "password" } });
+    });
+    return () => { cancelled = true; };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <GameStateContext.Provider value={{ state, dispatch, emailFromUrl }}>
