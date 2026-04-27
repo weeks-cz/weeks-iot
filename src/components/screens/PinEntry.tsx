@@ -9,8 +9,9 @@ import { useGameState } from "@/components/providers/GameStateProvider";
 import { verifyPin } from "@/lib/pin";
 import { notifyAccountCreated } from "@/lib/account-email";
 import { getTopicById } from "@/lib/topics";
+import { EmailLoginTab } from "@/components/screens/EmailLoginTab";
 
-type LoginMode = "student" | "lecturer";
+type LoginMode = "student" | "lecturer" | "email";
 
 export function PinEntry() {
   const { state, dispatch, emailFromUrl } = useGameState();
@@ -132,8 +133,22 @@ export function PinEntry() {
           >
             Lektor
           </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 transition-colors ${
+              mode === "email"
+                ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
+                : "hover:bg-white/5"
+            }`}
+            onClick={() => { setMode("email"); setError(null); }}
+          >
+            Email
+          </button>
         </div>
 
+        {mode === "email" ? (
+          <EmailLoginTab />
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="password"
@@ -172,6 +187,7 @@ export function PinEntry() {
             Vstoupit
           </Button>
         </form>
+        )}
 
         <hr className="my-6 border-white/10" />
 
