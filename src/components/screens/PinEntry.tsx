@@ -66,7 +66,7 @@ export function PinEntry() {
       {/* Logo */}
       <div className="text-center">
         <div className="text-4xl font-black text-[color:var(--theme-accent)] tracking-tight mb-1">
-          ⬡ Weeks
+          Weeks
         </div>
         <div className="text-sm text-[color:var(--theme-muted)]">
           Téma: <strong className="text-[color:var(--theme-text)]">{topic?.label ?? "—"}</strong>

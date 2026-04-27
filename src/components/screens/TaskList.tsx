@@ -98,7 +98,7 @@ export function TaskList() {
       {/* ── Topbar ── */}
       <header className="flex items-center justify-between gap-3">
         <div className="text-xl font-black text-[color:var(--theme-accent)] tracking-tight">
-          ⬡ Weeks
+          Weeks
         </div>
         <div className="flex items-center gap-2">
           {!isAdmin && (
