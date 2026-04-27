@@ -38,7 +38,7 @@ import { MAX_STUDENTS_LIMIT, SECTION_UNLOCK_COSTS, STYLE_SHOP_CONFIG } from "@/l
 import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday } from "@/lib/tasks";
 import { isTopicEnabled } from "@/lib/topics";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchCloudState, emitEvent } from "@/lib/cloud-sync";
+import { fetchCloudState, emitEvent, syncToCloud } from "@/lib/cloud-sync";
 
 export type Action =
   | { type: "HYDRATE"; state: GameState }
@@ -374,6 +374,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   const [emailFromUrl, setEmailFromUrl] = useState<string | null>(null);
   const [storageFailed, setStorageFailed] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [syncFailed, setSyncFailed] = useState(false);
 
   useEffect(() => {
     const loaded = loadGameState();
@@ -444,8 +445,36 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Cloud push (debounced 1s)
+  useEffect(() => {
+    if (!state.linkedUserId) return;
+    const timer = setTimeout(() => {
+      syncToCloud(state).then((result) => {
+        if (!result.ok) {
+          console.warn("[cloud-sync] sync failed:", result.error);
+          setSyncFailed(true);
+          setTimeout(() => setSyncFailed(false), 5000);
+        }
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flush on tab close (best-effort — browser won't wait for async)
+  useEffect(() => {
+    if (!state.linkedUserId) return;
+    const handler = () => { syncToCloud(state); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <GameStateContext.Provider value={{ state, dispatch, emailFromUrl }}>
+      {syncFailed && !storageFailed && !offline && (
+        <div className="fixed bottom-16 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300 shadow-lg">
+          Cloud sync selhal — postup je uložen lokálně, zkusím za chvíli.
+        </div>
+      )}
       {storageFailed && (
         <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-400 shadow-lg">
           Ukládání selhalo — zkontroluj úložiště zařízení. Postup se neukládá.
