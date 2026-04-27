@@ -72,7 +72,7 @@ export type Action =
   | { type: "SET_CODE_DRAFT"; taskId: string; draft: string }
   | { type: "RESET_STUDENT"; studentNumber: string }
   | { type: "MARK_WELCOME_SEEN" }
-  | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string }
+  | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string; metaNickname?: string }
   | { type: "SET_LINKED_USER"; userId: string }
   | { type: "CLEAR_LINKED_USER" };
 
@@ -338,8 +338,14 @@ function reducer(state: GameState, action: Action): GameState {
             sections: action.cloudData.sections,
           }
         : state;
+      // Seed nickname from Supabase user_metadata if account doesn't have one yet
+      const account =
+        action.metaNickname && !merged.account.nickname
+          ? { ...merged.account, nickname: action.metaNickname }
+          : merged.account;
       return {
         ...merged,
+        account,
         linkedUserId: action.userId,
         screen: { ...state.screen, currentScreen: "task-list" as const, pinLevel: "daily" as const },
       };
@@ -443,9 +449,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    const metaNickname = (user.user_metadata?.nickname as string | undefined) || undefined;
     fetchCloudState(user.id).then((cloud) => {
       if (cancelled) return;
-      dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud, userId: user.id });
+      dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud, userId: user.id, metaNickname });
       if (cloud) {
         emitEvent(user.id, { event_type: "login", metadata: { method: "password" } });
       }

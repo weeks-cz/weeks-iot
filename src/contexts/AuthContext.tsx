@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 interface AuthContextValue {
@@ -26,14 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // in case the initial event is delayed.
     // POZOR: Nikdy nevolat Supabase queries v tomhle callbacku — způsobuje deadlock.
     // Veškeré DB volání musí být v separátním useEffect.
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, sess) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, sess: Session | null) => {
       if (!mounted) return;
       setSession(sess);
       setLoading(false);
     });
 
     // Initial state fetch (fallback if listener INITIAL_SESSION is delayed)
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       if (!mounted) return;
       setSession(data.session);
       setLoading(false);
