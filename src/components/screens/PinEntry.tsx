@@ -61,115 +61,98 @@ export function PinEntry() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex min-h-screen items-center justify-center p-4"
+      className="flex min-h-screen flex-col items-center justify-center p-4 gap-6"
     >
-      <PanelGlass className="w-full max-w-sm">
-        {/* Header row: topic + admin button */}
-        <div className="mb-4 flex items-center justify-between text-xs text-[color:var(--theme-muted)]">
-          <span>
-            Téma: <strong className="text-[color:var(--theme-text)]">{topic?.label ?? "—"}</strong>
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "CHANGE_TOPIC" })}
-              className="topic-change-button rounded-md border border-white/15 px-2 py-1 hover:border-white/30"
-            >
-              Změnit téma
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/admin")}
-              className="rounded-md border border-white/15 px-2 py-1 hover:border-white/30"
-            >
-              Admin
-            </button>
-          </div>
+      {/* Logo */}
+      <div className="text-center">
+        <div className="text-4xl font-black text-[color:var(--theme-accent)] tracking-tight mb-1">
+          ⬡ Weeks
         </div>
+        <div className="text-sm text-[color:var(--theme-muted)]">
+          Téma: <strong className="text-[color:var(--theme-text)]">{topic?.label ?? "—"}</strong>
+        </div>
+      </div>
 
-        <h1 className="mb-2 text-2xl font-bold text-center">Weeks IoT</h1>
-
-        {/* Mode toggle */}
-        <div className="mb-4 flex rounded-lg border border-white/10 overflow-hidden text-sm">
-          <button
-            type="button"
-            className={`flex-1 py-2 transition-colors ${
-              mode === "student"
-                ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
-                : "hover:bg-white/5"
-            }`}
-            onClick={() => { setMode("student"); setError(null); }}
-          >
-            Student
-          </button>
-          <button
-            type="button"
-            className={`flex-1 py-2 transition-colors ${
-              mode === "lecturer"
-                ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
-                : "hover:bg-white/5"
-            }`}
-            onClick={() => { setMode("lecturer"); setError(null); }}
-          >
-            Lektor
-          </button>
-          <button
-            type="button"
-            className={`flex-1 py-2 transition-colors ${
-              mode === "email"
-                ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
-                : "hover:bg-white/5"
-            }`}
-            onClick={() => { setMode("email"); setError(null); }}
-          >
-            Email
-          </button>
+      <PanelGlass className="w-full max-w-md space-y-5">
+        {/* Mode tabs — pill style */}
+        <div className="flex gap-2 p-1 bg-black/20 rounded-2xl">
+          {(["student", "email", "lecturer"] as LoginMode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => { setMode(m); setError(null); }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                mode === m
+                  ? "bg-[color:var(--theme-accent)] text-[#0d1427]"
+                  : "text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)]"
+              }`}
+            >
+              {m === "student" ? "Student" : m === "email" ? "Email" : "Lektor"}
+            </button>
+          ))}
         </div>
 
         {mode === "email" ? (
           <EmailLoginTab />
         ) : (
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="password"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={10}
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-            className="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-center text-2xl tracking-widest focus:border-[color:var(--theme-accent)] focus:outline-none"
-            placeholder={mode === "student" ? "Denní PIN" : "Lektor PIN"}
-            autoFocus
-          />
-          {mode === "student" && (
+          <form onSubmit={handleSubmit} className="space-y-3">
             <input
-              type="text"
+              type="password"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={String(state.config.maxStudents).length}
-              value={studentNumber}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "");
-                if (!digits) { setStudentNumber(""); return; }
-                const n = Number(digits);
-                if (n > state.config.maxStudents) {
-                  setStudentNumber(String(state.config.maxStudents));
-                } else {
-                  setStudentNumber(digits);
-                }
-              }}
-              className="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-center text-xl tracking-widest focus:border-[color:var(--theme-accent)] focus:outline-none"
-              placeholder={`Číslo studenta (1–${state.config.maxStudents})`}
+              maxLength={10}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 h-14 text-center text-2xl tracking-widest focus:border-[color:var(--theme-accent)] focus:outline-none"
+              placeholder={mode === "student" ? "Denní PIN" : "Lektor PIN"}
+              autoFocus
             />
-          )}
-          {error && <p className="text-center text-sm text-red-400">{error}</p>}
-          <Button type="submit" size="lg" className="w-full">
-            Vstoupit
-          </Button>
-        </form>
+            {mode === "student" && (
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={String(state.config.maxStudents).length}
+                value={studentNumber}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "");
+                  if (!digits) { setStudentNumber(""); return; }
+                  const n = Number(digits);
+                  if (n > state.config.maxStudents) {
+                    setStudentNumber(String(state.config.maxStudents));
+                  } else {
+                    setStudentNumber(digits);
+                  }
+                }}
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 h-14 text-center text-xl tracking-widest focus:border-[color:var(--theme-accent)] focus:outline-none"
+                placeholder={`Číslo studenta (1–${state.config.maxStudents})`}
+              />
+            )}
+            {error && <p className="text-center text-sm text-red-400">{error}</p>}
+            <Button type="submit" size="lg" className="w-full">
+              Vstoupit
+            </Button>
+          </form>
         )}
-
       </PanelGlass>
+
+      {/* Utility links */}
+      <div className="flex gap-4 text-sm text-[color:var(--theme-muted)]">
+        <button
+          type="button"
+          onClick={() => dispatch({ type: "CHANGE_TOPIC" })}
+          className="hover:text-[color:var(--theme-text)] transition-colors"
+        >
+          Změnit téma
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/admin")}
+          className="hover:text-[color:var(--theme-text)] transition-colors"
+        >
+          Admin
+        </button>
+      </div>
     </motion.div>
   );
 }
