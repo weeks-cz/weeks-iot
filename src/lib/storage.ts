@@ -1,5 +1,5 @@
 import type { AccountState, GameState, ScreenState, TaskState } from "@/types";
-import { CONFIG_VERSION, STORAGE_KEY, TEST_BALANCE, TEST_MODE } from "./config";
+import { CONFIG_VERSION, DEFAULT_CONFIG, STORAGE_KEY, TEST_BALANCE, TEST_MODE } from "./config";
 import { DEFAULT_AVATAR_ID } from "./avatars";
 import { getAllTasks } from "./tasks";
 
@@ -35,22 +35,28 @@ function createDefaultScreenState(): ScreenState {
   return { currentScreen: "topic-select", pinLevel: "none" };
 }
 
-export function createDefaultGameState(): GameState {
+export function createDefaultSections(): GameState["sections"] {
+  return { beginner: { unlocked: true }, advanced: { unlocked: false }, expert: { unlocked: false } };
+}
+
+export function createDefaultTasks(): Record<string, TaskState> {
   const tasks: Record<string, TaskState> = {};
-  for (const t of getAllTasks()) {
-    tasks[t.id] = createDefaultTaskState();
-  }
-  const sections: GameState["sections"] = {
-    beginner: { unlocked: true },
-    advanced: { unlocked: false },
-    expert: { unlocked: false },
-  };
+  for (const t of getAllTasks()) tasks[t.id] = createDefaultTaskState();
+  return tasks;
+}
+
+export function createDefaultGameState(): GameState {
   return {
     version: CONFIG_VERSION,
-    selectedTopic: null, // forces topic-select screen on first visit
+    selectedTopic: null,
+    config: { ...DEFAULT_CONFIG },
+    accounts: {},
+    currentStudentNumber: null,
+    adminPreviewActive: false,
+    adminAuthenticated: false,
     account: createDefaultAccountState(),
-    tasks,
-    sections,
+    tasks: createDefaultTasks(),
+    sections: createDefaultSections(),
     screen: createDefaultScreenState(),
   };
 }
@@ -62,7 +68,15 @@ export function loadGameState(): GameState {
     if (!raw) return createDefaultGameState();
     const parsed = JSON.parse(raw) as GameState;
     if (parsed.version !== CONFIG_VERSION) return createDefaultGameState();
-    return parsed;
+    // adminAuthenticated is session-only — never restore from disk
+    return {
+      ...parsed,
+      config: { ...DEFAULT_CONFIG, ...(parsed.config ?? {}) },
+      accounts: parsed.accounts ?? {},
+      currentStudentNumber: parsed.currentStudentNumber ?? null,
+      adminPreviewActive: parsed.adminPreviewActive ?? false,
+      adminAuthenticated: false,
+    };
   } catch (err) {
     console.warn("[storage] corrupt state, resetting:", err);
     return createDefaultGameState();

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Lock, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { StarBadge } from "@/components/ui/StarBadge";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +12,8 @@ import type { Task } from "@/types";
 
 export function TaskList() {
   const { state, dispatch } = useGameState();
+  const router = useRouter();
+  const isAdmin = state.adminPreviewActive;
 
   function openTask(t: Task) {
     dispatch({ type: "OPEN_TASK", taskId: t.id });
@@ -20,6 +23,11 @@ export function TaskList() {
     dispatch({ type: "UNLOCK_SECTION", sectionId });
   }
 
+  function exitAdminPreview() {
+    dispatch({ type: "EXIT_ADMIN_PREVIEW" });
+    router.push("/admin");
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -27,13 +35,26 @@ export function TaskList() {
       exit={{ opacity: 0, y: -20 }}
       className="mx-auto max-w-5xl p-6 space-y-8"
     >
+      {isAdmin && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm">
+          <span className="font-semibold text-amber-300">Admin náhled — všechny sekce odemčeny</span>
+          <button
+            type="button"
+            onClick={exitAdminPreview}
+            className="rounded border border-amber-400/40 px-3 py-1 text-amber-300 hover:bg-amber-400/20"
+          >
+            Zpět do adminu
+          </button>
+        </div>
+      )}
+
       <header className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Úkoly</h1>
         <StarBadge count={state.account.stars} />
       </header>
 
       {SECTIONS.map((section) => {
-        const unlocked = state.sections[section.id]?.unlocked ?? false;
+        const unlocked = isAdmin || (state.sections[section.id]?.unlocked ?? false);
         return (
           <section key={section.id}>
             <div className="mb-4 flex items-center justify-between">

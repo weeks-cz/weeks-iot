@@ -92,10 +92,21 @@ export interface ScreenState {
   pinLevel: "none" | "daily" | "lecturer" | "admin";
 }
 
+export interface PerStudentAccount {
+  account: AccountState;
+  tasks: Record<string, TaskState>;
+  sections: Record<SectionId, { unlocked: boolean }>;
+}
+
 export interface GameState {
   version: number;
-  selectedTopic: TopicId | null;     // added 2026-04-26 — null = topic-select must run
-  accountEmail?: string;             // added 2026-04-26 — set when /api/notify-account succeeds
+  selectedTopic: TopicId | null;
+  accountEmail?: string;
+  config: Config;                              // mutable — admin can change dailyPin/maxStudents
+  accounts: Record<string, PerStudentAccount>; // per-student data keyed by studentNumber
+  currentStudentNumber: string | null;         // null = lecturer/no-student session
+  adminPreviewActive: boolean;                 // admin browsing tasks with all unlocked
+  adminAuthenticated: boolean;                 // admin PIN was entered this session
   account: AccountState;
   tasks: Record<string, TaskState>;
   sections: Record<SectionId, { unlocked: boolean }>;

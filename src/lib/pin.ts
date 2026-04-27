@@ -1,3 +1,4 @@
+import type { Config } from "@/types";
 import {
   DEFAULT_CONFIG,
   DAILY_ACCESS_MODE,
@@ -31,14 +32,14 @@ export function buildDailyPin(date: Date = new Date()): string {
 
 export type PinLevel = "daily" | "lecturer" | "admin";
 
-export function verifyPin(input: string, level: PinLevel): boolean {
+export function verifyPin(input: string, level: PinLevel, config: Config = DEFAULT_CONFIG): boolean {
   if (PREVIEW_ALLOW_ANY_PIN) return true;
   switch (level) {
     case "daily":
-      return input === buildDailyPin() || input === DEFAULT_CONFIG.dailyPin;
+      return input === buildDailyPin() || input === config.dailyPin;
     case "lecturer":
-      return input === DEFAULT_CONFIG.lecturerPin;
+      return input === config.lecturerPin;
     case "admin":
-      return input === DEFAULT_CONFIG.adminPassword;
+      return input === config.adminPassword;
   }
 }

@@ -6,11 +6,9 @@ import type { Config } from "@/types";
  * For production admin gating, a backend is required (deferred to v3).
  */
 
-// Bumped to v6 (was v5 in original plan) because GameState gained `selectedTopic`
-// and `accountEmail` fields after Štěpán's e865397 (2026-04-26). Old keys stay
-// orphaned in localStorage — no migration; these are pre-prod pilot users.
-export const CONFIG_VERSION = 6;
-export const STORAGE_KEY = "iot-camp-screen-state-v6";
+// Bumped to v7: added per-student accounts, mutable config, adminPreviewActive.
+export const CONFIG_VERSION = 7;
+export const STORAGE_KEY = "iot-camp-screen-state-v7";
 
 export const DAILY_ACCESS_MODE: "manual" | "date-based" = "manual";
 export const MAX_STUDENTS_LIMIT = 25;
