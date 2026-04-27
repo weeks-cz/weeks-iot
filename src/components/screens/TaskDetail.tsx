@@ -9,7 +9,7 @@ import { CodeValidator } from "@/components/task/CodeValidator";
 import { HelpCards } from "@/components/task/HelpCards";
 import { TaskImage } from "@/components/task/TaskImage";
 import { useGameState } from "@/components/providers/GameStateProvider";
-import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday } from "@/lib/tasks";
+import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday, getAdjacentTaskId } from "@/lib/tasks";
 import { REWARD_CONFIG } from "@/lib/rewards";
 
 export function TaskDetail() {
@@ -30,6 +30,8 @@ export function TaskDetail() {
 
   const isDaily = isDailyChallengeTask(taskId);
   const dailyClaimed = hasClaimedDailyChallengeToday(state.account);
+  const prevTaskId = getAdjacentTaskId(taskId, "prev");
+  const nextTaskId = getAdjacentTaskId(taskId, "next");
 
   const completeId = taskId;
   const reward = task.reward;
@@ -50,11 +52,31 @@ export function TaskDetail() {
       exit={{ opacity: 0, y: -20 }}
       className="mx-auto max-w-3xl p-6 space-y-6"
     >
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-2 flex-wrap">
         <Button variant="ghost" onClick={goBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Zpět
         </Button>
+        <div className="flex items-center gap-2">
+          {prevTaskId && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "OPEN_TASK", taskId: prevTaskId })}
+              className="text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] border border-white/10 rounded px-2 py-1"
+            >
+              ← Předchozí
+            </button>
+          )}
+          {nextTaskId && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "OPEN_TASK", taskId: nextTaskId })}
+              className="text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] border border-white/10 rounded px-2 py-1"
+            >
+              Další →
+            </button>
+          )}
+        </div>
         <StarBadge count={task.reward} />
       </header>
 

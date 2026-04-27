@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { Lock, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,7 @@ import { SECTIONS, getAllTasks, getDailyChallengeTaskId, hasClaimedDailyChalleng
 import { LEVEL_BADGES, REWARD_CONFIG } from "@/lib/rewards";
 import { STYLE_SHOP_CONFIG } from "@/lib/config";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
+import { notifyAccountCreated } from "@/lib/account-email";
 import type { Task } from "@/types";
 
 export function TaskList() {
@@ -19,6 +21,12 @@ export function TaskList() {
   const router = useRouter();
   const isAdmin = state.adminPreviewActive;
   const account = state.account;
+
+  const [nicknameInput, setNicknameInput] = useState(account.nickname ?? "");
+  const [nickMsg, setNickMsg] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState(state.accountEmail ?? "");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailMsg, setEmailMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const allTasks = getAllTasks();
   const completedCount = Object.values(state.tasks).filter((t) => t.status === "completed").length;
@@ -29,7 +37,8 @@ export function TaskList() {
   const dailyClaimed = hasClaimedDailyChallengeToday(account);
 
   const selectedAvatar = AVATAR_OPTIONS.find((a) => a.id === account.avatarId) ?? AVATAR_OPTIONS[0]!;
-  const profileLabel = state.currentStudentNumber ? `Student ${state.currentStudentNumber}` : "Lektor";
+  // Nickname: custom nick → student number → "Lektor"
+  const profileLabel = account.nickname || (state.currentStudentNumber ? `Student ${state.currentStudentNumber}` : "Lektor");
 
   function openTask(t: Task) {
     dispatch({ type: "OPEN_TASK", taskId: t.id });
@@ -46,6 +55,24 @@ export function TaskList() {
 
   function logout() {
     dispatch({ type: "LOGOUT_STUDENT" });
+  }
+
+  function handleNickname(e: FormEvent) {
+    e.preventDefault();
+    const nick = nicknameInput.trim();
+    if (nick.length < 2) { setNickMsg("Nick musí mít aspoň 2 znaky."); return; }
+    dispatch({ type: "SET_NICKNAME", nickname: nick });
+    setNickMsg("Nick byl uložen.");
+  }
+
+  async function handleAccountLink(e: FormEvent) {
+    e.preventDefault();
+    setEmailBusy(true);
+    setEmailMsg(null);
+    const result = await notifyAccountCreated(emailInput);
+    setEmailMsg({ ok: result.ok, text: result.message ?? (result.ok ? "Hotovo." : "Nepodařilo se.") });
+    if (result.ok) dispatch({ type: "SET_ACCOUNT_EMAIL", email: emailInput });
+    setEmailBusy(false);
   }
 
   return (
@@ -274,6 +301,62 @@ export function TaskList() {
                   <span className="font-semibold">+1 ✦</span>
                 </div>
               </div>
+            </PanelGlass>
+
+            {/* Nickname panel */}
+            <PanelGlass className="space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
+                Přezdívka
+              </p>
+              <form onSubmit={handleNickname} className="space-y-2">
+                <input
+                  type="text"
+                  value={nicknameInput}
+                  onChange={(e) => { setNicknameInput(e.target.value); setNickMsg(null); }}
+                  maxLength={20}
+                  placeholder="Tvůj nick (2–20 znaků)"
+                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
+                />
+                {nickMsg && <p className="text-xs text-[color:var(--theme-success)]">{nickMsg}</p>}
+                <Button type="submit" variant="ghost" size="sm" className="w-full">
+                  Uložit nick
+                </Button>
+              </form>
+            </PanelGlass>
+
+            {/* Account link panel */}
+            <PanelGlass className="space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
+                Propojit účet
+              </p>
+              {state.accountEmail ? (
+                <p className="text-xs text-[color:var(--theme-success)]">
+                  Účet propojený: {state.accountEmail}
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-[color:var(--theme-muted)]">
+                    Pošleme ti odkaz pro pokračování na jiném zařízení.
+                  </p>
+                  <form onSubmit={handleAccountLink} className="space-y-2">
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => { setEmailInput(e.target.value); setEmailMsg(null); }}
+                      placeholder="jmeno@example.com"
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
+                    />
+                    {emailMsg && (
+                      <p className={`text-xs ${emailMsg.ok ? "text-[color:var(--theme-success)]" : "text-red-400"}`}>
+                        {emailMsg.text}
+                      </p>
+                    )}
+                    <Button type="submit" variant="ghost" size="sm" disabled={emailBusy || !emailInput} className="w-full">
+                      {emailBusy ? "Odesílám…" : "Poslat odkaz"}
+                    </Button>
+                  </form>
+                </>
+              )}
             </PanelGlass>
           </aside>
         )}

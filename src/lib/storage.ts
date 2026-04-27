@@ -50,6 +50,7 @@ export function createDefaultGameState(): GameState {
     currentStudentNumber: null,
     adminPreviewActive: false,
     adminAuthenticated: false,
+    codeDrafts: {},
     account: createDefaultAccountState(),
     tasks: createDefaultTasks(),
     sections: createDefaultSections(),
@@ -72,6 +73,7 @@ export function loadGameState(): GameState {
       currentStudentNumber: parsed.currentStudentNumber ?? null,
       adminPreviewActive: parsed.adminPreviewActive ?? false,
       adminAuthenticated: false,
+      codeDrafts: parsed.codeDrafts ?? {},
     };
   } catch (err) {
     console.warn("[storage] corrupt state, resetting:", err);

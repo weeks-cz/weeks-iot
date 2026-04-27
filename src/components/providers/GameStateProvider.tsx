@@ -35,7 +35,7 @@ import {
   computeLevelBadges,
 } from "@/lib/rewards";
 import { MAX_STUDENTS_LIMIT, SECTION_UNLOCK_COSTS, STYLE_SHOP_CONFIG } from "@/lib/config";
-import { findTask } from "@/lib/tasks";
+import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday } from "@/lib/tasks";
 import { isTopicEnabled } from "@/lib/topics";
 
 export type Action =
@@ -64,7 +64,9 @@ export type Action =
   | { type: "SET_ADMIN_AUTHENTICATED"; value: boolean }
   | { type: "ENTER_ADMIN_PREVIEW" }
   | { type: "EXIT_ADMIN_PREVIEW" }
-  | { type: "UPDATE_DAY_CONFIG"; dailyPin: string; maxStudents: number };
+  | { type: "UPDATE_DAY_CONFIG"; dailyPin: string; maxStudents: number }
+  | { type: "SET_NICKNAME"; nickname: string }
+  | { type: "SET_CODE_DRAFT"; taskId: string; draft: string };
 
 function syncCurrentStudent(state: GameState): GameState {
   if (!state.currentStudentNumber) return state;
@@ -125,6 +127,10 @@ function reducer(state: GameState, action: Action): GameState {
       const newVerified = !ts.skipUsed ? oldVerified + 1 : oldVerified;
       if (newVerified > oldVerified && newVerified % STYLE_SHOP_CONFIG.tokenMilestone === 0) {
         accountWithStars = addToken(accountWithStars);
+      }
+      // Auto-award daily challenge bonus when completing the daily task
+      if (isDailyChallengeTask(action.taskId) && !hasClaimedDailyChallengeToday(accountWithStars)) {
+        accountWithStars = awardDailyChallenge(accountWithStars);
       }
       const newAccount = { ...accountWithStars, levelBadges: computeLevelBadges(accountWithStars.stars) };
       return syncCurrentStudent({ ...state, account: newAccount, tasks: newTasks });
@@ -190,7 +196,8 @@ function reducer(state: GameState, action: Action): GameState {
     case "PURCHASE_THEME": {
       const acc = purchaseThemeDirect(state.account, action.themeId);
       if (!acc) return state;
-      return syncCurrentStudent({ ...state, account: acc });
+      // Auto-select on purchase (matches vanilla buyStyle behavior)
+      return syncCurrentStudent({ ...state, account: { ...acc, currentTheme: action.themeId } });
     }
 
     case "PURCHASE_AVATAR": {
@@ -281,6 +288,15 @@ function reducer(state: GameState, action: Action): GameState {
         adminPreviewActive: false,
         screen: { ...state.screen, currentScreen: "pin-entry", pinLevel: "admin" },
       };
+
+    case "SET_NICKNAME": {
+      const nick = String(action.nickname ?? "").trim().slice(0, 20);
+      if (nick.length < 2) return state;
+      return syncCurrentStudent({ ...state, account: { ...state.account, nickname: nick } });
+    }
+
+    case "SET_CODE_DRAFT":
+      return { ...state, codeDrafts: { ...state.codeDrafts, [action.taskId]: action.draft } };
 
     case "UPDATE_DAY_CONFIG": {
       const pinChanged = action.dailyPin !== state.config.dailyPin;

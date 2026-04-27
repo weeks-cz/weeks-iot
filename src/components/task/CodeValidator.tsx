@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { validateTaskCode } from "@/lib/task-solutions";
+import { useGameState } from "@/components/providers/GameStateProvider";
 import type { ValidationResult } from "@/types";
 
 interface Props {
@@ -12,8 +13,14 @@ interface Props {
 }
 
 export function CodeValidator({ taskId, onSuccess }: Props) {
-  const [code, setCode] = useState("");
+  const { state, dispatch } = useGameState();
+  const [code, setCode] = useState(state.codeDrafts[taskId] ?? "");
   const [result, setResult] = useState<ValidationResult | null>(null);
+
+  function handleChange(value: string) {
+    setCode(value);
+    dispatch({ type: "SET_CODE_DRAFT", taskId, draft: value });
+  }
 
   function handleCheck() {
     const r = validateTaskCode(taskId, code);
@@ -25,7 +32,7 @@ export function CodeValidator({ taskId, onSuccess }: Props) {
     <div className="space-y-3">
       <textarea
         value={code}
-        onChange={(e) => setCode(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         className="w-full rounded-lg border border-white/10 bg-black/40 p-3 font-mono text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
         rows={10}
         placeholder="// sem vlož svůj Arduino kód..."

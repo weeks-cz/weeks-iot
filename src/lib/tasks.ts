@@ -708,3 +708,11 @@ export function isDailyChallengeTask(taskId: string): boolean {
 export function hasClaimedDailyChallengeToday(account: AccountState): boolean {
   return account.dailyChallengeDate === getTodayKey();
 }
+
+export function getAdjacentTaskId(taskId: string, direction: "prev" | "next"): string | null {
+  const all = getAllTasks();
+  const idx = all.findIndex((t) => t.id === taskId);
+  if (idx === -1) return null;
+  if (direction === "prev") return idx > 0 ? (all[idx - 1]?.id ?? null) : null;
+  return idx < all.length - 1 ? (all[idx + 1]?.id ?? null) : null;
+}

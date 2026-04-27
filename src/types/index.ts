@@ -106,6 +106,7 @@ export interface GameState {
   currentStudentNumber: string | null;         // null = lecturer/no-student session
   adminPreviewActive: boolean;                 // admin browsing tasks with all unlocked
   adminAuthenticated: boolean;                 // admin PIN was entered this session
+  codeDrafts: Record<string, string>;          // task code drafts preserved across navigation
   account: AccountState;
   tasks: Record<string, TaskState>;
   sections: Record<SectionId, { unlocked: boolean }>;
