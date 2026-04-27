@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { useGameState } from "@/components/providers/GameStateProvider";
@@ -11,6 +12,7 @@ import { getTopicById } from "@/lib/topics";
 
 export function PinEntry() {
   const { state, dispatch, emailFromUrl } = useGameState();
+  const router = useRouter();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +36,14 @@ export function PinEntry() {
     }
 
     dispatch({ type: "SET_PIN_LEVEL", level: matched });
+    if (matched === "admin") {
+      // Admin lives on its own /admin route, gated by pinLevel === "admin".
+      router.push("/admin/");
+      return;
+    }
     dispatch({
       type: "SET_SCREEN",
-      screen: { currentScreen: matched === "admin" ? "admin" : "task-list", pinLevel: matched },
+      screen: { currentScreen: "task-list", pinLevel: matched },
     });
   }
 

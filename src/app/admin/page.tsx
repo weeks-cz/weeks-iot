@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { useGameState } from "@/components/providers/GameStateProvider";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { Button } from "@/components/ui/Button";
@@ -9,22 +11,21 @@ import { DEFAULT_CONFIG } from "@/lib/config";
 
 export default function AdminPage() {
   const { state, dispatch } = useGameState();
+  const router = useRouter();
+
+  function leaveAdmin() {
+    // Drop admin clearance and return to the main app router (topic-select / pin-entry).
+    dispatch({ type: "SET_PIN_LEVEL", level: "none" });
+    router.push("/");
+  }
 
   if (state.screen.pinLevel !== "admin") {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <PanelGlass>
           <p>Přístup jen s admin PINem.</p>
-          <Button
-            className="mt-4"
-            onClick={() =>
-              dispatch({
-                type: "SET_SCREEN",
-                screen: { currentScreen: "pin-entry", pinLevel: "none" },
-              })
-            }
-          >
-            Zpět na PIN
+          <Button className="mt-4" onClick={() => router.push("/")}>
+            Zpět na hlavní stránku
           </Button>
         </PanelGlass>
       </div>
@@ -38,7 +39,13 @@ export default function AdminPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-4">
-      <h1 className="text-3xl font-bold">Admin</h1>
+      <header className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Admin</h1>
+        <Button variant="ghost" size="sm" onClick={leaveAdmin}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Odhlásit a zpět
+        </Button>
+      </header>
 
       <PanelGlass>
         <h2 className="mb-2 text-lg font-semibold">PINy</h2>
