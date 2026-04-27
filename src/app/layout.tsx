@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import { GameStateProvider } from "@/components/providers/GameStateProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const outfit = Outfit({
   subsets: ["latin", "latin-ext"],
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="cs" data-theme="classic" className={outfit.variable}>
       <body className="font-sans antialiased">
-        <GameStateProvider>{children}</GameStateProvider>
+        <AuthProvider>
+          <GameStateProvider>{children}</GameStateProvider>
+        </AuthProvider>
       </body>
     </html>
   );
