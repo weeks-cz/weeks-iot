@@ -3,11 +3,11 @@
 import Image from "next/image";
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { Lock, Check } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { StarBadge } from "@/components/ui/StarBadge";
-import { Button } from "@/components/ui/Button";
 import { useGameState } from "@/components/providers/GameStateProvider";
 import { SECTIONS, getAllTasks, getDailyChallengeTaskId, hasClaimedDailyChallengeToday, findTask } from "@/lib/tasks";
 import { LEVEL_BADGES, REWARD_CONFIG } from "@/lib/rewards";
@@ -36,7 +36,6 @@ export function TaskList() {
   const dailyClaimed = hasClaimedDailyChallengeToday(account);
 
   const selectedAvatar = AVATAR_OPTIONS.find((a) => a.id === account.avatarId) ?? AVATAR_OPTIONS[0]!;
-  // Profile chip always shows student number (so lektor pozná koho má před sebou),
   const profileLabel = state.currentStudentNumber
     ? `Student ${state.currentStudentNumber}`
     : state.linkedUserId
@@ -74,7 +73,7 @@ export function TaskList() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-auto max-w-6xl p-4 space-y-6"
+      className="mx-auto max-w-3xl px-4 py-6 space-y-5"
     >
       <WelcomeModal
         open={!isAdmin && !!state.currentStudentNumber && account.welcomeSeen === false}
@@ -84,37 +83,31 @@ export function TaskList() {
 
       {/* Admin preview banner */}
       {isAdmin && (
-        <div className="flex items-center justify-between rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm">
+        <div className="flex items-center justify-between rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm">
           <span className="font-semibold text-amber-300">Admin náhled — všechny sekce odemčeny</span>
           <button
             type="button"
             onClick={exitAdminPreview}
-            className="rounded border border-amber-400/40 px-3 py-1 text-amber-300 hover:bg-amber-400/20"
+            className="rounded-lg border border-amber-400/40 px-3 py-1.5 text-amber-300 hover:bg-amber-400/20"
           >
             Zpět do adminu
           </button>
         </div>
       )}
 
-      {/* Header: profile chip + currency */}
-      <header className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          {/* Back / logout */}
-          <button
-            type="button"
-            onClick={logout}
-            className="text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] border border-white/10 rounded-md px-2 py-1"
-          >
-            ← Zpět
-          </button>
-          {/* Profile chip */}
+      {/* ── Topbar ── */}
+      <header className="flex items-center justify-between gap-3">
+        <div className="text-xl font-black text-[color:var(--theme-accent)] tracking-tight">
+          ⬡ Weeks
+        </div>
+        <div className="flex items-center gap-2">
           {!isAdmin && (
             <button
               type="button"
               onClick={() => dispatch({ type: "SET_SCREEN", screen: { currentScreen: "avatar-shop", pinLevel: state.screen.pinLevel } })}
-              className="flex items-center gap-2 rounded-full border border-white/10 bg-[color:var(--theme-panel)] px-3 py-1.5 text-sm hover:border-white/20"
+              className="flex items-center gap-2 rounded-full border border-white/12 bg-[color:var(--theme-panel)] px-3 py-1.5 text-sm font-medium hover:border-white/20 transition-colors"
             >
-              <span className="relative h-7 w-7 overflow-hidden rounded-full bg-black/20">
+              <span className="relative h-7 w-7 overflow-hidden rounded-full bg-black/20 shrink-0">
                 <Image
                   src={`/avatars/${selectedAvatar.filename}`}
                   alt={selectedAvatar.label}
@@ -124,260 +117,281 @@ export function TaskList() {
                 />
               </span>
               <span className="flex flex-col leading-tight text-left">
-                <span className="font-medium">{profileLabel}</span>
+                <span>{profileLabel}</span>
                 {profileSubtitle && (
-                  <span className="text-[10px] text-[color:var(--theme-muted)]">
-                    {profileSubtitle}
-                  </span>
+                  <span className="text-[10px] text-[color:var(--theme-muted)]">{profileSubtitle}</span>
                 )}
               </span>
             </button>
           )}
-        </div>
-
-        {/* Currency */}
-        <div className="flex items-center gap-3">
-          <StarBadge count={account.stars} />
-          <span className="flex items-center gap-1 rounded-full bg-[color:var(--theme-panel)] px-3 py-1 text-sm font-semibold border border-white/10">
-            <span className="text-base">✦</span>
-            <span>{account.tokens}</span>
-          </span>
+          <button
+            type="button"
+            onClick={logout}
+            className="rounded-xl border border-white/10 px-3 py-2 text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] hover:border-white/20 transition-colors"
+          >
+            ← Zpět
+          </button>
         </div>
       </header>
 
-      {/* Progress hero card */}
-      <PanelGlass className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-3xl font-bold">{completedCount}</span>
-            <span className="text-lg text-[color:var(--theme-muted)]">/{totalCount}</span>
-            <span className="ml-2 text-sm text-[color:var(--theme-muted)]">úkolů splněno</span>
+      {/* ── Daily challenge strip ── */}
+      {!isAdmin && dailyChallengeTask && (
+        <button
+          type="button"
+          onClick={() => !dailyClaimed && openTask(dailyChallengeTask)}
+          className={`w-full text-left rounded-2xl border px-5 py-4 flex items-center gap-4 transition-colors ${
+            dailyClaimed
+              ? "border-white/10 bg-[color:var(--theme-panel)]"
+              : "border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/15"
+          }`}
+        >
+          <span className="text-2xl shrink-0">{dailyClaimed ? "✓" : "⚡"}</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-amber-400/80 mb-0.5">
+              Denní výzva
+            </div>
+            <div className={`font-semibold truncate ${dailyClaimed ? "text-[color:var(--theme-muted)]" : "text-amber-200"}`}>
+              {dailyChallengeTask.title}
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "SET_SCREEN", screen: { currentScreen: "level-badges", pinLevel: state.screen.pinLevel } })}
-              className="text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] border border-white/10 rounded px-2 py-1"
+          <span className={`text-sm font-bold rounded-full px-3 py-1 shrink-0 ${
+            dailyClaimed
+              ? "bg-white/5 text-[color:var(--theme-muted)]"
+              : "bg-amber-400/15 text-amber-300 border border-amber-400/25"
+          }`}>
+            {dailyClaimed ? "Splněno" : `+${REWARD_CONFIG.dailyChallengeStars} ★`}
+          </span>
+        </button>
+      )}
+
+      {/* ── Bento stats ── */}
+      <div className="grid grid-cols-3 gap-3">
+        {/* Progress cell */}
+        <div className="bento-cell col-span-1">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--theme-accent)] mb-1">
+            Postup
+          </div>
+          <div className="text-3xl font-black tracking-tight text-[color:var(--theme-text)]">
+            {completedCount}<span className="text-lg text-[color:var(--theme-muted)] font-normal">/{totalCount}</span>
+          </div>
+          <div className="text-xs text-[color:var(--theme-muted)] mt-0.5">úkolů splněno</div>
+          <div className="mt-2 h-1.5 rounded-full bg-white/8 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[color:var(--theme-accent)] transition-all"
+              style={{ width: `${Math.round((completedCount / totalCount) * 100)}%` }}
+            />
+          </div>
+        </div>
+        {/* Stars cell */}
+        <div className="bento-cell">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--theme-star)] mb-1">
+            Hvězdičky
+          </div>
+          <div className="text-3xl font-black tracking-tight text-[color:var(--theme-star)]">
+            ★ {account.stars}
+          </div>
+          <div className="text-xs text-[color:var(--theme-muted)] mt-0.5">získáno</div>
+        </div>
+        {/* Tokens cell */}
+        <div className="bento-cell">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--theme-success)] mb-1">
+            Tokeny
+          </div>
+          <div className="text-3xl font-black tracking-tight text-[color:var(--theme-success)]">
+            ✦ {account.tokens}
+          </div>
+          <div className="text-xs text-[color:var(--theme-muted)] mt-0.5">k utracení</div>
+        </div>
+      </div>
+
+      {/* ── Badges row ── */}
+      <div className="flex gap-2 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {LEVEL_BADGES.map((badge) => {
+          const earned = account.stars >= (badge.minStars ?? 0);
+          return (
+            <span
+              key={badge.id}
+              className={`flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${
+                earned
+                  ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
+                  : "border-white/10 text-[color:var(--theme-muted)] opacity-40"
+              }`}
             >
-              Odznaky
-            </button>
+              {badge.icon} {badge.label}
+            </span>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => dispatch({ type: "SET_SCREEN", screen: { currentScreen: "level-badges", pinLevel: state.screen.pinLevel } })}
+          className="flex items-center rounded-full border border-white/10 px-3 py-1.5 text-xs text-[color:var(--theme-muted)] hover:border-white/20 whitespace-nowrap"
+        >
+          Všechny odznaky →
+        </button>
+      </div>
+
+      {/* ── Section blocks ── */}
+      {SECTIONS.map((section) => {
+        const unlocked = isAdmin || (state.sections[section.id]?.unlocked ?? false);
+        return (
+          <section key={section.id} className="space-y-2">
+            {/* Section header */}
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
+                {section.label}
+              </h2>
+              <span className="text-xs text-[color:var(--theme-muted)] opacity-60">
+                {unlocked
+                  ? `${section.tasks.filter((t) => state.tasks[t.id]?.status === "completed").length} / ${section.tasks.length} splněno`
+                  : "🔒 zamčeno"}
+              </span>
+            </div>
+
+            {/* Task rows */}
+            {section.tasks.map((t) => {
+              const done = state.tasks[t.id]?.status === "completed";
+              const isDaily = t.id === dailyChallengeTaskId;
+              return (
+                <div
+                  key={t.id}
+                  className={`task-row ${done ? "task-done" : ""} ${!unlocked ? "task-locked" : ""}`}
+                  onClick={() => unlocked && openTask(t)}
+                >
+                  <div className={done ? "task-dot-done" : "task-dot-open"} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-[color:var(--theme-text)] text-base">{t.title}</span>
+                      {isDaily && !dailyClaimed && (
+                        <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 shrink-0">
+                          Výzva
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-[color:var(--theme-muted)] mt-0.5 line-clamp-1">
+                      {t.description}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center text-[11px] ${
+                      done
+                        ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
+                        : "border-white/15"
+                    }`}>
+                      {done && "✓"}
+                    </div>
+                    <StarBadge count={t.reward} />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Unlock CTA row for locked sections */}
+            {!unlocked && section.unlockCost !== undefined && (
+              <button
+                type="button"
+                onClick={() => unlockSection(section.id as "advanced" | "expert")}
+                disabled={account.stars < section.unlockCost}
+                className="w-full flex items-center justify-between rounded-xl border-2 border-dashed border-[color:var(--theme-accent)]/20 bg-[color:var(--theme-accent-soft)] px-5 py-4 text-left transition-colors hover:border-[color:var(--theme-accent)]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span className="flex items-center gap-2 font-semibold text-[color:var(--theme-text)]">
+                  <Lock className="h-4 w-4" />
+                  Odemknout {section.label}
+                </span>
+                <span className="text-sm font-bold text-[color:var(--theme-star)]">
+                  {section.unlockCost} ★
+                </span>
+              </button>
+            )}
+          </section>
+        );
+      })}
+
+      {/* ── Settings / Profile section (bottom) ── */}
+      {!isAdmin && (
+        <div className="space-y-3 pt-4 border-t border-white/8">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)] px-1">
+            Profil a nastavení
+          </p>
+
+          {/* Nav buttons */}
+          <div className="flex gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => dispatch({ type: "SET_SCREEN", screen: { currentScreen: "style-shop", pinLevel: state.screen.pinLevel } })}
-              className="text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] border border-white/10 rounded px-2 py-1"
+              className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-[color:var(--theme-muted)] hover:border-white/20 hover:text-[color:var(--theme-text)] transition-colors"
             >
-              Styly
+              🎨 Styly
+            </button>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "SET_SCREEN", screen: { currentScreen: "avatar-shop", pinLevel: state.screen.pinLevel } })}
+              className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-[color:var(--theme-muted)] hover:border-white/20 hover:text-[color:var(--theme-text)] transition-colors"
+            >
+              😸 Avatary
             </button>
           </div>
-        </div>
-        {/* Badge strip */}
-        <div className="flex gap-2 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {LEVEL_BADGES.map((badge) => {
-            const earned = account.stars >= (badge.minStars ?? 0);
-            return (
-              <span
-                key={badge.id}
-                className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
-                  earned
-                    ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
-                    : "border-white/10 text-[color:var(--theme-muted)] opacity-40"
-                }`}
-              >
-                {badge.icon} {badge.label}
-              </span>
-            );
-          })}
-        </div>
-      </PanelGlass>
 
-      {/* Mobile: daily challenge strip (hidden on lg where sidebar shows it) */}
-      {!isAdmin && dailyChallengeTask && (
-        <div className="lg:hidden">
-          <button
-            type="button"
-            onClick={() => !dailyClaimed && openTask(dailyChallengeTask)}
-            className={`w-full rounded-lg border px-4 py-3 text-left text-sm ${
-              dailyClaimed
-                ? "border-white/10 bg-white/5 text-[color:var(--theme-muted)]"
-                : "border-amber-400/30 bg-amber-400/10 text-amber-300"
-            }`}
-          >
-            <span className="font-semibold">
-              {dailyClaimed
-                ? "✓ Denní výzva splněna"
-                : `Denní výzva: ${dailyChallengeTask.title} → +${REWARD_CONFIG.dailyChallengeStars} ⭐`}
-            </span>
-            {!dailyClaimed && (
-              <span className="ml-2 text-[10px] uppercase tracking-wider opacity-70">Otevřít →</span>
-            )}
-          </button>
-        </div>
-      )}
+          {/* Nick form */}
+          <PanelGlass variant="stat" className="space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
+              Přezdívka
+            </p>
+            <form onSubmit={handleNickname} className="flex gap-2">
+              <input
+                type="text"
+                value={nicknameInput}
+                onChange={(e) => { setNicknameInput(e.target.value); setNickMsg(null); }}
+                maxLength={20}
+                placeholder="Tvůj nick (2–20 znaků)"
+                className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
+              />
+              <Button type="submit" variant="secondary" size="sm">Uložit</Button>
+            </form>
+            {nickMsg && <p className="text-xs text-[color:var(--theme-success)]">{nickMsg}</p>}
+          </PanelGlass>
 
-      {/* Two-column layout for tasks + sidebar */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        {/* Task sections */}
-        <div className="space-y-8">
-          {SECTIONS.map((section) => {
-            const unlocked = isAdmin || (state.sections[section.id]?.unlocked ?? false);
-            return (
-              <section key={section.id}>
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">{section.label}</h2>
-                  {!unlocked && section.unlockCost !== undefined && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => unlockSection(section.id as "advanced" | "expert")}
-                      disabled={account.stars < section.unlockCost}
-                    >
-                      <Lock className="mr-2 h-4 w-4" />
-                      Odemknout za {section.unlockCost} ⭐
-                    </Button>
-                  )}
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {section.tasks.map((t) => {
-                    const ts = state.tasks[t.id];
-                    const done = ts?.status === "completed";
-                    const isDaily = t.id === dailyChallengeTaskId;
-                    return (
-                      <PanelGlass
-                        key={t.id}
-                        className={`cursor-pointer transition-transform hover:scale-[1.02] ${
-                          !unlocked ? "pointer-events-none opacity-40" : ""
-                        }`}
-                        onClick={() => unlocked && openTask(t)}
-                      >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <h3 className="font-semibold">{t.title}</h3>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isDaily && !dailyClaimed && (
-                              <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                                Výzva
-                              </span>
-                            )}
-                            {done && <Check className="h-5 w-5 text-[color:var(--theme-success)]" />}
-                          </div>
-                        </div>
-                        <p className="text-sm text-[color:var(--theme-muted)] line-clamp-2">
-                          {t.description}
-                        </p>
-                        <div className="mt-4">
-                          <StarBadge count={t.reward} />
-                        </div>
-                      </PanelGlass>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-
-        {/* Sidebar panels — desktop only */}
-        {!isAdmin && (
-          <aside className="hidden lg:block space-y-4">
-            {/* Daily challenge panel */}
-            {dailyChallengeTask && (
-              <PanelGlass className="space-y-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-300">
-                  Denní výzva
-                </p>
-                <h3 className="font-semibold">{dailyChallengeTask.title}</h3>
-                <p className="text-xs text-[color:var(--theme-muted)]">
-                  Dnešní bonus získáš za odevzdání platného kódu k tomuto úkolu.
-                  Funguje i u už dřív splněných úkolů.
-                </p>
-                <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3">
-                  <strong className="block text-sm text-amber-300">
-                    {dailyClaimed ? "Dnes už splněno ✓" : `Odměna: +${REWARD_CONFIG.dailyChallengeStars} hvězdiček`}
-                  </strong>
-                  <p className="mt-1 text-xs text-[color:var(--theme-muted)]">
-                    {dailyClaimed
-                      ? "Zítra se objeví nová denní výzva."
-                      : "Otevři tento úkol a odevzdej funkční kód."}
-                  </p>
-                </div>
-                {!dailyClaimed && (
-                  <button
-                    type="button"
-                    onClick={() => openTask(dailyChallengeTask)}
-                    className="w-full rounded-lg border border-white/10 py-2 text-sm hover:bg-white/5"
-                  >
-                    Otevřít denní výzvu →
-                  </button>
-                )}
-              </PanelGlass>
-            )}
-
-            {/* Reward guide */}
-            <PanelGlass className="space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
-                Jak získávat měny
-              </p>
-              <p className="text-xs text-[color:var(--theme-muted)]">
-                Za každý ověřený úkol získáš hvězdičky. Každý {STYLE_SHOP_CONFIG.tokenMilestone}. ověřený úkol přidá i 1 token stylu.
-              </p>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-[color:var(--theme-muted)]">Bez nápovědy</span>
-                  <span className="font-semibold">+{REWARD_CONFIG.noHelpBonusStars} ⭐</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[color:var(--theme-muted)]">Na první pokus</span>
-                  <span className="font-semibold">+{REWARD_CONFIG.firstTryBonusStars} ⭐</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[color:var(--theme-muted)]">Každý {STYLE_SHOP_CONFIG.tokenMilestone}. úkol</span>
-                  <span className="font-semibold">+1 ✦</span>
-                </div>
-              </div>
-            </PanelGlass>
-
-            {/* Nickname panel */}
-            <PanelGlass className="space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
-                Přezdívka
-              </p>
-              <form onSubmit={handleNickname} className="space-y-2">
-                <input
-                  type="text"
-                  value={nicknameInput}
-                  onChange={(e) => { setNicknameInput(e.target.value); setNickMsg(null); }}
-                  maxLength={20}
-                  placeholder="Tvůj nick (2–20 znaků)"
-                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
-                />
-                {nickMsg && <p className="text-xs text-[color:var(--theme-success)]">{nickMsg}</p>}
-                <Button type="submit" variant="ghost" size="sm" className="w-full">
-                  Uložit nick
-                </Button>
-              </form>
-            </PanelGlass>
-
-            {/* Account link panel */}
-            <PanelGlass className="space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
+          {/* Link account */}
+          <PanelGlass variant="stat" className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)] mb-1">
                 Propojit účet
               </p>
               {state.linkedUserId ? (
-                <p className="text-xs text-[color:var(--theme-success)]">
-                  Účet propojený ✓
-                </p>
+                <p className="text-sm text-[color:var(--theme-success)]">Účet propojený ✓</p>
               ) : (
-                <>
-                  <p className="text-xs text-[color:var(--theme-muted)]">
-                    Email + heslo pro pokračování doma. Tvůj postup se nahraje do cloudu.
-                  </p>
-                  <Button onClick={() => setLinkModalOpen(true)} variant="ghost" size="sm" className="w-full">
-                    Propojit účet
-                  </Button>
-                </>
+                <p className="text-sm text-[color:var(--theme-muted)]">Pokračuj doma na svém počítači.</p>
               )}
-            </PanelGlass>
-          </aside>
-        )}
-      </div>
+            </div>
+            {!state.linkedUserId && (
+              <Button onClick={() => setLinkModalOpen(true)} variant="secondary" size="sm">
+                Propojit
+              </Button>
+            )}
+          </PanelGlass>
+
+          {/* Reward guide */}
+          <PanelGlass variant="stat" className="space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--theme-muted)]">
+              Jak získávat hvězdičky
+            </p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[color:var(--theme-muted)]">Bez nápovědy</span>
+                <span className="font-semibold">+{REWARD_CONFIG.noHelpBonusStars} ⭐</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[color:var(--theme-muted)]">Na první pokus</span>
+                <span className="font-semibold">+{REWARD_CONFIG.firstTryBonusStars} ⭐</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[color:var(--theme-muted)]">Každý {STYLE_SHOP_CONFIG.tokenMilestone}. úkol</span>
+                <span className="font-semibold">+1 ✦</span>
+              </div>
+            </div>
+          </PanelGlass>
+        </div>
+      )}
+
       <LinkAccountModal open={linkModalOpen} onClose={() => setLinkModalOpen(false)} />
     </motion.div>
   );
