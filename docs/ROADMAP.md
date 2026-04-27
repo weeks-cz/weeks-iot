@@ -1,6 +1,6 @@
 # Weeks Learning App — Roadmap & Strategie
 
-> Živý dokument. Aktualizováno: 2026-04-27 (Fáze 0 dokončena).  
+> Živý dokument. Aktualizováno: 2026-04-27 (Fáze 1 dokončena).  
 > Autoři: Lukáš, Štěpán, Kryštof
 
 ---
@@ -51,42 +51,64 @@ Appka má solidní základ — gamifikace, témata, avatary, styly, denní výzv
 
 ---
 
-## Fáze 1 — Veřejná beta (2–4 měsíce po prvním táboře)
+## Fáze 1 — Email auth + cloud sync ✅ HOTOVO (2026-04-27)
 
-**Cíl:** Appka je přístupná veřejnosti pod `learn.weeks.cz`. Freemium model. První platící uživatelé.
+**Cíl:** Studenti si mohou vytvořit účet emailem a pokračovat doma na vlastním počítači.
 
-**Kdy spustit:** Až budete mít alespoň 20–30 reálných uživatelů z tábora, zpětnou vazbu, a víte co musíte opravit. Unáhlené veřejné spuštění s nedodělanou appkou je horší než žádné.
+### Co bylo postaveno
+
+| Co | Stav | Commits |
+|----|------|---------|
+| Supabase projekt (eu-central-1, email confirm off, Resend SMTP) | ✅ | manuální setup |
+| DB migrace — `learning_accounts` + `learning_events` + RLS + GRANTs | ✅ | `b09efa4` |
+| Email auth v PinEntry — 3 taby (přihlásit / vytvořit / magic link) | ✅ | `0c00f09..0b65128` |
+| Cloud hydration — `CLOUD_HYDRATE` action (stale-closure safe) | ✅ | `0c00f09` |
+| Debounced cloud push + beforeunload flush | ✅ | `f57407a` |
+| Learning events emise z reducerů | ✅ | `18f85aa` |
+| `Propojit účet` modal v TaskList sidebaru | ✅ | `0b65128` |
+| weeks-hub: IoT service-role klient + `/admin/learning` stats | ✅ | `ac09e32` |
+| weeks-hub: `/admin/learning/users` tabulka | ✅ | `4dc1554` |
+| UX audit + opravy (badge scroll, email label, PIN cleanup) | ✅ | `ee499ac` |
+| Singleton Supabase klient (fix auth event propagation) | ✅ | `18fea2e` |
+| Nickname seedování z user_metadata | ✅ | `18fea2e` |
+
+### Architektura
+- **localStorage = cache, Supabase = truth** pro linked users
+- Push-after-link: při prvním propojení se pushne stávající progress do cloudu
+- PIN systém pro tábory zůstává beze změny (guest mode)
+- Viz `docs/superpowers/specs/2026-04-27-supabase-migration-design.md` pro detaily
+
+---
+
+## Fáze 2 — Platební systém (po prvním táboře)
+
+**Cíl:** Appka je přístupná veřejnosti pod `iot.weeks.cz` s freemium modelem. První platící uživatelé.
+
+**Kdy spustit:** Po prvním táboře (~mid-May 2026) a opravení top 3 feedback bugů. Unáhlené veřejné spuštění s nedodělanou appkou je horší než žádné.
 
 ### Technické kroky (v pořadí)
 
-#### 1. Databáze a auth (největší změna)
-- Nahradit localStorage za **Supabase** (free tier stačí na začátek)
-- Supabase Auth pro uživatelské účty (email + password, nebo magic link)
-- Data studentů přesunout na server — tahle změna odblokuje vše ostatní
-- Zachovat PIN systém pro tábory jako "guest mode"
-- **Odhadovaná práce:** 2–3 víkendy vibecoding
-
-#### 2. Platební systém
+#### 1. Platební systém
 - **Stripe** — nejjednodušší integrace, funguje v CZ
-- Freemium model (viz níže)
-- Webhook pro aktivaci prémiového přístupu
+- Freemium model (viz níže) — zamknout Pokročilý/Expert za paywall
+- Webhook pro aktivaci prémiového přístupu → zápis do `learning_accounts.plan`
 - **Odhadovaná práce:** 1 víkend
 
-#### 3. Landing page
-- Separátní stránka `learn.weeks.cz` nebo `weeks.cz/learn`
+#### 2. Landing page
+- Separátní stránka nebo úprava `iot.weeks.cz` homepage
 - Vysvětlí co appka je, pro koho, kolik stojí
 - CTA: "Vyzkoušet zdarma"
 - Neodkazovat na DDM, čistě Weeks brand
-- **Odhadovaná práce:** 1 víkend vibecoding
+- **Odhadovaná práce:** 1 víkend
 
-#### 4. Základní analytika
+#### 3. Základní analytika
 - **Posthog** nebo Vercel Analytics (oba mají free tier)
 - Měřit: registrace, aktivní uživatelé, dokončené úkoly, kde se odchází
 - Bez dat nevíte co opravit
 - **Odhadovaná práce:** pár hodin
 
-#### 5. Email sekvence
-- Welcome email po registraci
+#### 4. Email sekvence
+- Welcome email po registraci (zatím manuální přes Resend)
 - "Vrať se" email pokud nenavštíví 7 dní
 - Využít stávající Resend integraci, jen rozšířit
 - **Odhadovaná práce:** 1 víkend
@@ -221,7 +243,7 @@ S 1–2 tis. Kč/měsíc nemá smysl dělat placenou reklamu — je to příliš
 ## Stav na dnešek (2026-04-27)
 
 ```
-✅ Hotovo (Fáze 0 dokončena)
+✅ Hotovo (Fáze 0 + Fáze 1 dokončena)
   - IoT modul (31 úkolů, 3 sekce)
   - Gamifikace (hvězdičky, tokeny, odznaky, avatary, styly)
   - Multi-student systém (PIN + student number, per-student data)
@@ -232,16 +254,21 @@ S 1–2 tis. Kč/měsíc nemá smysl dělat placenou reklamu — je to příliš
   - Welcome modal pro první přihlášení
   - Storage failure + offline bannery
   - PINy z env s fallbackem (`NEXT_PUBLIC_DAILY_PIN` apod.)
-  - Email systém (Resend) — funkční, čeká na produkční test
+  - Email auth (přihlásit / vytvořit účet / magic link)
+  - Cloud sync — Supabase DB, debounced push + beforeunload flush
+  - Propojit účet modal (guest → linked přechod za běhu)
+  - Cross-device login (přihlásit se na jiném zařízení, progress se načte)
+  - weeks-hub admin: /admin/learning — statistiky + tabulka uživatelů
+  - Singleton Supabase klient (auth events propagují správně)
+  - Nickname seedování z user_metadata při prvním přihlášení
 
 🎯 Další krok: PRVNÍ TÁBOR (~mid-May 2026)
   Sbírat reálnou zpětnou vazbu, ne další dev. Po táboře 2 týdny na top 3 bugy.
 
-❌ Chybí (pro veřejnou beta — Fáze 1)
-  - Databáze + real auth (Supabase)
-  - Platební systém (Stripe)
-  - Landing page (`learn.weeks.cz`)
-  - Analytika (Posthog / Vercel)
+❌ Chybí (pro veřejnou beta — Fáze 2)
+  - Platební systém (Stripe + freemium paywall)
+  - Landing page (`learn.weeks.cz` nebo `iot.weeks.cz` homepage)
+  - Analytika (Posthog / Vercel Analytics)
   - 2+ moduly
   - Vyřešit otevřené otázky výše (doména, název, IČO, equity split)
 ```
