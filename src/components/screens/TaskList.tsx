@@ -37,9 +37,10 @@ export function TaskList() {
 
   const selectedAvatar = AVATAR_OPTIONS.find((a) => a.id === account.avatarId) ?? AVATAR_OPTIONS[0]!;
   // Profile chip always shows student number (so lektor pozná koho má před sebou),
-  // nick je v závorce když je vyplněný. Pro lektorské sezení jen "Lektor".
   const profileLabel = state.currentStudentNumber
     ? `Student ${state.currentStudentNumber}`
+    : state.linkedUserId
+    ? (account.nickname ?? "Účet")
     : "Lektor";
   const profileSubtitle = account.nickname && state.currentStudentNumber ? account.nickname : null;
 
@@ -170,7 +171,7 @@ export function TaskList() {
           </div>
         </div>
         {/* Badge strip */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {LEVEL_BADGES.map((badge) => {
             const earned = account.stars >= (badge.minStars ?? 0);
             return (

@@ -7,24 +7,19 @@ import { Button } from "@/components/ui/Button";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { useGameState } from "@/components/providers/GameStateProvider";
 import { verifyPin } from "@/lib/pin";
-import { notifyAccountCreated } from "@/lib/account-email";
 import { getTopicById } from "@/lib/topics";
 import { EmailLoginTab } from "@/components/screens/EmailLoginTab";
 
 type LoginMode = "student" | "lecturer" | "email";
 
 export function PinEntry() {
-  const { state, dispatch, emailFromUrl } = useGameState();
+  const { state, dispatch } = useGameState();
   const router = useRouter();
 
   const [mode, setMode] = useState<LoginMode>("student");
   const [pin, setPin] = useState("");
   const [studentNumber, setStudentNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  const [email, setEmail] = useState(emailFromUrl ?? "");
-  const [emailBusy, setEmailBusy] = useState(false);
-  const [emailMsg, setEmailMsg] = useState<{ ok: boolean; message: string } | null>(null);
 
   const topic = getTopicById(state.selectedTopic);
 
@@ -59,21 +54,6 @@ export function PinEntry() {
         screen: { currentScreen: "task-list", pinLevel: "lecturer" },
       });
     }
-  }
-
-  async function handleAccountLink(e: FormEvent) {
-    e.preventDefault();
-    setEmailBusy(true);
-    setEmailMsg(null);
-    const result = await notifyAccountCreated(email);
-    setEmailMsg({
-      ok: result.ok,
-      message: result.message ?? (result.ok ? "Hotovo." : "Nepodařilo se."),
-    });
-    if (result.ok) {
-      dispatch({ type: "SET_ACCOUNT_EMAIL", email });
-    }
-    setEmailBusy(false);
   }
 
   return (
@@ -189,33 +169,6 @@ export function PinEntry() {
         </form>
         )}
 
-        <hr className="my-6 border-white/10" />
-
-        <form onSubmit={handleAccountLink} className="space-y-3">
-          <p className="text-xs text-[color:var(--theme-muted)]">
-            Propojit účet s e-mailem (volitelné — pošleme ti odkaz na pokračování):
-          </p>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
-            placeholder="jmeno@example.com"
-            autoComplete="email"
-          />
-          <Button type="submit" variant="ghost" size="sm" disabled={emailBusy || !email}>
-            {emailBusy ? "Odesílám…" : "Poslat odkaz"}
-          </Button>
-          {emailMsg && (
-            <p
-              className={`text-xs ${
-                emailMsg.ok ? "text-[color:var(--theme-success)]" : "text-red-400"
-              }`}
-            >
-              {emailMsg.message}
-            </p>
-          )}
-        </form>
       </PanelGlass>
     </motion.div>
   );
