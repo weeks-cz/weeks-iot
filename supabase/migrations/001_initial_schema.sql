@@ -48,3 +48,9 @@ alter table public.learning_events enable row level security;
 
 create policy "own_events_insert" on public.learning_events
   for insert with check (auth.uid() = user_id);
+
+-- ===== grants =====
+grant select, insert, update on public.learning_accounts to authenticated;
+grant select, insert          on public.learning_events  to authenticated;
+grant select                  on public.learning_accounts to service_role;
+grant select                  on public.learning_events  to service_role;
