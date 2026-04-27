@@ -1,6 +1,6 @@
 # Weeks Learning App — Roadmap & Strategie
 
-> Živý dokument. Aktualizováno: 2026-04-27.  
+> Živý dokument. Aktualizováno: 2026-04-27 (Fáze 0 dokončena).  
 > Autoři: Lukáš, Štěpán, Kryštof
 
 ---
@@ -13,31 +13,35 @@ Appka má solidní základ — gamifikace, témata, avatary, styly, denní výzv
 
 ---
 
-## Fáze 0 — Tábor (3 týdny)
+## Fáze 0 — Tábor ✅ HOTOVO (2026-04-27)
 
 **Cíl:** Appka funguje bez problémů na táboře s 10–20 dětmi. Lektor ji zvládne spravovat. Neztrácíme data.
 
-### Kritické (musí být hotovo před táborem)
+### Kritické
 
-| Co | Proč | Soubor |
+| Co | Stav | Soubor |
 |----|------|--------|
-| Přidat "Reset studenta" do admin panelu | Lektor musí umět smazat konkrétního studenta, ne celou appku | `src/app/admin/page.tsx` |
-| Lektor view — přehled pokroku studenta | Lektor musí vědět kde kdo je | `src/app/admin/page.tsx` |
-| Opravit adminPreviewActive v loadGameState | Bezpečnostní díra — zůstává přes refresh | `src/lib/storage.ts` |
-| Loading state pro validaci kódu | Děti klikají 5× protože neví jestli se to zpracovává | `src/components/task/CodeValidator.tsx` |
-| Tooltip na disabled Help tlačítka | "Potřebuješ 3 hvězdičky" místo tichého disabled | `src/components/task/HelpCards.tsx` |
-| localStorage quota error handling | Když tablet dojde místo, data se tichce nezapíší | `src/lib/storage.ts` + GameStateProvider |
-| PINy přesunout do .env | Teď jsou viditelné v JS bundle — každý žák s DevTools je vidí | `src/lib/config.ts` |
-| Mobile sidebar — collapsed view | Na tabletu (<1024px) se sidebar úplně skryje včetně denní výzvy | `src/components/screens/TaskList.tsx` |
+| "Reset studenta" v admin panelu | ✅ commit `009ca74` | `src/app/admin/page.tsx` |
+| Lektor view — přehled pokroku studenta | ✅ statistika sidebar v adminu | `src/app/admin/page.tsx` |
+| `adminPreviewActive` reset v `loadGameState` | ✅ commit `009ca74` | `src/lib/storage.ts` |
+| Loading state pro validaci kódu | ✅ commit `009ca74` | `src/components/task/CodeValidator.tsx` |
+| Tooltip na disabled Help tlačítka | ✅ commit `009ca74` | `src/components/task/HelpCards.tsx` |
+| localStorage quota error handling | ✅ storage banner v provideru | `src/lib/storage.ts` + GameStateProvider |
+| PINy přesunout do .env | ✅ commit `5118415` — `NEXT_PUBLIC_*` s fallbackem | `src/lib/config.ts` |
+| Mobile sidebar — collapsed view | ✅ daily-challenge strip pod hlavičkou | `src/components/screens/TaskList.tsx` |
 
-### Doporučené (výrazně zlepší zážitek)
+> Poznámka: `NEXT_PUBLIC_*` PINy stejně skončí v JS bundlu. Benefit je rotace
+> a že produkční hodnoty nejsou v gitu. Admin panel ukazuje červený banner,
+> dokud běží na fallback hodnotách.
 
-| Co | Proč |
+### Doporučené
+
+| Co | Stav |
 |----|------|
-| Lepší onboarding pro nového studenta | První přihlášení — co mám dělat? Přidat krátký welcome screen |
-| Zobrazit PIN studentovi po přihlášení | "Jsi Student 7. Zapamatuj si číslo pro příště." |
-| Offline banner | Pokud není internet, říct to jasně (email linking nebude fungovat) |
-| Zmenšit textarea na mobilu | `rows={10}` je příliš velké na 375px obrazovce |
+| Lepší onboarding pro nového studenta | ✅ Welcome modal — vysvětlí ⭐, denní výzvu |
+| Zobrazit PIN studentovi po přihlášení | ✅ "Student N" v hlavičce + ve welcome modalu |
+| Offline banner | ✅ `navigator.onLine` + online/offline events |
+| Zmenšit textarea na mobilu | ✅ rows 10→8 |
 
 ### Co záměrně nedělat před táborem
 
@@ -217,29 +221,27 @@ S 1–2 tis. Kč/měsíc nemá smysl dělat placenou reklamu — je to příliš
 ## Stav na dnešek (2026-04-27)
 
 ```
-✅ Hotovo
+✅ Hotovo (Fáze 0 dokončena)
   - IoT modul (31 úkolů, 3 sekce)
   - Gamifikace (hvězdičky, tokeny, odznaky, avatary, styly)
-  - Multi-student systém (PIN + student number)
-  - Admin panel (statistiky, nastavení)
-  - Daily challenge
-  - Denní výzvy, code drafts, prev/next navigace
-  - Téma selector (IoT, 3D tisk, programování, Blender)
+  - Multi-student systém (PIN + student number, per-student data)
+  - Admin panel (statistiky, nastavení, reset jednotlivého studenta)
+  - Daily challenge (auto-award při splnění)
+  - Code drafts persistence, prev/next navigace mezi úkoly
+  - Téma selector (IoT, 3D tisk, programování, Blender — jen IoT enabled)
+  - Welcome modal pro první přihlášení
+  - Storage failure + offline bannery
+  - PINy z env s fallbackem (`NEXT_PUBLIC_DAILY_PIN` apod.)
+  - Email systém (Resend) — funkční, čeká na produkční test
 
-🚧 Rozpracované
-  - Email systém (základ je, ale netestovaný)
-  - Admin: chybí reset jednotlivého studenta
+🎯 Další krok: PRVNÍ TÁBOR (~mid-May 2026)
+  Sbírat reálnou zpětnou vazbu, ne další dev. Po táboře 2 týdny na top 3 bugy.
 
-❌ Chybí (pro tábor)
-  - Lektor view s přehledem studentů
-  - Loading states
-  - Mobile sidebar
-  - PINy do env
-
-❌ Chybí (pro veřejnou beta)
+❌ Chybí (pro veřejnou beta — Fáze 1)
   - Databáze + real auth (Supabase)
   - Platební systém (Stripe)
-  - Landing page
-  - Analytika
+  - Landing page (`learn.weeks.cz`)
+  - Analytika (Posthog / Vercel)
   - 2+ moduly
+  - Vyřešit otevřené otázky výše (doména, název, IČO, equity split)
 ```
