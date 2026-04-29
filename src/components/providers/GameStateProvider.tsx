@@ -269,6 +269,7 @@ function reducer(state: GameState, action: Action): GameState {
         account,
         tasks,
         sections,
+        circuits: stored?.circuits ?? {},
         screen: { ...state.screen, currentScreen: "task-list", pinLevel: "daily" },
       };
     }
