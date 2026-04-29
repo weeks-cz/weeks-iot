@@ -10,10 +10,12 @@ interface Props {
   comp: CircuitComponent;
   selected: boolean;
   dispatch: React.Dispatch<CADAction>;
+  wireInProgress: PinRef | null;
+  onPinAction: (pin: PinRef) => void;
   readOnly?: boolean;
 }
 
-export function PlacedComponent({ comp, selected, dispatch, readOnly }: Props) {
+export function PlacedComponent({ comp, selected, dispatch, wireInProgress, onPinAction, readOnly }: Props) {
   const spec = getComponentSpec(comp.type);
   const elRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ active: false, startX: 0, startY: 0, originX: 0, originY: 0 });
@@ -56,9 +58,8 @@ export function PlacedComponent({ comp, selected, dispatch, readOnly }: Props) {
   const onPinClick = useCallback((e: React.MouseEvent, pinName: string) => {
     e.stopPropagation();
     if (readOnly) return;
-    const pin: PinRef = { compId: comp.id, pinName };
-    dispatch({ type: "BEGIN_WIRE", from: pin });
-  }, [comp.id, dispatch, readOnly]);
+    onPinAction({ compId: comp.id, pinName });
+  }, [comp.id, onPinAction, readOnly]);
 
   const wokwiAttrs = { ...(spec.wokwiAttrs ?? {}) };
   const Wokwi = spec.wokwiTag as keyof JSX.IntrinsicElements;
@@ -89,7 +90,11 @@ export function PlacedComponent({ comp, selected, dispatch, readOnly }: Props) {
             type="button"
             data-pin-name={pin.name}
             onClick={(e) => onPinClick(e, pin.name)}
-            className="pointer-events-auto absolute rounded-full hover:bg-amber-300/60 focus:bg-amber-300/80"
+            className={`pointer-events-auto absolute rounded-full hover:bg-amber-300/60 focus:bg-amber-300/80 ${
+              wireInProgress?.compId === comp.id && wireInProgress?.pinName === pin.name
+                ? "bg-blue-400/60"
+                : ""
+            }`}
             style={{
               left: pin.dx * PITCH / spec.scale - PIN_HIT_AREA / 2,
               top:  pin.dy * PITCH / spec.scale - PIN_HIT_AREA / 2,

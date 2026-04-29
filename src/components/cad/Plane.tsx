@@ -1,10 +1,13 @@
 "use client";
 import { forwardRef } from "react";
 import { PlacedComponent } from "./PlacedComponent";
+import { WireLayer } from "./WireLayer";
 import { usePanZoom } from "./hooks/usePanZoom";
 import { usePlaneDropTarget } from "./hooks/useDragDrop";
+import { useWiring } from "./hooks/useWiring";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH } from "@/lib/cad/constants";
 import type { CADAction, CADState } from "./hooks/useCADReducer";
+import type { PinRef } from "@/types/cad";
 
 interface Props {
   state: CADState;
@@ -20,6 +23,7 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
   const panZoom = usePanZoom(containerRef, state, dispatch);
   const innerRef = ref as React.RefObject<HTMLDivElement>;
   const dropProps = usePlaneDropTarget(innerRef, dispatch, readOnly);
+  const wiring = useWiring(dispatch);
 
   const transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
 
@@ -27,7 +31,19 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
     <div
       className="absolute inset-0 overflow-hidden bg-neutral-950 cursor-default"
       onMouseDown={panZoom.onMouseDown}
-      onMouseMove={panZoom.onMouseMove}
+      onMouseMove={(e) => {
+        panZoom.onMouseMove(e);
+        if (state.wireInProgress) {
+          const plane = innerRef.current;
+          if (plane) {
+            const rect = plane.getBoundingClientRect();
+            dispatch({
+              type: "SET_CURSOR",
+              pos: { x: e.clientX - rect.left, y: e.clientY - rect.top },
+            });
+          }
+        }
+      }}
       onMouseUp={panZoom.onMouseUp}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
@@ -56,9 +72,13 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
             comp={comp}
             selected={state.selection?.kind === "component" && state.selection.id === comp.id}
             dispatch={dispatch}
+            wireInProgress={state.wireInProgress}
+            onPinAction={(pin) => wiring.onPinClick(pin, state.wireInProgress)}
             readOnly={readOnly}
           />
         ))}
+
+        <WireLayer planeRef={innerRef} state={state} dispatch={dispatch} />
       </div>
     </div>
   );
