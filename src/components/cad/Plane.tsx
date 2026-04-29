@@ -1,13 +1,11 @@
 "use client";
 import { forwardRef } from "react";
 import { PlacedComponent } from "./PlacedComponent";
-import { WireLayer } from "./WireLayer";
 import { usePanZoom } from "./hooks/usePanZoom";
 import { usePlaneDropTarget } from "./hooks/useDragDrop";
 import { useWiring } from "./hooks/useWiring";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH } from "@/lib/cad/constants";
 import type { CADAction, CADState } from "./hooks/useCADReducer";
-import type { PinRef } from "@/types/cad";
 
 interface Props {
   state: CADState;
@@ -77,8 +75,6 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
             readOnly={readOnly}
           />
         ))}
-
-        <WireLayer planeRef={innerRef} state={state} dispatch={dispatch} />
       </div>
     </div>
   );
