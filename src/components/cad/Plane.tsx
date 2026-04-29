@@ -2,6 +2,7 @@
 import { forwardRef } from "react";
 import { PlacedComponent } from "./PlacedComponent";
 import { usePanZoom } from "./hooks/usePanZoom";
+import { usePlaneDropTarget } from "./hooks/useDragDrop";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH } from "@/lib/cad/constants";
 import type { CADAction, CADState } from "./hooks/useCADReducer";
 
@@ -17,6 +18,8 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
 ) {
   const containerRef = (ref as React.RefObject<HTMLDivElement>) ?? null;
   const panZoom = usePanZoom(containerRef, state, dispatch);
+  const innerRef = ref as React.RefObject<HTMLDivElement>;
+  const dropProps = usePlaneDropTarget(innerRef, dispatch);
 
   const transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
 
@@ -36,6 +39,8 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
         ref={ref}
         id="workspace-plane"
         className="absolute"
+        onDragOver={dropProps.onDragOver}
+        onDrop={dropProps.onDrop}
         style={{
           width: 4000, height: 4000,
           left: 2000, top: 2000,
