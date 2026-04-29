@@ -40,6 +40,9 @@ const beginnerTasks: Task[] = [
         "Když je tlačítko stisknuté, nastav LED na HIGH, jinak LOW.",
       ]),
     },
+    cad: {
+      palette: ["led-red", "resistor-220", "pushbutton"],
+    },
   },
   {
     id: "beginner-buzzer-button",
@@ -59,6 +62,9 @@ const beginnerTasks: Task[] = [
         "V loop čti stav tlačítka přes digitalRead().",
         "Při stisku použij tone() nebo digitalWrite() pro aktivaci buzzeru, jinak noTone() nebo LOW.",
       ]),
+    },
+    cad: {
+      palette: ["piezo-buzzer", "pushbutton"],
     },
   },
   {
@@ -81,6 +87,9 @@ const beginnerTasks: Task[] = [
         "Hodnotu vypiš přes Serial.println() a přidej krátké delay().",
       ]),
     },
+    cad: {
+      palette: ["potentiometer", "led-red", "resistor-220"],
+    },
   },
   {
     id: "beginner-pwm-led",
@@ -100,6 +109,9 @@ const beginnerTasks: Task[] = [
         "Jas ukládej do proměnné a postupně ho zvětšuj nebo zmenšuj.",
         "Mezi změnami přidej krátký delay(), aby byl přechod viditelný.",
       ]),
+    },
+    cad: {
+      palette: ["led-red", "resistor-220"],
     },
   },
   {
@@ -122,6 +134,9 @@ const beginnerTasks: Task[] = [
         "Mezi jednotlivými stavy použij delay() podle požadované délky světel.",
       ]),
     },
+    cad: {
+      palette: ["led-red", "led-yellow", "led-green", "resistor-220"],
+    },
   },
   {
     id: "beginner-light-sensor",
@@ -141,6 +156,9 @@ const beginnerTasks: Task[] = [
         "Stanov si hranici, pod kterou budeš brát prostředí jako tmu.",
         "Pomocí if podmínky přepínej LED na HIGH a LOW podle změřené hodnoty.",
       ]),
+    },
+    cad: {
+      palette: ["photoresistor", "led-red", "resistor-220"],
     },
   },
   {
@@ -163,6 +181,9 @@ const beginnerTasks: Task[] = [
         "Pro AND rozsviť LED jen tehdy, když jsou aktivní oba vstupy najednou.",
       ]),
     },
+    cad: {
+      palette: ["led-red", "resistor-220", "pushbutton"],
+    },
   },
   {
     id: "beginner-rgb-button",
@@ -182,6 +203,9 @@ const beginnerTasks: Task[] = [
         "Při stisku tlačítka index posuň na další hodnotu.",
         "Podle indexu nastav kombinaci výstupů pro červenou, zelenou a modrou.",
       ]),
+    },
+    cad: {
+      palette: ["led-rgb", "resistor-220", "pushbutton"],
     },
   },
 ];
