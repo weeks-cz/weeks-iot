@@ -5,6 +5,16 @@ import type { CADAction } from "./useCADReducer";
 
 const DRAG_MIME = "application/x-cad-component";
 
+const VALID_COMPONENT_TYPES: readonly ComponentType[] = [
+  "arduino-uno", "breadboard-half",
+  "led-red", "led-yellow", "led-green", "led-blue", "led-rgb",
+  "resistor-220", "pushbutton", "piezo-buzzer", "potentiometer", "photoresistor",
+];
+
+function isComponentType(v: string): v is ComponentType {
+  return (VALID_COMPONENT_TYPES as readonly string[]).includes(v);
+}
+
 export function usePaletteDragSource() {
   const onDragStart = useCallback((e: React.DragEvent, type: ComponentType) => {
     e.dataTransfer.setData(DRAG_MIME, type);
@@ -16,6 +26,7 @@ export function usePaletteDragSource() {
 export function usePlaneDropTarget(
   planeRef: React.RefObject<HTMLDivElement>,
   dispatch: React.Dispatch<CADAction>,
+  readOnly?: boolean,
 ) {
   const onDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(DRAG_MIME)) {
@@ -25,8 +36,10 @@ export function usePlaneDropTarget(
   }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
-    const type = e.dataTransfer.getData(DRAG_MIME) as ComponentType | "";
-    if (!type) return;
+    if (readOnly) return;
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    if (!raw || !isComponentType(raw)) return;
+    const type = raw;
     e.preventDefault();
     const plane = planeRef.current;
     if (!plane) return;
@@ -37,7 +50,7 @@ export function usePlaneDropTarget(
       type: "PLACE_COMPONENT",
       comp: { id: crypto.randomUUID(), type, x, y, rotation: 0 },
     });
-  }, [planeRef, dispatch]);
+  }, [planeRef, dispatch, readOnly]);
 
   return { onDragOver, onDrop };
 }

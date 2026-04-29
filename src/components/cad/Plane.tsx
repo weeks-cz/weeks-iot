@@ -19,7 +19,7 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
   const containerRef = (ref as React.RefObject<HTMLDivElement>) ?? null;
   const panZoom = usePanZoom(containerRef, state, dispatch);
   const innerRef = ref as React.RefObject<HTMLDivElement>;
-  const dropProps = usePlaneDropTarget(innerRef, dispatch);
+  const dropProps = usePlaneDropTarget(innerRef, dispatch, readOnly);
 
   const transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
 
