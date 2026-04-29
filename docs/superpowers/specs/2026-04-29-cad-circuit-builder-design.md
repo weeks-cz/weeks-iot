@@ -136,6 +136,8 @@ export interface Task {
 }
 ```
 
+**Entry point podmínka:** "Postavit obvod" button v TaskDetail se zobrazí **pouze pokud `task.cad !== undefined`**. Úkoly bez `cad` pole nemají CAD entry — kid vidí jen text-hinty (existující flow). Tím můžeme postupně přidávat CAD do dalších úkolů bez "all-or-nothing" rolloutu.
+
 **Default seed** (pro úkoly bez `cad.seed`):
 
 ```ts
@@ -184,7 +186,28 @@ export interface PinSpec {
 }
 ```
 
-**Příklad — LED:**
+**Kompletní component registry pro Phase A — 10 typů:**
+
+Pin offsets (`dx`, `dy`) a `spanX/Y` jsou v PITCH units (PITCH = 16px). Pin **names** vycházejí ze Štěpánových pravidel a běžné Arduino/breadboard nomenklatury; přesné CSS selectory pro shadow DOM piercing musí být zjištěny **před začátkem implementace** (viz "Implementation prerequisites" níže).
+
+| Type | Label | wokwiTag | wokwiAttrs | spanX | spanY | Pins (name : dx,dy) |
+|---|---|---|---|---|---|---|
+| `arduino-uno` | Arduino Uno | `wokwi-arduino-uno` | — | (intrinsic) | (intrinsic) | D0–D13, A0–A5, 5V, 3V3, GND (×3), VIN, RESET, AREF — pin offsets viz wokwi source |
+| `breadboard-half` | Breadboard | `wokwi-breadboard-half` | — | 30 | 10 | 170 pinů: rails (`top-+`, `top-−`, `bot-+`, `bot-−`) + bus rows `A1..E15` (above trench), `F1..J15` (below trench) |
+| `led-red` | LED červená | `wokwi-led` | `{ color: 'red' }` | 1 | 1 | `anode: 0,0`, `cathode: 0,1` |
+| `led-yellow` | LED žlutá | `wokwi-led` | `{ color: 'yellow' }` | 1 | 1 | `anode: 0,0`, `cathode: 0,1` |
+| `led-green` | LED zelená | `wokwi-led` | `{ color: 'green' }` | 1 | 1 | `anode: 0,0`, `cathode: 0,1` |
+| `led-blue` | LED modrá | `wokwi-led` | `{ color: 'blue' }` | 1 | 1 | `anode: 0,0`, `cathode: 0,1` |
+| `led-rgb` | LED RGB | `wokwi-led-rgb` | — | 1 | 4 | `r: 0,0`, `cathode: 0,1`, `g: 0,2`, `b: 0,3` |
+| `resistor-220` | Rezistor 220 Ω | `wokwi-resistor` | `{ value: '220' }` | 4 | 1 | `a: 0,0`, `b: 4,0` (5 děr inclusive) |
+| `pushbutton` | Tlačítko | `wokwi-pushbutton` | `{ color: 'red' }` | 2 | 2 | `1a: 0,0`, `2a: 2,0`, `1b: 0,2`, `2b: 2,2` (straddles trench mezi y=0 a y=2) |
+| `piezo-buzzer` | Piezo buzzer | `wokwi-buzzer` | — | 2 | 2 | `+: 0,0`, `−: 1,0` |
+| `potentiometer` | Potenciometr | `wokwi-potentiometer` | — | 3 | 1 | `terminal-a: 0,0`, `signal: 1,0`, `terminal-b: 2,0` |
+| `photoresistor` | Fotorezistor | `wokwi-photoresistor-sensor` | — | 2 | 1 | `dout: 0,0`, `gnd: 1,0`, `vcc: 2,0`, `aout: 3,0` |
+
+**Pin offset konvence:** `dy=0` = horní řádek, `dx=0` = levý okraj komponenty. Komponenty které straddle trench (pushbutton) mají piny na `dy=0` a `dy=2` — řádek `dy=1` je trench gap.
+
+**Příklad spec objektu pro LED červenou:**
 
 ```ts
 {
@@ -194,7 +217,7 @@ export interface PinSpec {
   wokwiAttrs: { color: 'red' },
   pins: [
     { name: 'anode',   dx: 0, dy: 0 },
-    { name: 'cathode', dx: 0, dy: 1 },  // 1 PITCH apart (LED nohy span)
+    { name: 'cathode', dx: 0, dy: 1 },
   ],
   spanX: 1,
   spanY: 1,
@@ -320,13 +343,48 @@ src/
 
 | Soubor | Změna |
 |---|---|
-| `src/types/index.ts` | Rozšířit `Task` o `cad?: { palette, seed? }`; přidat `circuits: Record<TaskId, Circuit>` do `GameState`; přidat `circuits` do `SyncableState` |
+| `src/types/index.ts` | (a) Rozšířit `Task` o `cad?: { palette: ComponentType[]; seed?: CircuitComponent[] }`. (b) Přidat `circuits: Record<TaskId, Circuit>` do `GameState`. (c) Přidat `circuits: Record<TaskId, Circuit>` do `PerStudentAccount`. (d) Přidat `circuits: Record<TaskId, Circuit>` do `SyncableState`. |
 | `src/lib/tasks.ts` | Doplnit `cad.palette` u prvních 8 beginner úkolů |
-| `src/components/providers/GameStateProvider.tsx` | Přidat action `SAVE_CIRCUIT { taskId, circuit }`, init `state.circuits = {}` |
-| `src/lib/storage.ts` | Default `circuits ?? {}` v `loadGameState()` (žádná migration) |
-| `src/lib/cloud-sync.ts` | Přidat `circuits` do `extractSyncableState()` |
-| `src/components/screens/TaskDetail.tsx` | Přidat "Postavit obvod" button + lazy import `CADModal` |
-| `package.json` | Přidat `@wokwi/elements` |
+| `src/components/providers/GameStateProvider.tsx` | (a) Přidat action `SAVE_CIRCUIT { taskId, circuit }`. (b) Updatovat `syncCurrentStudent()` aby kopíroval `circuits` do `accounts[currentStudentNumber]`. (c) Při LOGIN_STUDENT načíst `accounts[N].circuits` zpět do `state.circuits` (nebo `{}` pokud chybí). |
+| `src/lib/storage.ts` | (a) `createDefaultGameState()` initialize `circuits: {}`. (b) `loadGameState()` defaultovat `parsed.circuits ?? {}` při HYDRATE pro forward-compat. (c) `normalizePerStudentAccount()` defaultovat `student.circuits ?? {}`. |
+| `src/lib/cloud-sync.ts` | Přidat `circuits: state.circuits` do `extractSyncableState()` returnu |
+| `src/components/screens/TaskDetail.tsx` | Přidat "Postavit obvod" button (jen pokud `task.cad`) + lazy import `CADModal` |
+| `package.json` | Přidat `@wokwi/elements` (peer dep `lit` se nainstaluje automaticky) |
+
+### Explicitní type definitions po změnách
+
+```ts
+// src/types/index.ts (konečný stav po Phase A změnách)
+
+import type { Circuit, CircuitComponent, ComponentType } from "@/types/cad";
+
+export interface PerStudentAccount {
+  account: AccountState;
+  tasks: Record<string, TaskState>;
+  sections: Record<SectionId, { unlocked: boolean }>;
+  circuits: Record<string, Circuit>;     // ← new (default {})
+}
+
+export interface GameState {
+  // ...existing fields unchanged
+  circuits: Record<string, Circuit>;     // ← new (default {}), current-student's circuits
+}
+
+export interface SyncableState {
+  account: AccountState;
+  tasks: Record<string, TaskState>;
+  sections: Record<SectionId, { unlocked: boolean }>;
+  circuits: Record<string, Circuit>;     // ← new
+}
+
+export interface Task {
+  // ...existing fields unchanged
+  cad?: {
+    palette: ComponentType[];
+    seed?: CircuitComponent[];
+  };
+}
+```
 
 ### Klíčové architectural patterns
 
@@ -337,18 +395,39 @@ src/
 
 ---
 
-## Persistence — edge cases
+## Persistence — multi-student a edge cases
+
+### Multi-student data flow
+
+App podporuje multi-student mode (více kidů na jednom zařízení, oddělené přes `studentNumber`). `GameState.circuits` reprezentuje **aktuálního přihlášeného studenta**. Při přepnutí studenta:
+
+```
+LOGIN_STUDENT { studentNumber }
+  ↓
+Pokud accounts[N] existuje → state.circuits = accounts[N].circuits ?? {}
+Pokud ne → state.circuits = {} (nový student)
+```
+
+`syncCurrentStudent()` po každé akci kopíruje aktuální `state.circuits` do `accounts[currentStudentNumber].circuits` — stejný pattern jako pro `tasks`/`account`/`sections`.
+
+**Cloud sync** přes `extractSyncableState()` posílá circuits přihlášeného studenta. Linked Supabase user = 1:1 s konkrétním studentNumber (`linkedUserId`), takže sync je jednoznačný.
+
+### Edge cases
 
 | Případ | Chování |
 |---|---|
-| Kid otevře CAD poprvé pro úkol | `state.circuits[taskId]` neexistuje → použít default seed (Arduino + breadboard) |
-| Kid zavře CAD bez úprav | Žádný save. `state.circuits[taskId]` zůstane undefined. |
-| Kid klikne Reset | `dispatch({ type: 'SAVE_CIRCUIT', taskId, circuit: defaultSeed })` — reset ZAPÍŠE seed (ne mažeme klíč), aby cloud-sync to vidělo. |
+| Kid otevře CAD poprvé pro úkol | `state.circuits[taskId]` neexistuje → CAD zobrazí default seed v paměti. **Nezapisujeme** do state dokud kid neudělá změnu. |
+| Kid zavře CAD bez úprav | Žádný save. `state.circuits[taskId]` zůstane undefined. Příští otevření = stejný výchozí seed. |
+| Kid přidá první komponentu | `useCADReducer` updatuje lokální stav → debounce 200ms → `dispatch SAVE_CIRCUIT { taskId, circuit }`. Od teď `state.circuits[taskId]` existuje. |
+| Kid klikne Reset | Confirm dialog → `dispatch SAVE_CIRCUIT { taskId, circuit: defaultSeedForTask(task) }`. Reset **ZAPÍŠE** seed do state (ne mažeme klíč), aby cloud-sync to vidělo a nepřišel zpět starý cloud snapshot. |
 | Kid je offline | LocalStorage save funguje. Cloud-sync se zachytí později (existing offline banner). |
-| Cross-device sync | Login na druhém zařízení → `state.circuits` přijde z `learning_accounts.state` → CAD otevře poslední uloženou verzi. |
+| Cross-device sync | Login na druhém zařízení → `state.circuits` přijde z `learning_accounts.state.circuits` → CAD otevře poslední uloženou verzi. |
 | Kid spadne mid-drag | Lokální stav ztracen, ale GameState je z posledního debounced save. Worst case: ztratí pohyb 1 komponenty. |
+| Kid přepne student v admin preview | `state.circuits` se přepne na `accounts[N].circuits`. CAD modal je v té chvíli zavřený (admin akce zavírá detail). |
 
-**Migrace existujících uživatelů** — `state.circuits` neexistuje v současných localStorage zápisech. V `loadGameState()` jen default `circuits ?? {}`. Žádný migration script.
+### Migrace existujících uživatelů
+
+`state.circuits` ani `accounts[N].circuits` neexistují v současných localStorage zápisech. Žádný migration script není potřeba — `loadGameState()` prostě defaultuje `circuits ?? {}` jak na top-levelu, tak v každém PerStudentAccount během `normalizePerStudentAccount()`. Stejný pattern jako u `unlockedAvatars` v existujícím normalizéru.
 
 ---
 
@@ -368,17 +447,32 @@ src/
 
 ---
 
-## Identifikovaná rizika & otevřené otázky
+## Implementation prerequisites (před writing-plans)
 
-1. **`@wokwi/elements` bundle size** — neznámé, code-splitting přes `next/dynamic` izoluje, ale potřebujeme změřit. Pokud > 200kB gzipped, zvážit selektivní import jednotlivých web components.
+Tyto úkoly musí proběhnout **před** psaním implementačního plánu, jinak plán bude obsahovat hádání:
 
-2. **Wokwi vs React 19** — `wokwi/elements` jsou Web Components (Lit-based). React 19 má nativní support, ale custom event handling (`onpinchange` apod.) ne přes camelCase props. Workaround: `useEffect` + `addEventListener` přes ref.
+1. **Reverse-engineer logical pin selectors** — pro každou z 10 ComponentType v registry zjistit přesné CSS selectory v shadow DOM `<wokwi-*>` elementů. Postup:
+   - `npm install @wokwi/elements` v sandboxové větvi
+   - Pro každý web component otevřít DevTools → inspect Shadow Root → vyextrahovat selectory pro každý pin (např. `wokwi-led` má pravděpodobně `circle.anode`, `circle.cathode` nebo `[data-pin]` atributy)
+   - Výstup: tabulka `{ wokwiTag → { logicalPinName → cssSelector } }` v `src/lib/cad/pin-selectors.ts`
+   - **Bottleneck:** breadboard má 170 pinů, naivně 170 selectorů. Pravděpodobně lze použít jeden pattern selector (`[data-row][data-col]`) — záleží jak wokwi exposed je
+   - **Budget:** 1–2 hodiny. Pokud > 4 hodin → eskalovat (možná wokwi/elements pin model nestačí a musíme custom)
 
-3. **Shadow DOM pin queries performance** — `wokwi-breadboard-half` má **170 pinů**. Naive query at každý render = drahé. Cache by `compId:pinName`, invalidace při move/zoom.
+2. **Měření bundle size** — `npm install @wokwi/elements` + zaznamenat dopad na production bundle (`next build` + analyze). Cílový strop: 200 kB gzipped pro lazy-loaded CAD chunk. Pokud překročí, plán musí obsahovat selektivní import.
+
+3. **React 19 + web components compat smoke test** — minimální test: vykreslit `<wokwi-led color="red">` v React 19 komponentě, ověřit že shadow DOM se vyrenderoval bez warnings. Pokud problém → workaround dokumentovat v plánu.
+
+## Identifikovaná rizika
+
+1. **`@wokwi/elements` bundle size** — viz prerequisite #2. Code-splitting přes `next/dynamic` izoluje, ale potřebujeme číslo.
+
+2. **Wokwi vs React 19** — `wokwi/elements` jsou Web Components (Lit-based). React 19 má nativní support, ale custom event handling (`onpinchange` apod.) ne přes camelCase props. Workaround: `useEffect` + `addEventListener` přes ref. Viz prerequisite #3.
+
+3. **Shadow DOM pin queries performance** — `wokwi-breadboard-half` má **170 pinů**. Naive query při každém renderu = drahé. Cache by `compId:pinName`, invalidace při move/zoom/scroll.
 
 4. **Drát který protíná komponentu** — Phase A ignoruje routing. Drát = direct line `from → to`. Phase B+ může přidat orthogonal routing. Pro v1 OK pro 95 % případů u beginner úkolů.
 
-5. **Logical pin names** — pro `wokwi-breadboard-half` musíme zjistit přesné selectory pro 170 pinů (např. `[data-pin="A1"]`). To se vyřeší při implementaci čtením wokwi/elements zdrojáku — není to design risk, ale implementační detail.
+5. **Multi-student admin preview hazard** — `adminPreviewActive` flag mění reducer behavior (admin browse-only mode). CAD modal **nesmí** umožnit Save když `adminPreviewActive === true` — jinak by admin zničil studentova data. Plán musí pokrýt: CAD button v TaskDetail je read-only (nebo skrytý) v admin preview módu. Tohle je explicitní acceptance criterion.
 
 ---
 
