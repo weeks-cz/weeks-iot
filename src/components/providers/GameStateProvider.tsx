@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type { GameState, PerStudentAccount, SectionId, SyncableState, ThemeId } from "@/types";
+import type { Circuit } from "@/types/cad";
 import {
   createDefaultGameState,
   createDefaultAccountState,
@@ -74,7 +75,8 @@ export type Action =
   | { type: "MARK_WELCOME_SEEN" }
   | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string; metaNickname?: string }
   | { type: "SET_LINKED_USER"; userId: string }
-  | { type: "CLEAR_LINKED_USER" };
+  | { type: "CLEAR_LINKED_USER" }
+  | { type: "SAVE_CIRCUIT"; taskId: string; circuit: Circuit };
 
 function syncCurrentStudent(state: GameState): GameState {
   if (!state.currentStudentNumber) return state;
@@ -356,6 +358,12 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, linkedUserId: action.userId };
     case "CLEAR_LINKED_USER":
       return { ...state, linkedUserId: null };
+
+    case "SAVE_CIRCUIT": {
+      if (state.adminPreviewActive) return state;
+      const circuits = { ...state.circuits, [action.taskId]: action.circuit };
+      return syncCurrentStudent({ ...state, circuits });
+    }
 
     default:
       return state;
