@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useGameState } from "@/components/providers/GameStateProvider";
 import { CADWorkspace } from "./CADWorkspace";
-import { applyTaskSeed, createDefaultCircuit } from "@/lib/cad/circuit";
+import { applyTaskSeed } from "@/lib/cad/circuit";
 import { findTask } from "@/lib/tasks";
 
 interface Props {
