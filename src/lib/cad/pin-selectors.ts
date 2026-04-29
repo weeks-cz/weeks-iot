@@ -56,8 +56,8 @@ export const PIN_SELECTORS: Record<string, PinSelectorMap> = {
 
   // 2-pin buzzer (piezo)
   "wokwi-buzzer": {
-    "1": "[data-pin-name='1']",       // pinInfo[0].name = '1'
-    "2": "[data-pin-name='2']",       // pinInfo[1].name = '2'
+    "+": "[data-pin-name='1']",       // pinInfo[0].name = '1'
+    "−": "[data-pin-name='2']",       // pinInfo[1].name = '2'
   },
 
   // 3-pin potentiometer
@@ -71,8 +71,8 @@ export const PIN_SELECTORS: Record<string, PinSelectorMap> = {
   "wokwi-photoresistor-sensor": {
     vcc: "[data-pin-name='VCC']",     // pinInfo[0].name = 'VCC'
     gnd: "[data-pin-name='GND']",     // pinInfo[1].name = 'GND'
-    "do": "[data-pin-name='DO']",     // pinInfo[2].name = 'DO' (digital out)
-    ao: "[data-pin-name='AO']",       // pinInfo[3].name = 'AO' (analog out)
+    dout: "[data-pin-name='DO']",     // pinInfo[2].name = 'DO' (digital out)
+    aout: "[data-pin-name='AO']",     // pinInfo[3].name = 'AO' (analog out)
   },
 
   // Arduino Uno: 30 pins (D0-D13 digital, A0-A5 analog, power rails)
@@ -113,56 +113,34 @@ export const PIN_SELECTORS: Record<string, PinSelectorMap> = {
     "A5.2": "[data-pin-name='A5.2']", // I2C SCL (alternate)
   },
 
-  // Breadboard half - many pins using standard notation (A1-J30)
+  // Breadboard half — 5 rows (A-E, then F-J below trench) × 30 columns
+  // Each pin follows the pattern "[data-pin='${ROW}${COL}']" e.g. "[data-pin='A1']"
+  // Full 150-pin grid (programmatic generation recommended at runtime):
+  //   Rows: A B C D E  (top half)  +  F G H I J  (bottom half)
+  //   Cols: 1-30
+  // Power rails (two per side, 25 holes each):
+  //   tp1..tp25 = top-positive, tn1..tn25 = top-negative
+  //   bp1..bp25 = bottom-positive, bn1..bn25 = bottom-negative
+  //
+  // Runtime helper pattern (use in wire engine, not here):
+  //   const rows = ['A','B','C','D','E','F','G','H','I','J'];
+  //   const pinName = (row: string, col: number) => `[data-pin='${row}${col}']`;
   "wokwi-breadboard-half": {
-    // NOTE: Breadboard pins follow alphanumeric grid: A1, A2, ..., J30
-    // These are PLACEHOLDERS for the first few columns.
-    // Full breadboard has 5 rows (A-E, or A-J for full) × 30 columns.
-    // Each pin would be: "[data-pin='${ROW}${COL}']" e.g. "[data-pin='A1']"
-    // For now, we provide a pattern example:
+    // Sample entries (full set generated dynamically at runtime):
     A1: "[data-pin='A1']",
-    A2: "[data-pin='A2']",
-    A3: "[data-pin='A3']",
     B1: "[data-pin='B1']",
-    B2: "[data-pin='B2']",
-    B3: "[data-pin='B3']",
     C1: "[data-pin='C1']",
-    C2: "[data-pin='C2']",
-    C3: "[data-pin='C3']",
-    // ... continue for all 5 rows × 30 columns (A1-E30)
-    // Implementation: generate dynamically if breadboard is used extensively
+    D1: "[data-pin='D1']",
+    E1: "[data-pin='E1']",
+    F1: "[data-pin='F1']",
+    G1: "[data-pin='G1']",
+    H1: "[data-pin='H1']",
+    I1: "[data-pin='I1']",
+    J1: "[data-pin='J1']",
+    // Power rails
+    tp1: "[data-pin='tp1']",
+    tn1: "[data-pin='tn1']",
+    bp1: "[data-pin='bp1']",
+    bn1: "[data-pin='bn1']",
   },
 };
-
-/**
- * Helper: get the pinInfo structure directly from a wokwi element.
- * Since DOM selectors don't work, the wire engine uses this approach:
- *
- * @example
- *   const el = componentEl as any; // wokwi component
- *   const pinInfo = el.pinInfo.find(p => p.name === 'D5');
- *   const worldPos = {
- *     x: componentEl.offsetLeft + pinInfo.x,
- *     y: componentEl.offsetTop + pinInfo.y,
- *   };
- *
- * NOTE: This must be in Task 15 (pin-position-resolver.ts).
- * DO NOT try to use PIN_SELECTORS with shadowRoot.querySelector() directly.
- */
-export function resolvePinPosition(
-  componentEl: HTMLElement,
-  pinName: string,
-): { x: number; y: number } | null {
-  const el = componentEl as any;
-  if (!el.pinInfo || !Array.isArray(el.pinInfo)) {
-    return null;
-  }
-
-  const pin = el.pinInfo.find((p: any) => p.name === pinName);
-  if (!pin) {
-    return null;
-  }
-
-  // Return relative coordinates; caller must add componentEl's world position
-  return { x: pin.x, y: pin.y };
-}
