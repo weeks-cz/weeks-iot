@@ -24,8 +24,8 @@ function generateBreadboardHalfPins(): PinSpec[] {
   for (let x = 0; x < 30; x++) {
     pins.push({ name: `top-+-${x}`, dx: x, dy: 0 });
     pins.push({ name: `top-−-${x}`, dx: x, dy: 1 });
-    pins.push({ name: `bot-+-${x}`, dx: x, dy: 8 });
-    pins.push({ name: `bot-−-${x}`, dx: x, dy: 9 });
+    pins.push({ name: `bot-+-${x}`, dx: x, dy: 13 });
+    pins.push({ name: `bot-−-${x}`, dx: x, dy: 14 });
   }
   // Bus rows above trench: rows A..E, columns 1..30
   for (const row of ["A", "B", "C", "D", "E"]) {
@@ -34,7 +34,13 @@ function generateBreadboardHalfPins(): PinSpec[] {
       pins.push({ name: `row-${row}-${col}`, dx: col - 1, dy });
     }
   }
-  // Below trench F..J: deferred to Task 16 after real wokwi pin positions known
+  // Below trench F..J: rows F..J, columns 1..30
+  for (const row of ["F", "G", "H", "I", "J"]) {
+    const dy = 8 + ["F", "G", "H", "I", "J"].indexOf(row);
+    for (let col = 1; col <= 30; col++) {
+      pins.push({ name: `row-${row}-${col}`, dx: col - 1, dy });
+    }
+  }
   return pins;
 }
 
@@ -84,7 +90,7 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     label: "Breadboard",
     wokwiTag: "wokwi-breadboard-half",
     pins: generateBreadboardHalfPins(),
-    spanX: 30, spanY: 10, scale: 1.0,
+    spanX: 30, spanY: 15, scale: 1.0,
     paletteIcon: "/cad/palette/breadboard-half.png",
   },
   "led-red":    { ...led("red"),    type: "led-red",    label: "LED červená", paletteIcon: "/cad/palette/led-red.png" },
