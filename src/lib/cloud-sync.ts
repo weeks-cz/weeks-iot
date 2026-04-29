@@ -6,6 +6,7 @@ export function extractSyncableState(state: GameState): SyncableState {
     account: state.account,
     tasks: state.tasks,
     sections: state.sections,
+    circuits: state.circuits,
   };
 }
 

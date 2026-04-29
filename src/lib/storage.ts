@@ -52,6 +52,7 @@ export function createDefaultGameState(): GameState {
     adminPreviewActive: false,
     adminAuthenticated: false,
     codeDrafts: {},
+    circuits: {},
     account: createDefaultAccountState(),
     tasks: createDefaultTasks(),
     sections: createDefaultSections(),
@@ -77,6 +78,7 @@ function normalizePerStudentAccount(student: PerStudentAccount): PerStudentAccou
   return {
     ...student,
     account: normalizeAccountState(student.account),
+    circuits: student.circuits ?? {},
   };
 }
 
@@ -103,6 +105,7 @@ export function loadGameState(): GameState {
       adminPreviewActive: false,
       adminAuthenticated: false,
       codeDrafts: parsed.codeDrafts ?? {},
+      circuits: parsed.circuits ?? {},
       account: normalizeAccountState(parsed.account),
       linkedUserId: parsed.linkedUserId ?? null,
     };

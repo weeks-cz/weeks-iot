@@ -82,6 +82,7 @@ function syncCurrentStudent(state: GameState): GameState {
     account: state.account,
     tasks: state.tasks,
     sections: state.sections,
+    circuits: state.circuits,
   };
   return { ...state, accounts: { ...state.accounts, [state.currentStudentNumber]: snap } };
 }
