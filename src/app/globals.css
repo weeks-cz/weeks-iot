@@ -25,8 +25,6 @@
   --page-base-bottom: #10192c;
   --page-radial-left: rgba(38, 53, 92, 0.55);
   --page-radial-right: rgba(29, 52, 112, 0.24);
-  --page-shape-left: rgba(36, 54, 87, 0.35);
-  --page-shape-right: rgba(42, 48, 72, 0.42);
 }
 
 [data-theme="sunrise"] {
@@ -49,8 +47,6 @@
   --page-base-bottom: #3b2216;
   --page-radial-left: rgba(255, 160, 102, 0.26);
   --page-radial-right: rgba(255, 211, 111, 0.18);
-  --page-shape-left: rgba(121, 66, 42, 0.28);
-  --page-shape-right: rgba(144, 85, 48, 0.26);
 }
 
 [data-theme="forest"] {
@@ -73,8 +69,6 @@
   --page-base-bottom: #183326;
   --page-radial-left: rgba(78, 164, 120, 0.24);
   --page-radial-right: rgba(133, 207, 120, 0.16);
-  --page-shape-left: rgba(33, 88, 63, 0.3);
-  --page-shape-right: rgba(28, 69, 52, 0.28);
 }
 
 [data-theme="ice"] {
@@ -97,8 +91,6 @@
   --page-base-bottom: #123042;
   --page-radial-left: rgba(109, 193, 255, 0.24);
   --page-radial-right: rgba(135, 228, 255, 0.18);
-  --page-shape-left: rgba(34, 85, 117, 0.28);
-  --page-shape-right: rgba(32, 72, 101, 0.28);
 }
 
 [data-theme="ember"] {
@@ -121,8 +113,6 @@
   --page-base-bottom: #3d1714;
   --page-radial-left: rgba(255, 107, 80, 0.24);
   --page-radial-right: rgba(255, 176, 97, 0.16);
-  --page-shape-left: rgba(116, 44, 34, 0.32);
-  --page-shape-right: rgba(135, 49, 33, 0.28);
 }
 
 [data-theme="lagoon"] {
@@ -145,8 +135,6 @@
   --page-base-bottom: #11343a;
   --page-radial-left: rgba(76, 205, 189, 0.24);
   --page-radial-right: rgba(105, 173, 255, 0.16);
-  --page-shape-left: rgba(24, 102, 96, 0.28);
-  --page-shape-right: rgba(20, 78, 86, 0.28);
 }
 
 [data-theme="sand"] {
@@ -169,8 +157,6 @@
   --page-base-bottom: #322517;
   --page-radial-left: rgba(221, 183, 106, 0.2);
   --page-radial-right: rgba(255, 218, 154, 0.14);
-  --page-shape-left: rgba(118, 94, 45, 0.28);
-  --page-shape-right: rgba(135, 111, 52, 0.24);
 }
 
 [data-theme="midnight"] {
@@ -193,8 +179,6 @@
   --page-base-bottom: #0d1730;
   --page-radial-left: rgba(78, 102, 181, 0.22);
   --page-radial-right: rgba(111, 132, 255, 0.14);
-  --page-shape-left: rgba(32, 44, 88, 0.28);
-  --page-shape-right: rgba(29, 38, 70, 0.26);
 }
 
 [data-theme="volt"] {
@@ -217,8 +201,11 @@
   --page-base-bottom: #132614;
   --page-radial-left: rgba(163, 230, 53, 0.2);
   --page-radial-right: rgba(190, 255, 90, 0.14);
-  --page-shape-left: rgba(60, 115, 40, 0.28);
-  --page-shape-right: rgba(80, 130, 45, 0.24);
+}
+
+html,
+body {
+  min-height: 100vh;
 }
 
 body {
@@ -232,34 +219,12 @@ body {
   background-size: cover, cover, auto, auto, auto;
   background-position: center top, center top, left top, right top, center;
   background-attachment: fixed, fixed, scroll, scroll, scroll;
+}
+
+#root,
+#__next {
   min-height: 100vh;
-}
-
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.2;
-}
-
-body::before {
-  top: 8rem;
-  left: -4rem;
-  width: 28rem;
-  height: 18rem;
-  background: var(--page-shape-left);
-  clip-path: polygon(0 50%, 70% 0, 100% 40%, 36% 100%);
-}
-
-body::after {
-  right: -2rem;
-  top: 10rem;
-  width: 26rem;
-  height: 28rem;
-  background: var(--page-shape-right);
-  clip-path: polygon(10% 0, 100% 20%, 70% 100%, 0 82%);
+  background: transparent;
 }
 
 .panel-glass {

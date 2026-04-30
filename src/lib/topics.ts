@@ -2,7 +2,7 @@ import type { TopicOption } from "@/types";
 
 export const TOPIC_OPTIONS: TopicOption[] = [
   { id: "iot",          label: "IoT a elektronika",      accent: "green",  enabled: true  },
-  { id: "3d-print",     label: "3D tisk",                accent: "amber",  enabled: false },
+  { id: "3d-print",     label: "3D tisk",                accent: "amber",  enabled: true  },
   { id: "programming",  label: "Programování",           accent: "blue",   enabled: false },
   { id: "blender",      label: "3D modelování",          accent: "purple", enabled: false },
 ];
