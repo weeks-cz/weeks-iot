@@ -1,6 +1,6 @@
-import type { AccountState, GameState, ScreenState, TaskState } from "@/types";
+import type { AccountState, GameState, PerStudentAccount, ScreenState, TaskState } from "@/types";
 import { CONFIG_VERSION, DEFAULT_CONFIG, STORAGE_KEY, TEST_BALANCE, TEST_MODE } from "./config";
-import { DEFAULT_AVATAR_ID } from "./avatars";
+import { DEFAULT_AVATAR_ID, normalizeAvatarId } from "./avatars";
 import { getAllTasks } from "./tasks";
 
 function createDefaultTaskState(): TaskState {
@@ -60,6 +60,26 @@ export function createDefaultGameState(): GameState {
   };
 }
 
+function normalizeAccountState(account: AccountState | undefined): AccountState {
+  const base = account ?? createDefaultAccountState();
+  const unlockedAvatars = Array.from(
+    new Set([DEFAULT_AVATAR_ID, ...(base.unlockedAvatars ?? []).map(normalizeAvatarId)]),
+  );
+
+  return {
+    ...base,
+    avatarId: normalizeAvatarId(base.avatarId),
+    unlockedAvatars,
+  };
+}
+
+function normalizePerStudentAccount(student: PerStudentAccount): PerStudentAccount {
+  return {
+    ...student,
+    account: normalizeAccountState(student.account),
+  };
+}
+
 export function loadGameState(): GameState {
   if (typeof window === "undefined") return createDefaultGameState();
   try {
@@ -68,14 +88,22 @@ export function loadGameState(): GameState {
     const parsed = JSON.parse(raw) as GameState;
     if (parsed.version !== CONFIG_VERSION) return createDefaultGameState();
     // adminAuthenticated is session-only — never restore from disk
+    const accounts = Object.fromEntries(
+      Object.entries(parsed.accounts ?? {}).map(([studentNumber, student]) => [
+        studentNumber,
+        normalizePerStudentAccount(student),
+      ]),
+    );
+
     return {
       ...parsed,
       config: { ...DEFAULT_CONFIG, ...(parsed.config ?? {}) },
-      accounts: parsed.accounts ?? {},
+      accounts,
       currentStudentNumber: parsed.currentStudentNumber ?? null,
       adminPreviewActive: false,
       adminAuthenticated: false,
       codeDrafts: parsed.codeDrafts ?? {},
+      account: normalizeAccountState(parsed.account),
       linkedUserId: parsed.linkedUserId ?? null,
     };
   } catch (err) {
