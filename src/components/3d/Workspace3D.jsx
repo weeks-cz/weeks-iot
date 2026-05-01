@@ -5,6 +5,7 @@ import {
   Box3,
   BoxGeometry,
   BufferGeometry,
+  CanvasTexture,
   CylinderGeometry,
   ExtrudeGeometry,
   Float32BufferAttribute,
@@ -12,6 +13,8 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MOUSE,
+  OrthographicCamera,
   Quaternion,
   Scene,
   Shape,
@@ -21,7 +24,7 @@ import {
   Vector3,
 } from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { GizmoHelper, GizmoViewport, Grid, OrbitControls, TransformControls } from "@react-three/drei";
+import { GizmoHelper, Grid, OrbitControls, TransformControls } from "@react-three/drei";
 import { STLExporter } from "three/addons/exporters/STLExporter.js";
 import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
 import { ConvexGeometry } from "three/addons/geometries/ConvexGeometry.js";
@@ -29,11 +32,12 @@ import { FontLoader } from "three/addons/loaders/FontLoader.js";
 import helvetikerFont from "three/examples/fonts/helvetiker_regular.typeface.json";
 import {
   ArrowLeft,
-  Box,
   Check,
+  ChevronDown,
   Combine,
-  Crosshair,
   Download,
+  FileDown,
+  FolderOpen,
   LocateFixed,
   Magnet,
   Move3D,
@@ -77,11 +81,14 @@ const GIZMO_Y_COLOR = "#008800";
 const GIZMO_Z_COLOR = "#1f5cff";
 const GIZMO_ACTIVE_COLOR = "#333333";
 const SCREEN_SPACE_ROTATION_COLOR = "#000000";
+const GIZMO_FLASH_COLOR = "#ffffff";
 const AXES = ["X", "Y", "Z"];
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 const DEFAULT_BASE_SIZE = [1, 1, 1];
-const PITCH = 1;
+const PITCH = 0.5;
+const ROTATION_SNAP = 10 * DEG_TO_RAD;
+const SCALE_SNAP = 0.5;
 const WORLD_UP = new Vector3(0, 0, 1);
 const handleBox = new Box3();
 const handleCenter = new Vector3();
@@ -495,6 +502,7 @@ function evaluateBooleanGeometry(children) {
 
   const evaluator = new Evaluator();
   evaluator.useGroups = false;
+  evaluator.attributes = ["position", "normal"];
 
   let result = brushForComp(solids[0]);
   if (!result) return null;
@@ -514,8 +522,12 @@ function evaluateBooleanGeometry(children) {
     result = next;
   }
 
-  result.geometry.computeVertexNormals();
-  return result.geometry;
+  result.updateMatrixWorld(true);
+  const geometry = result.geometry.clone();
+  geometry.applyMatrix4(result.matrixWorld);
+  geometry.computeVertexNormals();
+  result.geometry.dispose();
+  return geometry;
 }
 
 function meshForExport(comp) {
@@ -530,6 +542,66 @@ function meshForExport(comp) {
   return mesh;
 }
 
+function compactExportGeometry(sourceGeometry, matrixWorld, unitFactor = 1) {
+  const working = sourceGeometry.index ? sourceGeometry.toNonIndexed() : sourceGeometry.clone();
+  working.applyMatrix4(matrixWorld);
+  if (unitFactor !== 1) working.scale(unitFactor, unitFactor, unitFactor);
+
+  const position = working.getAttribute("position");
+  const source = position?.array;
+  if (!source || source.length < 9) {
+    working.dispose();
+    return null;
+  }
+
+  const positions = [];
+  const a = new Vector3();
+  const b = new Vector3();
+  const c = new Vector3();
+  const ab = new Vector3();
+  const ac = new Vector3();
+
+  for (let index = 0; index < source.length; index += 9) {
+    a.set(source[index], source[index + 1], source[index + 2]);
+    b.set(source[index + 3], source[index + 4], source[index + 5]);
+    c.set(source[index + 6], source[index + 7], source[index + 8]);
+    ab.subVectors(b, a);
+    ac.subVectors(c, a);
+    if (ab.cross(ac).lengthSq() < 1e-12) continue;
+    positions.push(
+      a.x, a.y, a.z,
+      b.x, b.y, b.z,
+      c.x, c.y, c.z,
+    );
+  }
+
+  working.dispose();
+  if (positions.length === 0) return null;
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function exportMeshForComp(comp, unitFactor = 1) {
+  const mesh = meshForExport(comp);
+  if (!mesh) return null;
+
+  mesh.updateMatrixWorld(true);
+  const geometry = compactExportGeometry(mesh.geometry, mesh.matrixWorld, unitFactor);
+  mesh.geometry.dispose();
+  mesh.material.dispose();
+  if (!geometry) return null;
+
+  const exportMesh = new Mesh(geometry, new MeshBasicMaterial());
+  exportMesh.name = mesh.name;
+  exportMesh.updateMatrixWorld(true);
+  return exportMesh;
+}
+
 function splitCompWithPlane(comp, splitPlane) {
   const sourceBrush = brushForComp(comp);
   if (!sourceBrush) return [];
@@ -539,6 +611,7 @@ function splitCompWithPlane(comp, splitPlane) {
   const planeNormal = WORLD_UP.clone().applyQuaternion(planeQuat);
   const evaluator = new Evaluator();
   evaluator.useGroups = false;
+  evaluator.attributes = ["position", "normal"];
 
   const parts = [];
   for (const side of [1, -1]) {
@@ -548,9 +621,13 @@ function splitCompWithPlane(comp, splitPlane) {
     cutter.updateMatrixWorld(true);
 
     const result = evaluator.evaluate(sourceBrush, cutter, INTERSECTION);
-    result.geometry.computeVertexNormals();
-    const data = createCustomGeometryData(result.geometry);
+    result.updateMatrixWorld(true);
+    const resultGeometry = result.geometry.clone();
+    resultGeometry.applyMatrix4(result.matrixWorld);
+    resultGeometry.computeVertexNormals();
+    const data = createCustomGeometryData(resultGeometry);
     cutter.geometry.dispose();
+    resultGeometry.dispose();
     result.geometry.dispose();
 
     if (!data || data.positions.length === 0) continue;
@@ -573,24 +650,66 @@ function splitCompWithPlane(comp, splitPlane) {
   return parts;
 }
 
-function downloadSelectedStl(comps, selectedIds) {
+function targetIdsForSplitPlane(splitPlane) {
+  return splitPlane?.targetIds ?? (splitPlane?.targetId ? [splitPlane.targetId] : []);
+}
+
+function splitSelectedWithPlane(comps, splitPlane) {
+  const replaceIds = [];
+  const parts = [];
+
+  for (const targetId of targetIdsForSplitPlane(splitPlane)) {
+    const targetComp = comps.find((comp) => comp.id === targetId);
+    if (!targetComp) continue;
+
+    const splitParts = splitCompWithPlane(targetComp, splitPlane);
+    if (splitParts.length < 2) continue;
+    replaceIds.push(targetComp.id);
+    parts.push(...splitParts);
+  }
+
+  return { replaceIds, parts };
+}
+
+function downloadSelectedStl(comps, selectedIds, unitType = "mm") {
   const selected = comps.filter((comp) => selectedIds.includes(comp.id));
   if (selected.length === 0) return;
 
+  const unit = UNIT_OPTIONS.find((option) => option.value === unitType) ?? UNIT_OPTIONS[0];
   const scene = new Scene();
-  const meshes = selected.map(meshForExport).filter(Boolean);
+  const meshes = selected.map((comp) => exportMeshForComp(comp, unit.factor)).filter(Boolean);
   for (const mesh of meshes) scene.add(mesh);
   scene.updateMatrixWorld(true);
 
   const exporter = new STLExporter();
   const stl = exporter.parse(scene, { binary: false });
-  const filename = selected.length === 1 ? `${safeFilename(selected[0].name ?? selected[0].id)}.stl` : "selection.stl";
+  const name = selected.length === 1 ? safeFilename(selected[0].name ?? selected[0].id) : "selection";
+  const filename = `${name}-${unit.label}.stl`;
   downloadText(filename, stl);
 
   for (const mesh of meshes) {
     mesh.geometry.dispose();
     mesh.material.dispose();
   }
+}
+
+function downloadStudioProject(comps, selectedIds, cursorPos, unitType = "mm") {
+  if (comps.length === 0) return;
+
+  const project = {
+    format: "weeks-3d-studio",
+    version: 1,
+    savedAt: new Date().toISOString(),
+    unitType,
+    cursorPos,
+    selectedIds,
+    comps,
+  };
+  const name = selectedIds.length === 1
+    ? safeFilename(comps.find((comp) => comp.id === selectedIds[0])?.name ?? "studio")
+    : "studio";
+
+  downloadText(`${name}.wks`, JSON.stringify(project, null, 2));
 }
 
 function PivotMarkerMesh({ setRef }) {
@@ -763,11 +882,11 @@ function WorkspaceShape({ comp, onDraggingChanged, registerGroupRef, registerMes
   const selectedIds = useWorkspace3DStore((state) => state.selectedIds);
   const isSnappingEnabled = useWorkspace3DStore((state) => state.isSnappingEnabled);
   const transformMode = useWorkspace3DStore((state) => state.transformMode);
-  const editTarget = useWorkspace3DStore((state) => state.editTarget);
   const splitPlane = useWorkspace3DStore((state) => state.splitPlane);
   const selectShape = useWorkspace3DStore((state) => state.selectShape);
   const updateShape = useWorkspace3DStore((state) => state.updateShape);
   const updatePivot = useWorkspace3DStore((state) => state.updatePivot);
+  const editTarget = "object";
   const selected = selectedIds.includes(comp.id);
   const singleSelected = selected && selectedIds.length === 1;
 
@@ -959,6 +1078,8 @@ function WorkspaceShape({ comp, onDraggingChanged, registerGroupRef, registerMes
           mode={transformMode}
           space="world"
           translationSnap={isSnappingEnabled ? PITCH : null}
+          rotationSnap={isSnappingEnabled ? ROTATION_SNAP : null}
+          scaleSnap={isSnappingEnabled ? SCALE_SNAP : null}
           onMouseDown={beginObjectTransform}
           onObjectChange={applyObjectTransform}
           onMouseUp={finishObjectTransform}
@@ -1112,6 +1233,8 @@ function SharedSelectionControls({ groupRefs, meshRefs, onDraggingChanged }) {
           mode={transformMode}
           space="world"
           translationSnap={isSnappingEnabled ? PITCH : null}
+          rotationSnap={isSnappingEnabled ? ROTATION_SNAP : null}
+          scaleSnap={isSnappingEnabled ? SCALE_SNAP : null}
           onMouseDown={beginSharedTransform}
           onObjectChange={applySharedTransform}
           onMouseUp={finishSharedTransform}
@@ -1187,6 +1310,7 @@ function SplitPlaneTool({ onDraggingChanged }) {
           mode={transformMode === "rotate" ? "rotate" : "translate"}
           space="world"
           translationSnap={isSnappingEnabled ? PITCH : null}
+          rotationSnap={isSnappingEnabled ? ROTATION_SNAP : null}
           onObjectChange={syncSplitPlane}
           onMouseUp={syncSplitPlane}
           onDraggingChanged={(event) => {
@@ -1199,9 +1323,91 @@ function SplitPlaneTool({ onDraggingChanged }) {
   );
 }
 
+function GizmoAxisBar({ color, rotation, scale = [0.8, 0.05, 0.05] }) {
+  return (
+    <group rotation={rotation}>
+      <mesh position={[0.4, 0, 0]}>
+        <boxGeometry args={scale} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function GizmoAxisHead({ color, label, labelColor = "#ffffff", position, axisHeadScale = 1, onClick }) {
+  const gl = useThree((state) => state.gl);
+  const [active, setActive] = useState(false);
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext("2d");
+    context.beginPath();
+    context.arc(32, 32, 16, 0, Math.PI * 2);
+    context.closePath();
+    context.fillStyle = color;
+    context.fill();
+    if (label) {
+      context.font = "18px Inter var, Arial, sans-serif";
+      context.textAlign = "center";
+      context.fillStyle = labelColor;
+      context.fillText(label, 32, 41);
+    }
+    return new CanvasTexture(canvas);
+  }, [color, label, labelColor]);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  const scale = (label ? 1 : 0.75) * (active ? 1.2 : 1) * axisHeadScale;
+
+  return (
+    <sprite
+      position={position}
+      scale={scale}
+      onPointerDown={(event) => event.stopPropagation()}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setActive(true);
+      }}
+      onPointerOut={(event) => {
+        event.stopPropagation();
+        setActive(false);
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick(event);
+      }}
+    >
+      <spriteMaterial map={texture} map-anisotropy={gl.capabilities.getMaxAnisotropy() || 1} alphaTest={0.3} opacity={label ? 1 : 0.75} toneMapped={false} />
+    </sprite>
+  );
+}
+
+function StudioGizmoViewport({ axisColors, labels, labelColor = "#ffffff", axisHeadScale = 1, onAxisClick }) {
+  const [colorX, colorY, colorZ] = axisColors;
+
+  return (
+    <group scale={40}>
+      <GizmoAxisBar color={colorX} rotation={[0, 0, 0]} />
+      <GizmoAxisBar color={colorY} rotation={[0, 0, Math.PI / 2]} />
+      <GizmoAxisBar color={colorZ} rotation={[0, -Math.PI / 2, 0]} />
+      <GizmoAxisHead color={colorX} position={[1, 0, 0]} label={labels[0]} labelColor={labelColor} axisHeadScale={axisHeadScale} onClick={onAxisClick} />
+      <GizmoAxisHead color={colorY} position={[0, 1, 0]} label={labels[1]} labelColor={labelColor} axisHeadScale={axisHeadScale} onClick={onAxisClick} />
+      <GizmoAxisHead color={colorZ} position={[0, 0, 1]} label={labels[2]} labelColor={labelColor} axisHeadScale={axisHeadScale} onClick={onAxisClick} />
+      <GizmoAxisHead color={colorX} position={[-1, 0, 0]} axisHeadScale={axisHeadScale} onClick={onAxisClick} />
+      <GizmoAxisHead color={colorY} position={[0, -1, 0]} axisHeadScale={axisHeadScale} onClick={onAxisClick} />
+      <GizmoAxisHead color={colorZ} position={[0, 0, -1]} axisHeadScale={axisHeadScale} onClick={onAxisClick} />
+    </group>
+  );
+}
+
 function WorkspaceScene({ boxSelecting, onBoxSelectReady }) {
   const [orbitEnabled, setOrbitEnabled] = useState(true);
+  const [flashedGizmoAxis, setFlashedGizmoAxis] = useState(null);
   const orbitControlsRef = useRef(null);
+  const perspectiveCameraRef = useRef(null);
+  const gizmoFlashTimeoutRef = useRef(null);
+  const orbitPointerButtonRef = useRef(null);
   const groupRefs = useRef(new Map());
   const meshRefs = useRef(new Map());
   const comps = useWorkspace3DStore((state) => state.comps);
@@ -1209,11 +1415,43 @@ function WorkspaceScene({ boxSelecting, onBoxSelectReady }) {
   const addSelectedShapes = useWorkspace3DStore((state) => state.addSelectedShapes);
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
+  const setThree = useThree((state) => state.set);
+  const size = useThree((state) => state.size);
 
   useEffect(() => {
-    camera.up.copy(WORLD_UP);
+    if (!camera.isOrthographicCamera) camera.up.copy(WORLD_UP);
     camera.updateProjectionMatrix();
   }, [camera]);
+
+  useEffect(() => {
+    return () => {
+      if (gizmoFlashTimeoutRef.current) window.clearTimeout(gizmoFlashTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const element = gl.domElement;
+    function handlePointerDown(event) {
+      orbitPointerButtonRef.current = event.button;
+    }
+
+    function handlePointerUp() {
+      orbitPointerButtonRef.current = null;
+    }
+
+    element.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      element.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [gl.domElement]);
+
+  const gizmoAxisColors = useMemo(() => {
+    const colors = [GIZMO_X_COLOR, GIZMO_Y_COLOR, GIZMO_Z_COLOR];
+    if (flashedGizmoAxis !== null) colors[flashedGizmoAxis] = GIZMO_FLASH_COLOR;
+    return colors;
+  }, [flashedGizmoAxis]);
 
   const registerGroupRef = useCallback((id, node) => {
     if (node) groupRefs.current.set(id, node);
@@ -1249,18 +1487,83 @@ function WorkspaceScene({ boxSelecting, onBoxSelectReady }) {
     return () => onBoxSelectReady(null);
   }, [addSelectedShapes, camera, comps, gl.domElement, onBoxSelectReady]);
 
+  function switchToOrthographicAxisView(event) {
+    if (event.type !== "click") return null;
+    event.stopPropagation();
+
+    const target = orbitControlsRef.current?.target?.clone() ?? new Vector3(0, 0, 0);
+    const axis = event.object.position.clone().normalize();
+    if (axis.lengthSq() === 0) return null;
+    const axisIndex = Math.abs(axis.x) > Math.abs(axis.y) && Math.abs(axis.x) > Math.abs(axis.z) ? 0 : Math.abs(axis.y) > Math.abs(axis.z) ? 1 : 2;
+
+    setFlashedGizmoAxis(axisIndex);
+    if (gizmoFlashTimeoutRef.current) window.clearTimeout(gizmoFlashTimeoutRef.current);
+    gizmoFlashTimeoutRef.current = window.setTimeout(() => setFlashedGizmoAxis(null), 180);
+    if (!camera.isOrthographicCamera) perspectiveCameraRef.current = camera;
+
+    const currentDistance = Math.max(camera.position.distanceTo(target), 1);
+    const aspect = Math.max(size.width / Math.max(size.height, 1), 0.001);
+    const viewHeight = camera.isOrthographicCamera
+      ? (camera.top - camera.bottom) / Math.max(camera.zoom, 0.001)
+      : 2 * currentDistance * Math.tan((camera.fov * Math.PI) / 360);
+    const safeViewHeight = Math.max(viewHeight, 1);
+    const viewWidth = safeViewHeight * aspect;
+    const orthoCamera = new OrthographicCamera(
+      -viewWidth / 2,
+      viewWidth / 2,
+      safeViewHeight / 2,
+      -safeViewHeight / 2,
+      0.01,
+      10000,
+    );
+
+    orthoCamera.position.copy(target).addScaledVector(axis, currentDistance);
+    orthoCamera.up.copy(Math.abs(axis.dot(WORLD_UP)) > 0.98 ? new Vector3(0, 1, 0) : WORLD_UP);
+    orthoCamera.lookAt(target);
+    orthoCamera.updateProjectionMatrix();
+    orthoCamera.updateMatrixWorld(true);
+
+    setThree({ camera: orthoCamera });
+    if (orbitControlsRef.current) {
+      orbitControlsRef.current.object = orthoCamera;
+      orbitControlsRef.current.target.copy(target);
+      orbitControlsRef.current.update();
+    }
+
+    return null;
+  }
+
+  function restorePerspectiveView() {
+    const perspectiveCamera = perspectiveCameraRef.current;
+    if (!perspectiveCamera || !camera.isOrthographicCamera) return;
+
+    perspectiveCamera.updateProjectionMatrix();
+    perspectiveCamera.updateMatrixWorld(true);
+    setThree({ camera: perspectiveCamera });
+    if (orbitControlsRef.current) {
+      orbitControlsRef.current.object = perspectiveCamera;
+      orbitControlsRef.current.update();
+    }
+    perspectiveCameraRef.current = null;
+    setFlashedGizmoAxis(null);
+  }
+
+  function handleOrbitStart() {
+    if (orbitPointerButtonRef.current === 0) restorePerspectiveView();
+  }
+
   return (
     <>
       <ambientLight intensity={0.55} />
       <directionalLight position={[5, -4, 8]} intensity={1.4} castShadow />
       <Grid
         args={[40, 40]}
-        cellSize={0.25}
-        cellThickness={0.35}
-        cellColor="#eeeeee"
+        cellSize={0.1}
+        cellThickness={0.45}
+        cellColor="#aeb9c8"
         sectionSize={1}
         sectionThickness={0}
-        sectionColor="#eeeeee"
+        sectionColor="#aeb9c8"
         fadeDistance={80}
         fadeStrength={1}
         infiniteGrid
@@ -1273,11 +1576,11 @@ function WorkspaceScene({ boxSelecting, onBoxSelectReady }) {
       <Grid
         args={[40, 40]}
         cellSize={1}
-        cellThickness={0.6}
-        cellColor="#d4d4d8"
+        cellThickness={0.75}
+        cellColor="#718096"
         sectionSize={1}
-        sectionThickness={0.6}
-        sectionColor="#d4d4d8"
+        sectionThickness={0.75}
+        sectionColor="#718096"
         fadeDistance={80}
         fadeStrength={1}
         infiniteGrid
@@ -1319,15 +1622,25 @@ function WorkspaceScene({ boxSelecting, onBoxSelectReady }) {
         margin={[80, 80]}
         onTarget={() => orbitControlsRef.current?.target ?? new Vector3(0, 0, 0)}
       >
-        <GizmoViewport
-          axisColors={[GIZMO_X_COLOR, GIZMO_Y_COLOR, GIZMO_Z_COLOR]}
+        <StudioGizmoViewport
+          axisColors={gizmoAxisColors}
           labels={["X", "Y", "Z"]}
           labelColor="#ffffff"
           axisHeadScale={1.15}
-          hideNegativeAxes={false}
+          onAxisClick={switchToOrthographicAxisView}
         />
       </GizmoHelper>
-      <OrbitControls ref={orbitControlsRef} makeDefault enabled={orbitEnabled && !boxSelecting} />
+      <OrbitControls
+        ref={orbitControlsRef}
+        makeDefault
+        enabled={orbitEnabled && !boxSelecting}
+        mouseButtons={{
+          LEFT: MOUSE.ROTATE,
+          MIDDLE: MOUSE.PAN,
+          RIGHT: MOUSE.PAN,
+        }}
+        onStart={handleOrbitStart}
+      />
     </>
   );
 }
@@ -1447,24 +1760,63 @@ function stopUiEvent(event) {
   event.stopPropagation();
 }
 
-function sanitizeDecimalInput(value) {
-  const normalized = value.replaceAll(",", ".");
-  let clean = "";
-  let hasDot = false;
+function evaluateMathInput(value) {
+  const source = String(value ?? "").replaceAll(",", ".").replace(/\s+/g, "");
+  if (!source) return null;
+  let index = 0;
 
-  for (const char of normalized) {
-    if (char >= "0" && char <= "9") {
-      clean += char;
-      continue;
-    }
-
-    if (char === "." && !hasDot) {
-      clean += char;
-      hasDot = true;
-    }
+  function parseNumber() {
+    const start = index;
+    if (source[index] === "+" || source[index] === "-") index += 1;
+    while ((source[index] >= "0" && source[index] <= "9") || source[index] === ".") index += 1;
+    if (start === index || source.slice(start, index) === "+" || source.slice(start, index) === "-") return null;
+    const parsed = Number(source.slice(start, index));
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
-  return clean;
+  function parseFactor() {
+    if (source[index] === "(") {
+      index += 1;
+      const valueInParens = parseExpression();
+      if (source[index] !== ")") return null;
+      index += 1;
+      return valueInParens;
+    }
+    return parseNumber();
+  }
+
+  function parseTerm() {
+    let result = parseFactor();
+    if (result === null) return null;
+
+    while (source[index] === "*" || source[index] === "/") {
+      const operator = source[index];
+      index += 1;
+      const right = parseFactor();
+      if (right === null) return null;
+      result = operator === "*" ? result * right : result / right;
+    }
+
+    return result;
+  }
+
+  function parseExpression() {
+    let result = parseTerm();
+    if (result === null) return null;
+
+    while (source[index] === "+" || source[index] === "-") {
+      const operator = source[index];
+      index += 1;
+      const right = parseTerm();
+      if (right === null) return null;
+      result = operator === "+" ? result + right : result - right;
+    }
+
+    return result;
+  }
+
+  const result = parseExpression();
+  return result !== null && index === source.length && Number.isFinite(result) ? result : null;
 }
 
 function NumericField({ value, onChange }) {
@@ -1475,8 +1827,7 @@ function NumericField({ value, onChange }) {
   }, [value]);
 
   function commit() {
-    const clean = sanitizeDecimalInput(draft);
-    const parsed = Number.parseFloat(clean);
+    const parsed = evaluateMathInput(draft);
     const safeValue = Number.isFinite(parsed) ? parsed : 0;
     setDraft(safeValue.toFixed(2));
     onChange(safeValue);
@@ -1485,7 +1836,7 @@ function NumericField({ value, onChange }) {
   return (
     <input
       type="text"
-      inputMode="decimal"
+      inputMode="text"
       value={draft}
       onMouseDown={stopUiEvent}
       onKeyDown={(event) => {
@@ -1583,21 +1934,6 @@ function PropertiesPanel() {
     updateShape(selectedComp.id, anchoredScaleUpdate(selectedComp, nextScale));
   }
 
-  function updateScale(index, value) {
-    if (!Number.isFinite(value)) return;
-    const nextScale = [...scale];
-    nextScale[index] = value;
-    updateShape(selectedComp.id, anchoredScaleUpdate(selectedComp, nextScale));
-  }
-
-  function applyScale() {
-    const nextBaseSize = baseSize.map((value, index) => Math.max(value * scale[index], 0.001));
-    updateShape(selectedComp.id, {
-      baseSize: nextBaseSize,
-      scale: [1, 1, 1],
-    });
-  }
-
   return (
     <div
       className="pointer-events-auto absolute bottom-3 left-3 max-h-[calc(100vh-17rem)] w-56 overflow-y-auto rounded-lg border border-white/15 bg-slate-950/85 p-3 text-white shadow-2xl backdrop-blur"
@@ -1684,29 +2020,6 @@ function PropertiesPanel() {
         </div>
       </div>
 
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold uppercase tracking-wider text-white/50">Scale</div>
-          <button
-            type="button"
-            title="Pouzit meritko"
-            onMouseDown={stopUiEvent}
-            onKeyDown={stopUiEvent}
-            onClick={applyScale}
-            className="rounded border border-white/15 bg-white/10 px-2 py-1 text-xs font-semibold text-white transition hover:bg-white/20"
-          >
-            Apply
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {AXES.map((axis, index) => (
-            <label key={axis} className="text-xs text-white/60">
-              {axis}
-              <NumericField value={scale[index]} onChange={(value) => updateScale(index, value)} />
-            </label>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -1736,19 +2049,20 @@ function MeasurePanel() {
 
 function WorkspaceOverlay({ onExit }) {
   const [flashedAlignAxis, setFlashedAlignAxis] = useState(null);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const projectInputRef = useRef(null);
   const transformMode = useWorkspace3DStore((state) => state.transformMode);
-  const editTarget = useWorkspace3DStore((state) => state.editTarget);
   const unitType = useWorkspace3DStore((state) => state.unitType);
   const isSnappingEnabled = useWorkspace3DStore((state) => state.isSnappingEnabled);
   const selectedIds = useWorkspace3DStore((state) => state.selectedIds);
   const splitPlane = useWorkspace3DStore((state) => state.splitPlane);
   const comps = useWorkspace3DStore((state) => state.comps);
+  const cursorPos = useWorkspace3DStore((state) => state.cursorPos);
   const selectedComp = useWorkspace3DStore((state) =>
     state.selectedIds.length === 1 ? state.comps.find((comp) => comp.id === state.selectedIds[0]) : null,
   );
   const addShape = useWorkspace3DStore((state) => state.addShape);
   const setTransformMode = useWorkspace3DStore((state) => state.setTransformMode);
-  const setEditTarget = useWorkspace3DStore((state) => state.setEditTarget);
   const setUnitType = useWorkspace3DStore((state) => state.setUnitType);
   const toggleSnapping = useWorkspace3DStore((state) => state.toggleSnapping);
   const alignSelected = useWorkspace3DStore((state) => state.alignSelected);
@@ -1760,12 +2074,13 @@ function WorkspaceOverlay({ onExit }) {
   const centerCursorToSelected = useWorkspace3DStore((state) => state.centerCursorToSelected);
   const groupSelected = useWorkspace3DStore((state) => state.groupSelected);
   const ungroupSelected = useWorkspace3DStore((state) => state.ungroupSelected);
+  const loadProject = useWorkspace3DStore((state) => state.loadProject);
   const pivotIsOffset = selectedComp ? selectedComp.pivotOffset.reduce((sum, value) => sum + Math.abs(value), 0) > 0.001 : false;
   const selectedIsGroup = selectedComp?.type === "group";
   const alignmentDisabled = selectedIds.length <= 1;
   const holeToggleDisabled = !selectedComp;
   const mirrorDisabled = selectedIds.length === 0;
-  const splitDisabled = selectedIds.length !== 1;
+  const splitDisabled = !splitPlane && selectedIds.length === 0;
 
   function handleAlign(axisIndex) {
     if (alignmentDisabled) return;
@@ -1775,14 +2090,43 @@ function WorkspaceOverlay({ onExit }) {
   }
 
   function exportSelectedStl() {
-    downloadSelectedStl(comps, selectedIds);
+    downloadSelectedStl(comps, selectedIds, unitType);
+    setDownloadMenuOpen(false);
+  }
+
+  function exportStudioProject() {
+    downloadStudioProject(comps, selectedIds, cursorPos, unitType);
+    setDownloadMenuOpen(false);
+  }
+
+  function openProjectPicker() {
+    projectInputRef.current?.click();
+    setDownloadMenuOpen(false);
+  }
+
+  async function importStudioProject(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const project = JSON.parse(text);
+      if (project?.format !== "weeks-3d-studio" || !Array.isArray(project?.comps)) {
+        throw new Error("Unsupported project file");
+      }
+      const loaded = loadProject(project);
+      if (!loaded) throw new Error("Project does not contain any objects");
+    } catch (error) {
+      window.alert("Soubor se nepodarilo otevrit jako 3D Studio projekt.");
+      console.error(error);
+    }
   }
 
   function confirmSplit() {
     if (!splitPlane) return;
-    const targetComp = comps.find((comp) => comp.id === splitPlane.targetId);
-    if (!targetComp) return;
-    replaceWithSplitParts(targetComp.id, splitCompWithPlane(targetComp, splitPlane));
+    const { replaceIds, parts } = splitSelectedWithPlane(comps, splitPlane);
+    replaceWithSplitParts(replaceIds, parts);
   }
 
   return (
@@ -1814,13 +2158,6 @@ function WorkspaceOverlay({ onExit }) {
       </div>
 
       <div className="pointer-events-auto absolute left-16 top-4 flex flex-wrap gap-2">
-        <ToolButton
-          title={editTarget === "object" ? "Upravit pivot" : "Upravit objekt"}
-          active={editTarget === "pivot"}
-          onClick={() => setEditTarget(editTarget === "object" ? "pivot" : "object")}
-        >
-          {editTarget === "object" ? <Box className="h-4 w-4" /> : <Crosshair className="h-4 w-4" />}
-        </ToolButton>
         <ToolButton title="Prichytavani ke gridu" active={isSnappingEnabled} onClick={toggleSnapping}>
           <Magnet className="h-4 w-4" />
         </ToolButton>
@@ -1864,9 +2201,55 @@ function WorkspaceOverlay({ onExit }) {
             <AlignZIcon />
           </ToolButton>
         </div>
-        <ToolButton title="Stahnout STL" disabled={selectedIds.length === 0} onClick={exportSelectedStl}>
-          <Download className="h-4 w-4" />
-        </ToolButton>
+        <div className="relative">
+          <ToolButton title="Stahnout / otevrit" active={downloadMenuOpen} onClick={() => setDownloadMenuOpen((open) => !open)}>
+            <span className="inline-flex items-center gap-1">
+              <Download className="h-4 w-4" />
+              <ChevronDown className="h-3 w-3" />
+            </span>
+          </ToolButton>
+          {downloadMenuOpen && (
+            <div
+              className="absolute left-0 top-11 z-50 w-52 overflow-hidden rounded-lg border border-slate-600 bg-slate-950 text-sm font-semibold text-slate-100 shadow-2xl"
+              onMouseDown={stopUiEvent}
+              onKeyDown={stopUiEvent}
+            >
+              <button
+                type="button"
+                disabled={selectedIds.length === 0}
+                onClick={exportSelectedStl}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <FileDown className="h-4 w-4" />
+                STL pro tisk
+              </button>
+              <button
+                type="button"
+                disabled={comps.length === 0}
+                onClick={exportStudioProject}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <Download className="h-4 w-4" />
+                Projekt .wks
+              </button>
+              <button
+                type="button"
+                onClick={openProjectPicker}
+                className="flex w-full items-center gap-2 border-t border-slate-700 px-3 py-2 text-left transition hover:bg-slate-800"
+              >
+                <FolderOpen className="h-4 w-4" />
+                Otevrit .wks
+              </button>
+            </div>
+          )}
+          <input
+            ref={projectInputRef}
+            type="file"
+            accept=".wks,application/json"
+            className="hidden"
+            onChange={importStudioProject}
+          />
+        </div>
         <ToolButton
           title="Rozříznout"
           disabled={splitDisabled}
@@ -1976,9 +2359,8 @@ export function Workspace3D({ onExit }) {
 
       if (splitPlane && event.key === "Enter") {
         event.preventDefault();
-        const targetComp = comps.find((comp) => comp.id === splitPlane.targetId);
-        if (!targetComp) return;
-        replaceWithSplitParts(targetComp.id, splitCompWithPlane(targetComp, splitPlane));
+        const { replaceIds, parts } = splitSelectedWithPlane(comps, splitPlane);
+        replaceWithSplitParts(replaceIds, parts);
         return;
       }
 

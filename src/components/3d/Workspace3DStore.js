@@ -111,6 +111,50 @@ function cloneComponent(comp) {
   };
 }
 
+function validNumberArray(value, fallback, length = fallback.length) {
+  if (!Array.isArray(value) || value.length !== length) return [...fallback];
+  const numbers = value.map((item) => Number(item));
+  return numbers.every(Number.isFinite) ? numbers : [...fallback];
+}
+
+function normalizeImportedComponent(comp, usedIds, index = 0) {
+  const type = typeof comp?.type === "string" ? comp.type : "box";
+  const rawId = typeof comp?.id === "string" && comp.id.trim() ? comp.id.trim() : `${type}-import-${index}`;
+  let id = rawId;
+  let suffix = 1;
+  while (usedIds.has(id)) {
+    id = `${rawId}-${suffix}`;
+    suffix += 1;
+  }
+  usedIds.add(id);
+
+  const normalized = {
+    id,
+    name: typeof comp?.name === "string" && comp.name.trim() ? comp.name : id,
+    type,
+    isHole: Boolean(comp?.isHole),
+    color: typeof comp?.color === "string" ? comp.color : defaultColor,
+    pos: validNumberArray(comp?.pos, [0, 0, 0]),
+    quat: validNumberArray(comp?.quat, identityQuat),
+    scale: validNumberArray(comp?.scale, unitScale),
+    baseSize: validNumberArray(comp?.baseSize, baseSizeFor(type)),
+    pivotOffset: validNumberArray(comp?.pivotOffset, [0, 0, 0]),
+    ...(Number.isFinite(Number(comp?.segments)) ? { segments: Number(comp.segments) } : {}),
+    ...(typeof comp?.text === "string" ? { text: comp.text } : {}),
+  };
+
+  if (comp?.geometryData?.positions) {
+    const positions = validNumberArray(comp.geometryData.positions, [], comp.geometryData.positions.length);
+    if (positions.length > 0) normalized.geometryData = { positions };
+  }
+
+  if (Array.isArray(comp?.children)) {
+    normalized.children = comp.children.map((child, childIndex) => normalizeImportedComponent(child, usedIds, childIndex));
+  }
+
+  return normalized;
+}
+
 function nextComponentName(type, comps) {
   const prefix = namePrefixes[type] ?? type;
   const pattern = new RegExp(`^${prefix}(\\d+)$`, "i");
@@ -287,15 +331,42 @@ export const useWorkspace3DStore = create((set, get) => ({
   setTransformMode: (mode) => set({ transformMode: mode }),
   setEditTarget: (editTarget) => set((state) => (state.editTarget === editTarget ? state : { editTarget })),
   setUnitType: (unitType) => set({ unitType }),
+  loadProject: (project) => {
+    const importedComps = Array.isArray(project?.comps) ? project.comps : [];
+    if (importedComps.length === 0) return false;
+
+    const usedIds = new Set();
+    const comps = importedComps.map((comp, index) => normalizeImportedComponent(comp, usedIds, index));
+    const importedSelectedIds = Array.isArray(project?.selectedIds) ? project.selectedIds : [];
+    const selectedIds = importedSelectedIds.filter((id) => usedIds.has(id));
+    const cursorPos = validNumberArray(project?.cursorPos, [0, 0, 0]);
+    const unitType = ["mm", "cm", "m", "inch"].includes(project?.unitType) ? project.unitType : get().unitType;
+
+    set((state) => ({
+      history: pushHistory(state),
+      comps,
+      cursorPos,
+      selectedIds,
+      selectionMethod: selectedIds.length > 1 ? "mass" : selectedIds.length === 1 ? "single" : "none",
+      editTarget: "object",
+      splitPlane: null,
+      unitType,
+    }));
+
+    return true;
+  },
   startSplit: () => {
     const { comps, selectedIds } = get();
-    if (selectedIds.length !== 1) return;
-    const selected = comps.find((comp) => comp.id === selectedIds[0]);
-    if (!selected) return;
+    if (selectedIds.length === 0) return;
+    const selected = selectedIds.map((id) => comps.find((comp) => comp.id === id)).filter(Boolean);
+    if (selected.length === 0) return;
+    const center = selected
+      .reduce((sum, comp) => sum.add(new Vector3(...visualCenterFor(comp))), new Vector3())
+      .divideScalar(selected.length);
     set({
       splitPlane: {
-        targetId: selected.id,
-        pos: visualCenterFor(selected),
+        targetIds: selected.map((comp) => comp.id),
+        pos: center.toArray(),
         quat: [...identityQuat],
       },
       editTarget: "object",
@@ -305,13 +376,14 @@ export const useWorkspace3DStore = create((set, get) => ({
   updateSplitPlane: (newData) => set((state) => (state.splitPlane ? { splitPlane: { ...state.splitPlane, ...newData } } : state)),
   cancelSplit: () => set({ splitPlane: null }),
   replaceWithSplitParts: (targetId, parts) => {
-    if (parts.length < 2) {
+    const targetIds = Array.isArray(targetId) ? targetId : [targetId];
+    if (parts.length === 0 || targetIds.length === 0) {
       set({ splitPlane: null });
       return;
     }
     set((state) => ({
       history: pushHistory(state),
-      comps: [...state.comps.filter((comp) => comp.id !== targetId), ...parts],
+      comps: [...state.comps.filter((comp) => !targetIds.includes(comp.id)), ...parts],
       selectedIds: parts.map((part) => part.id),
       selectionMethod: "mass",
       editTarget: "object",
