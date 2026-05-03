@@ -33,11 +33,11 @@ export function AvatarShop() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-auto max-w-6xl p-6 space-y-6"
+      className="mx-auto max-w-3xl px-4 py-6 space-y-6"
     >
       <header className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={goBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+        <Button variant="ghost" size="md" onClick={goBack}>
+          <ArrowLeft className="mr-2 h-5 w-5" />
           Zpět
         </Button>
         <h1 className="flex items-center gap-2 text-2xl font-bold">
@@ -47,7 +47,6 @@ export function AvatarShop() {
         <StarBadge count={account.stars} />
       </header>
 
-      {/* Random spin card */}
       <PanelGlass className="flex items-center justify-between gap-4">
         <div>
           <strong className="block">Náhodný avatar</strong>
@@ -67,7 +66,7 @@ export function AvatarShop() {
         </Button>
       </PanelGlass>
 
-      <div className="grid gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
+      <div className="grid gap-3 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
         {AVATAR_OPTIONS.map((opt) => {
           const isUnlocked = state.account.unlockedAvatars.includes(opt.id);
           const isActive = state.account.avatarId === opt.id;
@@ -89,10 +88,10 @@ export function AvatarShop() {
               key={opt.id}
               className={`!p-3 space-y-2 text-center transition-transform ${
                 interactive ? "cursor-pointer hover:scale-[1.03]" : ""
-              } ${isActive ? "ring-2 ring-[color:var(--theme-accent)]" : ""}`}
+              } ${isActive ? "ring-2 ring-[color:var(--theme-accent)] shadow-[0_0_20px_var(--theme-accent-soft)]" : ""}`}
               onClick={interactive ? onClick : undefined}
             >
-              <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-md bg-black/20">
+              <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-xl bg-black/20">
                 <Image
                   src={`/avatars/${opt.filename}`}
                   alt={opt.label}

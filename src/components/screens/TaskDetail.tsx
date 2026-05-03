@@ -56,62 +56,52 @@ export function TaskDetail() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-auto max-w-3xl p-6 space-y-6"
+      className="mx-auto max-w-3xl px-4 py-6 space-y-5"
     >
-      <header className="flex items-center justify-between gap-2 flex-wrap">
-        <Button variant="ghost" onClick={goBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+      {/* Header */}
+      <header className="flex items-center justify-between gap-3 flex-wrap">
+        <Button variant="ghost" size="md" onClick={goBack}>
+          <ArrowLeft className="mr-2 h-5 w-5" />
           Zpět
         </Button>
-        <div className="flex items-center gap-2">
-          {prevTaskId && (
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "OPEN_TASK", taskId: prevTaskId })}
-              className="text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] border border-white/10 rounded px-2 py-1"
-            >
-              ← Předchozí
-            </button>
-          )}
-          {nextTaskId && (
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "OPEN_TASK", taskId: nextTaskId })}
-              className="text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] border border-white/10 rounded px-2 py-1"
-            >
-              Další →
-            </button>
-          )}
-        </div>
         <StarBadge count={task.reward} />
       </header>
 
+      {/* Title + description */}
       <PanelGlass>
-        <h1 className="mb-2 text-2xl font-bold">{task.title}</h1>
-        <p className="whitespace-pre-line text-[color:var(--theme-muted)]">
+        <h1 className="text-2xl font-bold mb-3">{task.title}</h1>
+        {isDaily && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-3 py-1 text-sm font-bold text-amber-300 mb-3">
+            ⚡ Denní výzva {dailyClaimed ? "— splněna ✓" : `— +${REWARD_CONFIG.dailyChallengeStars} ★`}
+          </span>
+        )}
+        <p className="whitespace-pre-line text-[color:var(--theme-muted)] leading-relaxed">
           {task.description}
         </p>
       </PanelGlass>
 
+      {/* Image */}
       {task.imageKey && (
-        <PanelGlass>
+        <PanelGlass className="!p-0 overflow-hidden rounded-2xl">
           <TaskImage imageKey={task.imageKey} alt={task.title} />
         </PanelGlass>
       )}
 
+      {/* Help: code */}
       {taskState.helpCodeUsed && task.hints?.code && (
         <PanelGlass>
-          <h3 className="mb-2 font-semibold">Ukázkový kód</h3>
-          <pre className="overflow-x-auto rounded bg-black/40 p-3 font-mono text-sm">
+          <h3 className="mb-3 font-semibold text-base">Ukázkový kód</h3>
+          <pre className="overflow-x-auto rounded-xl bg-black/40 p-4 font-mono text-sm">
             {task.hints.code}
           </pre>
         </PanelGlass>
       )}
 
+      {/* Help: wiring */}
       {taskState.helpWiringUsed && task.hints?.wiring && (
         <PanelGlass>
-          <h3 className="mb-2 font-semibold">Schéma zapojení</h3>
-          <p className="text-sm text-[color:var(--theme-muted)]">
+          <h3 className="mb-3 font-semibold text-base">Schéma zapojení</h3>
+          <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed">
             {task.hints.wiring}
           </p>
         </PanelGlass>
@@ -153,15 +143,41 @@ export function TaskDetail() {
         </PanelGlass>
       )}
 
+      {/* Code validator */}
       <PanelGlass>
-        <h3 className="mb-3 font-semibold">Tvůj kód</h3>
+        <h3 className="mb-4 font-semibold text-base">Tvůj kód</h3>
         <CodeValidator taskId={task.id} onSuccess={handleSuccess} />
       </PanelGlass>
 
+      {/* Help cards */}
       <PanelGlass>
-        <h3 className="mb-3 font-semibold">Pomocníci</h3>
+        <h3 className="mb-4 font-semibold text-base">Pomocníci</h3>
         <HelpCards taskId={task.id} taskState={taskState} />
       </PanelGlass>
+
+      {/* Prev / Next navigation */}
+      {(prevTaskId || nextTaskId) && (
+        <div className="flex gap-3 pt-2">
+          {prevTaskId ? (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "OPEN_TASK", taskId: prevTaskId })}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 py-4 text-sm font-semibold text-[color:var(--theme-muted)] hover:border-white/20 hover:text-[color:var(--theme-text)] transition-colors"
+            >
+              ← Předchozí
+            </button>
+          ) : <div className="flex-1" />}
+          {nextTaskId && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "OPEN_TASK", taskId: nextTaskId })}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 py-4 text-sm font-semibold text-[color:var(--theme-muted)] hover:border-white/20 hover:text-[color:var(--theme-text)] transition-colors"
+            >
+              Další →
+            </button>
+          )}
+        </div>
+      )}
 
       <CADModal taskId={task.id} open={cadOpen} onClose={() => setCadOpen(false)} />
     </motion.div>

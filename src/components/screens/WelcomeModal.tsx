@@ -21,7 +21,7 @@ export function WelcomeModal({ open, studentNumber, onClose }: Props) {
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="panel-glass w-full max-w-md p-6 space-y-4"
+            className="panel-glass w-full max-w-md p-8 space-y-5"
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -29,10 +29,10 @@ export function WelcomeModal({ open, studentNumber, onClose }: Props) {
             <p className="text-xs font-bold uppercase tracking-widest text-[color:var(--theme-accent)]">
               Vítej!
             </p>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-3xl font-black">
               Jsi <span className="text-[color:var(--theme-accent)]">Student {studentNumber}</span>
             </h2>
-            <div className="space-y-2 text-sm text-[color:var(--theme-muted)]">
+            <div className="space-y-3 text-[color:var(--theme-muted)]">
               <p>
                 Tady najdeš úkoly rozdělené do tří úrovní. Začni od{" "}
                 <strong className="text-[color:var(--theme-text)]">Začátečník</strong> a postupně
@@ -53,7 +53,7 @@ export function WelcomeModal({ open, studentNumber, onClose }: Props) {
                 navíc bonus +{REWARD_CONFIG.dailyChallengeStars} ⭐.
               </p>
             </div>
-            <Button onClick={onClose} className="w-full">
+            <Button onClick={onClose} size="lg" className="w-full">
               Pojďme na to →
             </Button>
           </motion.div>

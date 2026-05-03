@@ -3,11 +3,14 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
+import { fetchCloudState } from "@/lib/cloud-sync";
 import { isValidEmail } from "@/lib/validation";
+import { useGameState } from "@/components/providers/GameStateProvider";
 
 type SubMode = "login" | "register" | "magic";
 
 export function EmailLoginTab() {
+  const { dispatch } = useGameState();
   const [subMode, setSubMode] = useState<SubMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +18,11 @@ export function EmailLoginTab() {
   const [nickname, setNickname] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function navigateAfterAuth(userId: string, metaNickname?: string) {
+    const cloud = await fetchCloudState(userId);
+    dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud, userId, metaNickname });
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,26 +42,31 @@ export function EmailLoginTab() {
     setBusy(true);
 
     if (subMode === "register") {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { nickname: nickname.trim() } },
       });
       if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
+      const userId = data.user?.id;
+      if (!userId) { setBusy(false); setMsg({ ok: false, text: "Účet vytvořen, ale session chybí — zkus se přihlásit." }); return; }
       setMsg({ ok: true, text: "Účet vytvořen, přihlašuji…" });
-      // leave busy=true — component unmounts on SIGNED_IN
+      await navigateAfterAuth(userId, nickname.trim());
     } else if (subMode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
+      const userId = data.user?.id;
+      if (!userId) { setBusy(false); setMsg({ ok: false, text: "Přihlášení selhalo — zkus to znovu." }); return; }
       setMsg({ ok: true, text: "Přihlášeno, načítám…" });
-      // leave busy=true — component unmounts on SIGNED_IN
+      const metaNickname = (data.user.user_metadata?.nickname as string | undefined) || undefined;
+      await navigateAfterAuth(userId, metaNickname);
     } else {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
-      setBusy(false); // magic link: no navigation, user stays on screen
+      setBusy(false);
       setMsg({ ok: true, text: "Mrkni do mailu — poslali jsme ti přihlašovací odkaz." });
     }
   }
