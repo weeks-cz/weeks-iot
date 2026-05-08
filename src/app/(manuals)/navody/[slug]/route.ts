@@ -907,8 +907,9 @@ function renderNfcStyles() {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 6px;
         appearance: none;
-        border: 1px solid rgba(15, 23, 42, 0.12);
+        border: 2px solid rgba(15, 23, 42, 0.12);
         border-radius: 16px;
         min-height: 52px;
         padding: 0 16px;
@@ -918,12 +919,72 @@ function renderNfcStyles() {
         line-height: 1.2;
         font-weight: 700;
         cursor: pointer;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+          box-shadow 0.18s ease, transform 0.18s ease;
+      }
+
+      .nfc-feedback-button:hover {
+        border-color: rgba(15, 23, 42, 0.28);
+      }
+
+      .nfc-feedback-button:active {
+        transform: scale(0.97);
       }
 
       .nfc-feedback-button.is-active {
         background: var(--nfc-accent);
-        border-color: rgba(246, 166, 28, 0.55);
+        border-color: #f6a61c;
         color: #111827;
+        box-shadow: 0 6px 16px rgba(246, 166, 28, 0.4);
+        transform: translateY(-1px);
+      }
+
+      .nfc-feedback-button.is-active::before {
+        content: "✓";
+        font-weight: 900;
+        font-size: 14px;
+      }
+
+      .nfc-celebration-thanks {
+        margin: 0;
+        min-height: 20px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 600;
+        color: #16a34a;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+      }
+
+      .nfc-celebration-thanks.is-visible {
+        opacity: 1;
+      }
+
+      .nfc-celebration-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 4px;
+        padding: 14px 22px;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: #ffffff;
+        border-radius: 18px;
+        font-weight: 700;
+        font-size: 15px;
+        text-decoration: none;
+        box-shadow: 0 8px 22px rgba(79, 70, 229, 0.35);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+
+      .nfc-celebration-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 26px rgba(79, 70, 229, 0.45);
+      }
+
+      .nfc-celebration-cta:active {
+        transform: translateY(0);
       }
 
       .nfc-feedback-label {
@@ -1450,6 +1511,13 @@ function renderNfcPopupScript(guide: NfcGuide) {
             button.classList.toggle("is-active", isActive);
             button.setAttribute("aria-pressed", isActive ? "true" : "false");
           });
+
+          const thanks = stage.querySelector('[data-thanks]');
+          if (thanks) {
+            const showThanks = Boolean(state.completionStatus) && state.ideaRating > 0;
+            thanks.classList.toggle("is-visible", showThanks);
+            thanks.textContent = showThanks ? "Děkujeme za zpětnou vazbu! 🎉" : "";
+          }
         }
 
         function renderWelcomeStep() {
@@ -1486,6 +1554,8 @@ function renderNfcPopupScript(guide: NfcGuide) {
               + '</button>';
           }).join("");
 
+          const showThanks = state.completionStatus && state.ideaRating > 0;
+
           return ''
             + '<div class="nfc-stage-card">'
             +   '<ul class="nfc-copy-list nfc-copy-list--compact">'
@@ -1500,7 +1570,9 @@ function renderNfcPopupScript(guide: NfcGuide) {
             +     '<div class="nfc-rating-stars" role="group" aria-label="Hodnocení nápadu">'
             +       ratingButtons
             +     '</div>'
+            +     '<p class="nfc-celebration-thanks' + (showThanks ? ' is-visible' : '') + '" data-thanks aria-live="polite">' + (showThanks ? 'Děkujeme za zpětnou vazbu! 🎉' : '') + '</p>'
             +   '</div>'
+            +   '<a class="nfc-celebration-cta" href="https://weeks.cz/program" target="_blank" rel="noopener noreferrer" data-weeks-cta>Prohlédnout Weeks tábory →</a>'
             + '</div>';
         }
 
@@ -1626,6 +1698,13 @@ function renderNfcPopupScript(guide: NfcGuide) {
               trackEvent("klicenka_store_click", { platform: platform });
             });
           });
+
+          const weeksCta = stage.querySelector('[data-weeks-cta]');
+          if (weeksCta) {
+            weeksCta.addEventListener("click", () => {
+              trackEvent("klicenka_weeks_cta_click");
+            });
+          }
         }
 
         renderStage();
