@@ -6,5 +6,13 @@
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "klicenka.weeks.cz" }],
+      "destination": "/navody/nfc-prepis-cipu/",
+      "permanent": false
+    }
   ]
 }
