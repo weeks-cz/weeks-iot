@@ -1163,6 +1163,13 @@ function renderShellHtml(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>${safeTitle} | Weeks</title>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9955Q5FRRX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){window.dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-9955Q5FRRX');
+    </script>
     <style>
 ${renderBaseStyles()}
 ${extraStyles}
@@ -1174,7 +1181,7 @@ ${extraStyles}
         <img class="preview-homepage-image" src="/weeks-homepage.png" alt="" />
         <div class="preview-photo-overlay"></div>
       </div>
-      <div class="backdrop" onclick="window.location.href='${TARGET_URL}'" aria-hidden="true"></div>
+      <div class="backdrop" onclick="if(window.gtag){window.gtag('event','klicenka_dismiss');} window.location.href='${TARGET_URL}'" aria-hidden="true"></div>
       <div class="shell">
         <section class="panel ${panelClassName}" role="dialog" aria-modal="true" aria-label="${safeTitle}">
           ${panelInnerHtml}
@@ -1237,6 +1244,11 @@ function renderNfcPopupScript(guide: NfcGuide) {
           ideaRating: 0,
         };
         let activeConfetti = null;
+
+        function trackEvent(name, params) {
+          if (typeof window.gtag !== "function") return;
+          window.gtag("event", name, params || {});
+        }
 
         function escapeHtmlValue(value) {
           return String(value)
@@ -1542,10 +1554,13 @@ function renderNfcPopupScript(guide: NfcGuide) {
           const feedbackButtons = Array.from(stage.querySelectorAll('[data-feedback-status]'));
           const ratingButtons = Array.from(stage.querySelectorAll('[data-rating-value]'));
 
+          const storeBadges = Array.from(stage.querySelectorAll('[data-store-badge]'));
+
           if (prevButton) {
             prevButton.addEventListener("click", () => {
               if (state.stepIndex === 0) return;
               state.stepIndex -= 1;
+              trackEvent("klicenka_step", { step_index: state.stepIndex + 1, direction: "prev" });
               renderStage();
             });
           }
@@ -1554,6 +1569,10 @@ function renderNfcPopupScript(guide: NfcGuide) {
             nextButton.addEventListener("click", () => {
               if (state.stepIndex >= totalSteps - 1) return;
               state.stepIndex += 1;
+              trackEvent("klicenka_step", { step_index: state.stepIndex + 1, direction: "next" });
+              if (state.stepIndex === totalSteps - 1) {
+                trackEvent("klicenka_finish");
+              }
               renderStage();
             });
           }
@@ -1562,7 +1581,14 @@ function renderNfcPopupScript(guide: NfcGuide) {
             action.addEventListener("click", () => {
               const actionType = action.getAttribute("data-wizard-action");
               if (actionType === "next" && state.stepIndex < totalSteps - 1) {
+                if (state.stepIndex === 0) {
+                  trackEvent("klicenka_start");
+                }
                 state.stepIndex += 1;
+                trackEvent("klicenka_step", { step_index: state.stepIndex + 1, direction: "next" });
+                if (state.stepIndex === totalSteps - 1) {
+                  trackEvent("klicenka_finish");
+                }
                 renderStage();
               }
             });
@@ -1573,6 +1599,7 @@ function renderNfcPopupScript(guide: NfcGuide) {
               const nextStatus = button.getAttribute("data-feedback-status");
               if (nextStatus === "success" || nextStatus === "uploading") {
                 state.completionStatus = nextStatus;
+                trackEvent("klicenka_completion_status", { status: nextStatus });
                 syncFeedbackUi();
               }
             });
@@ -1586,7 +1613,17 @@ function renderNfcPopupScript(guide: NfcGuide) {
               }
 
               state.ideaRating = ratingValue;
+              trackEvent("klicenka_rating", { rating: ratingValue });
               syncFeedbackUi();
+            });
+          });
+
+          storeBadges.forEach((badge) => {
+            const platform = badge.getAttribute("data-store-badge");
+            const link = badge.closest("a");
+            const target = link || badge;
+            target.addEventListener("click", () => {
+              trackEvent("klicenka_store_click", { platform: platform });
             });
           });
         }
