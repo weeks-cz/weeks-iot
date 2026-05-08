@@ -1,15 +1,19 @@
 # NFC Popup Checkpoint
 
 > Stav k 2026-05-07  
-> Ucel: lokalni zaloha aktualni rozpracovane verze pred dalsimi zasahy do 3D zobrazeni zetonu
+> Ucel: lokalni zaloha aktualni funkcni verze NFC popupu a 3D vieweru po nasazeni na Vercel
 
 ---
 
-## Shrnutí
+## Shrnuti
 
 Aktualni NFC popup bezi na URL:
 
 - `/navody/nfc-prepis-cipu/`
+
+Produkce je nasazovana na:
+
+- `https://novy-projekt.vercel.app`
 
 Popup je porad renderovany jako standalone HTML dokument vraceny z App Router `route.ts`, ne jako klasicka React page.
 
@@ -22,15 +26,15 @@ Hotove a zachovane casti:
 - screenshotove kroky 5-9
 - confetti finalni krok
 - opraveny layout navigacnich tlacitek, aby se neorezavaly
+- v prvnim kroku je vlozeny funkcni interaktivni 3D viewer mezi text a tlacitko
 
-Rozpracovana cast:
+Aktualni 3D stav:
 
-- v prvnim kroku je pripraveny prostor pro interaktivni 3D zeton
-- aktualni implementace pouziva iframe na staticky viewer:
-  - `/public/nfc-model-viewer.html`
-  - model asset `/public/nfc.weeks.glb`
-  - baked texture `/public/nfc.bake.png`
-- podle posledniho manualniho testu se renderuje pozadi a wrapper, ale samotny zeton zatim neni videt
+- viewer bezi jako iframe na staticky soubor `/nfc-model-viewer.html`
+- viewer nacita model `public/nfcweeks1.glb`
+- aktualni verze modelu je brana z exportu uzivatele, bez dalsiho prepisu normals nebo roughness/metalness ve vieweru
+- klik na model prepina predni a zadni stranu
+- scena byla ztmavena a nasledne jemne zesvetlena tak, aby zustala bliz Blender preview
 
 ---
 
@@ -43,6 +47,7 @@ Primarni implementacni soubory:
 
 Relevantni assety:
 
+- [public/nfcweeks1.glb](</c:/Users/stepa/Desktop/weeks/iot/novy-projekt/public/nfcweeks1.glb>)
 - [public/nfc.weeks.glb](</c:/Users/stepa/Desktop/weeks/iot/novy-projekt/public/nfc.weeks.glb>)
 - [public/nfc.bake.png](</c:/Users/stepa/Desktop/weeks/iot/novy-projekt/public/nfc.bake.png>)
 - [public/nfc-cip.png](</c:/Users/stepa/Desktop/weeks/iot/novy-projekt/public/nfc-cip.png>)
@@ -64,13 +69,14 @@ Podpurne soubory:
 
 ---
 
-## Aktuální chování
+## Aktualni chovani
 
 ### Krok 1
 
 - zobrazi nadpis a uvodni text
-- renderuje kartu pro 3D viewer mezi textem a tlacitkem `Začít s návodem`
-- iframe ceka staticky viewer z `/nfc-model-viewer.html`
+- renderuje kartu pro 3D viewer mezi textem a tlacitkem `Zacit s navodem`
+- iframe cte staticky viewer z `/nfc-model-viewer.html`
+- uvnitr vieweru je stacionarni kamera, model je vycentrovany a klik prepina otoceni mezi stranami
 
 ### Krok 2-10
 
@@ -87,55 +93,60 @@ Aktualni viewer je zamerne mimo Next App Router a bezi jako staticky HTML soubor
 
 Aktualni technicky smer:
 
-- `three.module.js` z CDN
+- `three.module.js` z CDN pres import map
 - `GLTFLoader`
-- `OrbitControls`
-- manualni nasviceni
-- klik ma prepinat polootoceni
+- stacionarni kamera
+- manualni nasviceni s nizsi expozici
+- klik preklapi model mezi stranami
+- viewer uz neimportuje `OrbitControls`
+- viewer uz neprepisuje materialove vlastnosti modelu, aby zustal vzhled co nejbliz Blender exportu
 
 ---
 
-## Známý problém
+## Aktualni poznamky k vizualu
 
-Aktualni blocker:
+Posledni schvalene smerovani:
 
-- popup se nacte
-- karta a pozadi 3D vieweru se zobrazi
-- samotny zeton neni v zaberu nebo se nevykresli viditelne
+- pouzivat `nfcweeks1.glb` jako hlavni asset, protoze ma lepe pripraveny pivot
+- shading ma jit primarne z exportu modelu, ne z agresivnich viewer hacku
+- nasviceni ma byt jemnejsi, aby model nebyl prepalene svetly
 
-Podezrela mista pro dalsi zasah:
+Pokud bude potreba dalsi ladeni, prioritni poradi je:
 
-1. scale a recentrovani modelu v `public/nfc-model-viewer.html`
-2. kamera a clipping plane
-3. orientace modelu po importu z Blenderu
-4. material / texture mapping po nacteni GLB
+1. doladit svetla a expozici ve vieweru
+2. nemenit normals nebo material automaticky v JS, pokud to neni nutne
+3. pri dalsi zmene modelu vzdy zkopirovat novou verzi do `public/nfcweeks1.glb`
 
 ---
 
-## Bezpečný návrat
+## Bezpecny navrat
 
 Pokud by se dalsi pokus rozbil, vratit se nejdriv sem:
 
 1. Zachovat `route.ts` jako zdroj popup struktury.
 2. Zachovat `public/nfc-model-viewer.html` jako oddeleny 3D sandbox.
-3. Nevracet se zpet k experimentu s App Router route pro `/model`.
+3. Zachovat `public/nfcweeks1.glb` jako aktualni aktivni asset.
 4. Ladit nejdriv jen viewer HTML:
+   - exposure
+   - light intensities
    - scale
-   - camera position
-   - root rotation
-   - scene background
+   - tilt pivot
 
 ---
 
-## Lokální ověření
+## Lokalni overeni
 
 Posledni potvrzene fungujici minimum:
 
 - `npm run build` prochazi
-- lokalni `/` i `/navody/nfc-prepis-cipu/` umi vratit `200`, kdyz neni zaseknuty dev server
+- produkce na Vercelu se po kazde uprave vieweru uspesne nasadila
+- popup route i standalone viewer se overovaly hlavne pres produkci kvuli nestabilnimu lokalnimu preview na Windows
 
 Prakticka poznamka pro dalsi kolo:
 
 - na tomhle Windows stroji se local preview casto zasekne
-- nejspolehlivejsi bylo znovu pustit `npm run dev` a po timeoutu jen overit, ze route vraci `200`
-
+- nejspolehlivejsi workflow byl:
+  - upravit `public/nfc-model-viewer.html`
+  - zkopirovat novy model do `public/nfcweeks1.glb`
+  - pustit `npm run build`
+  - nasadit `vercel --prod`

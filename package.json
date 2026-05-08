@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "preview:nfc": "npm run build && npm run serve:nfc",
+    "serve:nfc": "next start -H 127.0.0.1 -p 3000",
     "lint": "eslint",
     "test": "cross-env NODE_OPTIONS=--experimental-require-module vitest run",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-require-module vitest"

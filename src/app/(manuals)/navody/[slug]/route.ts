@@ -360,11 +360,11 @@ function escapeJsonForHtml(value: unknown) {
 function renderBaseStyles() {
   return `
       :root {
-        color-scheme: dark;
-        --bg-top: #08111f;
-        --bg-bottom: #111b2d;
-        --panel-border: rgba(255, 255, 255, 0.12);
-        --shadow: 0 30px 100px rgba(0, 0, 0, 0.45);
+        color-scheme: light;
+        --bg-top: #ffffff;
+        --bg-bottom: #eef6ff;
+        --panel-border: rgba(255, 255, 255, 0.52);
+        --shadow: 0 24px 70px rgba(148, 163, 184, 0.24);
         --nfc-accent: #f6a61c;
         --nfc-accent-soft: rgba(246, 166, 28, 0.14);
         --nfc-blue: #86d2ff;
@@ -410,7 +410,7 @@ function renderBaseStyles() {
         position: absolute;
         inset: 0;
         overflow: hidden;
-        background: #0b1220;
+        background: #f8fbff;
         z-index: 0;
       }
 
@@ -428,8 +428,8 @@ function renderBaseStyles() {
         position: absolute;
         inset: 0;
         background:
-          linear-gradient(180deg, rgba(8, 17, 31, 0.12) 0%, rgba(8, 17, 31, 0.34) 100%),
-          linear-gradient(90deg, rgba(10, 18, 32, 0.54) 0%, rgba(10, 18, 32, 0.24) 40%, rgba(10, 18, 32, 0.42) 100%);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(248, 250, 252, 0.08) 100%),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 40%, rgba(248, 250, 252, 0.03) 100%);
       }
 
       .backdrop {
@@ -437,15 +437,17 @@ function renderBaseStyles() {
         inset: 0;
         z-index: 1;
         background:
-          linear-gradient(180deg, rgba(3, 7, 18, 0.22), rgba(3, 7, 18, 0.52)),
-          radial-gradient(circle at center, rgba(255, 255, 255, 0.03), transparent 55%);
-        backdrop-filter: blur(3px);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(248, 250, 252, 0.08)),
+          radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 55%);
+        backdrop-filter: blur(1px);
+        -webkit-backdrop-filter: blur(1px);
         cursor: pointer;
       }
 
       .shell {
         position: relative;
         z-index: 2;
+        min-height: 100vh;
         min-height: 100dvh;
         display: flex;
         align-items: flex-end;
@@ -456,6 +458,7 @@ function renderBaseStyles() {
 
       .panel {
         width: min(100%, 1120px);
+        height: min(88vh, calc(100vh - max(28px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))));
         height: min(88dvh, calc(100dvh - max(28px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))));
         min-height: 0;
         border: 1px solid var(--panel-border);
@@ -489,6 +492,16 @@ function renderBaseStyles() {
           border-radius: 32px;
         }
       }
+
+      @supports not (height: 100dvh) {
+        .shell {
+          min-height: 100vh;
+        }
+
+        .panel {
+          height: min(88vh, calc(100vh - max(28px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom))));
+        }
+      }
   `;
 }
 
@@ -499,7 +512,7 @@ function renderNfcStyles() {
         flex-direction: column;
         min-height: 0;
         overflow: hidden;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        background: #ffffff;
       }
 
       .nfc-scroll {
@@ -539,8 +552,8 @@ function renderNfcStyles() {
       .nfc-reference-card {
         border-radius: 24px;
         border: 1px solid var(--nfc-border);
-        background: var(--nfc-panel-soft);
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(148, 163, 184, 0.12);
       }
 
       .nfc-stage {
@@ -561,34 +574,24 @@ function renderNfcStyles() {
       }
 
       .nfc-hero-model-card {
-        padding: 18px 18px 14px;
+        padding: 0;
+        overflow: visible;
+        border: none;
+        background: transparent;
+        box-shadow: none;
       }
 
       .nfc-hero-model-shell {
         position: relative;
         border-radius: 24px;
         overflow: hidden;
-        background:
-          radial-gradient(circle at top, rgba(134, 210, 255, 0.28), transparent 48%),
-          linear-gradient(180deg, #dbeafe 0%, #eff6ff 42%, #f8fafc 100%);
-        border: 1px solid rgba(37, 99, 235, 0.12);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.72),
-          0 16px 36px rgba(37, 99, 235, 0.12);
+        background: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 10px 28px rgba(148, 163, 184, 0.16);
       }
 
       .nfc-hero-model-shell::after {
-        content: "";
-        position: absolute;
-        left: 50%;
-        bottom: 16px;
-        width: 62%;
-        height: 22px;
-        transform: translateX(-50%);
-        border-radius: 999px;
-        background: radial-gradient(circle, rgba(15, 23, 42, 0.2) 0%, rgba(15, 23, 42, 0) 72%);
-        filter: blur(8px);
-        pointer-events: none;
+        content: none;
       }
 
       .nfc-hero-model {
@@ -597,6 +600,12 @@ function renderNfcStyles() {
         height: 320px;
         border: 0;
         background: transparent;
+        object-fit: contain;
+        filter: brightness(1.12) contrast(1.04) saturate(1.08);
+      }
+
+      .nfc-hero-model-card .nfc-inline-actions {
+        margin-top: 16px;
       }
 
       .nfc-hero-model-copy {
@@ -761,10 +770,11 @@ function renderNfcStyles() {
         border: 1px solid rgba(15, 23, 42, 0.08);
         background: #ffffff;
         padding: 18px;
+        overflow: hidden;
       }
 
       .nfc-stage-card + .nfc-stage-card {
-        margin-top: 14px;
+        margin-top: 16px;
       }
 
       .nfc-stage-card strong {
@@ -811,7 +821,7 @@ function renderNfcStyles() {
         grid-template-columns: 1fr;
         align-items: stretch;
         margin-top: 0;
-        gap: 8px;
+        gap: 6px;
       }
 
       .nfc-store-button {
@@ -855,7 +865,11 @@ function renderNfcStyles() {
       }
 
       .nfc-store-button {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: min(100%, 204px);
+        height: 60px;
         padding: 0;
         border: none;
         background: transparent;
@@ -865,15 +879,83 @@ function renderNfcStyles() {
       .nfc-store-button img {
         display: block;
         width: 100%;
-        height: auto;
+        height: 100%;
         border-radius: 0;
         box-shadow: none;
+        margin: 0;
+        object-fit: contain;
+      }
+
+      .nfc-feedback-card {
+        display: grid;
+        gap: 16px;
+      }
+
+      .nfc-feedback-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .nfc-feedback-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        appearance: none;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 16px;
+        min-height: 52px;
+        padding: 0 16px;
+        background: #ffffff;
+        color: var(--nfc-text);
+        text-align: center;
+        line-height: 1.2;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .nfc-feedback-button.is-active {
+        background: var(--nfc-accent);
+        border-color: rgba(246, 166, 28, 0.55);
+        color: #111827;
+      }
+
+      .nfc-feedback-label {
+        margin: 0;
+        color: var(--nfc-text);
+        font-size: 15px;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .nfc-rating-stars {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .nfc-rating-star {
+        appearance: none;
+        border: none;
+        background: transparent;
+        padding: 0;
+        color: #cbd5e1;
+        font-size: 32px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .nfc-rating-star.is-active {
+        color: #f59e0b;
       }
 
       .nfc-inline-button:focus-visible,
       .nfc-store-button:focus-visible,
       .nfc-reference-card:focus-visible,
-      .nfc-step-button:focus-visible {
+      .nfc-step-button:focus-visible,
+      .nfc-feedback-button:focus-visible,
+      .nfc-rating-star:focus-visible {
         outline: 2px solid rgba(134, 210, 255, 0.95);
         outline-offset: 2px;
       }
@@ -1051,6 +1133,12 @@ function renderNfcStyles() {
           height: 380px;
         }
       }
+
+      @media (max-width: 420px) {
+        .nfc-feedback-actions {
+          grid-template-columns: 1fr;
+        }
+      }
   `;
 }
 
@@ -1108,6 +1196,7 @@ function renderNfcPopupInnerHtml(guide: NfcGuide) {
       </div>
 
       <div class="nfc-grid">
+        <div class="nfc-stage-lead nfc-stage-lead--celebration" id="nfc-confetti-layer" aria-hidden="true"></div>
         <section class="nfc-stage" id="nfc-stage" aria-live="polite"></section>
       </div>
     </div>
@@ -1138,6 +1227,8 @@ function renderNfcPopupScript(guide: NfcGuide) {
 
         const state = {
           stepIndex: 0,
+          completionStatus: null,
+          ideaRating: 0,
         };
         let activeConfetti = null;
 
@@ -1188,6 +1279,16 @@ function renderNfcPopupScript(guide: NfcGuide) {
               note: "",
               imageSrc: "/nfcapp-error.jpg",
               imageAlt: "NFC Tools error screenshot",
+              imageClassName: "nfc-stage-image--screenshot",
+              imagePosition: "after-copy",
+            },
+            {
+              kind: "image-step",
+              title: "Vymaž původní stránku z čipu",
+              body: "Než přidáš nový obsah, použij v sekci Write volbu Erase tags. Tím z čipu smažeš původní stránku a připravíš ho na nový zápis.",
+              note: "",
+              imageSrc: "/nfcerasetag.jpg",
+              imageAlt: "NFC Tools erase tags screenshot",
               imageClassName: "nfc-stage-image--screenshot",
               imagePosition: "after-copy",
             },
@@ -1245,44 +1346,55 @@ function renderNfcPopupScript(guide: NfcGuide) {
             + '<div class="nfc-stage-card">'
             +   '<div class="nfc-store-grid">'
             +     '<a class="nfc-store-button" href="' + guide.storeLinks.appStore + '" target="_blank" rel="noopener noreferrer">'
-            +       '<img src="/app-store.png" alt="Download on the App Store" />'
+            +       '<img src="/app-store.png" alt="Download on the App Store" data-store-badge="app-store" />'
             +     '</a>'
             +     '<a class="nfc-store-button" href="' + guide.storeLinks.googlePlay + '" target="_blank" rel="noopener noreferrer">'
-            +       '<img src="/google-play.svg" alt="Get it on Google Play" />'
+            +       '<img src="/google-play.png" alt="Get it on Google Play" data-store-badge="google-play" />'
             +     '</a>'
             +   '</div>'
             + '</div>';
         }
 
         function renderStageLead(step) {
-          if (step.kind === 'celebration') {
-            return ''
-              + '<div class="nfc-stage-lead nfc-stage-lead--celebration">'
-              +   '<div class="nfc-confetti" aria-hidden="true">'
-              +     '<div class="nfc-confetti-lottie" id="nfc-confetti-lottie"></div>'
-              +   '</div>'
-              + '</div>';
-          }
-
           return '';
         }
 
         function syncCelebrationConfetti(step) {
-          if (activeConfetti) {
-            activeConfetti.destroy();
-            activeConfetti = null;
+          const layer = document.getElementById("nfc-confetti-layer");
+          if (!layer) {
+            return;
           }
 
           if (step.kind !== "celebration") {
+            layer.innerHTML = "";
+            layer.style.display = "none";
+            if (activeConfetti) {
+              activeConfetti.destroy();
+              activeConfetti = null;
+            }
             return;
           }
+
+          layer.style.display = "block";
+
+          if (activeConfetti) {
+            return;
+          }
+
+          if (typeof lottie === "undefined" || typeof lottie.loadAnimation !== "function") {
+            return;
+          }
+
+          layer.innerHTML = ''
+            + '<div class="nfc-confetti">'
+            +   '<div class="nfc-confetti-lottie" id="nfc-confetti-lottie"></div>'
+            + '</div>';
 
           const container = document.getElementById("nfc-confetti-lottie");
-          if (!container || typeof lottie === "undefined" || typeof lottie.loadAnimation !== "function") {
+          if (!container) {
             return;
           }
 
-          container.innerHTML = "";
           activeConfetti = lottie.loadAnimation({
             container,
             renderer: "canvas",
@@ -1303,18 +1415,31 @@ function renderNfcPopupScript(guide: NfcGuide) {
           return '<ul class="nfc-copy-list' + (muted ? ' nfc-copy-list--muted' : '') + '"><li>' + text + '</li></ul>';
         }
 
+        function syncFeedbackUi() {
+          const feedbackButtons = Array.from(stage.querySelectorAll('[data-feedback-status]'));
+          const ratingButtons = Array.from(stage.querySelectorAll('[data-rating-value]'));
+
+          feedbackButtons.forEach((button) => {
+            const status = button.getAttribute("data-feedback-status");
+            const isActive = status === state.completionStatus;
+            button.classList.toggle("is-active", isActive);
+            button.setAttribute("aria-pressed", isActive ? "true" : "false");
+          });
+
+          ratingButtons.forEach((button) => {
+            const ratingValue = Number(button.getAttribute("data-rating-value"));
+            const isActive = Number.isInteger(ratingValue) && ratingValue <= state.ideaRating;
+            button.classList.toggle("is-active", isActive);
+            button.setAttribute("aria-pressed", isActive ? "true" : "false");
+          });
+        }
+
         function renderWelcomeStep() {
           return ''
             + '<div class="nfc-stage-card nfc-hero-model-card">'
             +   '<div class="nfc-hero-model-shell">'
-            +     '<iframe class="nfc-hero-model" src="/nfc-model-viewer.html" title="3D model NFC klíčenky" loading="eager"></iframe>'
+            +     '<img class="nfc-hero-model" src="/nfctagrender.png" alt="Render NFC klíčenky" loading="eager" decoding="async" />'
             +   '</div>'
-            +   '<div class="nfc-hero-model-copy">'
-            +     '<strong>Klepni na klíčenku a otoč ji</strong>'
-            +     '<span>Můžeš ji i táhnutím prstu nebo myši prohlédnout ze všech stran.</span>'
-            +   '</div>'
-            + '</div>'
-            + '<div class="nfc-stage-card">'
             +   '<div class="nfc-inline-actions">'
             +     '<button type="button" class="nfc-inline-button is-primary" data-wizard-action="next">Začít s návodem</button>'
             +   '</div>'
@@ -1332,13 +1457,31 @@ function renderNfcPopupScript(guide: NfcGuide) {
         }
 
         function renderCelebrationStep() {
+          const successSelected = state.completionStatus === "success";
+          const uploadingSelected = state.completionStatus === "uploading";
+          const ratingButtons = Array.from({ length: 5 }, (_, index) => {
+            const ratingValue = index + 1;
+            const isActive = ratingValue <= state.ideaRating;
+            return ''
+              + '<button type="button" class="nfc-rating-star' + (isActive ? ' is-active' : '') + '" data-rating-value="' + ratingValue + '" aria-label="Hodnocení ' + ratingValue + ' z 5" aria-pressed="' + (isActive ? "true" : "false") + '">'
+              +   '★'
+              + '</button>';
+          }).join("");
+
           return ''
             + '<div class="nfc-stage-card">'
             +   '<ul class="nfc-copy-list nfc-copy-list--compact">'
-            +     '<li>Zajímá tě, co dalšího s námi zvládneš? Podívej se na naše stránky na další návody.</li>'
+            +     '<li>Vyber, jak to zatím dopadá, a dej nám vědět, jak moc se ti tenhle nápad líbí.</li>'
             +   '</ul>'
-            +   '<div class="nfc-inline-actions">'
-            +     '<a class="nfc-inline-button is-primary" href="${TARGET_URL}">Přejít na stránku</a>'
+            +   '<div class="nfc-feedback-card">'
+            +     '<div class="nfc-feedback-actions">'
+              +       '<button type="button" class="nfc-feedback-button' + (successSelected ? ' is-active' : '') + '" data-feedback-status="success" aria-pressed="' + (successSelected ? "true" : "false") + '">Povedlo se</button>'
+              +       '<button type="button" class="nfc-feedback-button' + (uploadingSelected ? ' is-active' : '') + '" data-feedback-status="uploading" aria-pressed="' + (uploadingSelected ? "true" : "false") + '">Zatím nahrávám</button>'
+            +     '</div>'
+            +     '<p class="nfc-feedback-label">Ohodnoťte tento nápad</p>'
+            +     '<div class="nfc-rating-stars" role="group" aria-label="Hodnocení nápadu">'
+            +       ratingButtons
+            +     '</div>'
             +   '</div>'
             + '</div>';
         }
@@ -1390,6 +1533,8 @@ function renderNfcPopupScript(guide: NfcGuide) {
           const prevButton = stage.querySelector('[data-step-action="prev"]');
           const nextButton = stage.querySelector('[data-step-action="next"]');
           const wizardActions = Array.from(stage.querySelectorAll('[data-wizard-action]'));
+          const feedbackButtons = Array.from(stage.querySelectorAll('[data-feedback-status]'));
+          const ratingButtons = Array.from(stage.querySelectorAll('[data-rating-value]'));
 
           if (prevButton) {
             prevButton.addEventListener("click", () => {
@@ -1414,6 +1559,28 @@ function renderNfcPopupScript(guide: NfcGuide) {
                 state.stepIndex += 1;
                 renderStage();
               }
+            });
+          });
+
+          feedbackButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              const nextStatus = button.getAttribute("data-feedback-status");
+              if (nextStatus === "success" || nextStatus === "uploading") {
+                state.completionStatus = nextStatus;
+                syncFeedbackUi();
+              }
+            });
+          });
+
+          ratingButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              const ratingValue = Number(button.getAttribute("data-rating-value"));
+              if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+                return;
+              }
+
+              state.ideaRating = ratingValue;
+              syncFeedbackUi();
             });
           });
         }
