@@ -1572,7 +1572,7 @@ function renderNfcPopupScript(guide: NfcGuide) {
             +     '</div>'
             +     '<p class="nfc-celebration-thanks' + (showThanks ? ' is-visible' : '') + '" data-thanks aria-live="polite">' + (showThanks ? 'Děkujeme za zpětnou vazbu! 🎉' : '') + '</p>'
             +   '</div>'
-            +   '<a class="nfc-celebration-cta" href="https://weeks.cz/program" target="_blank" rel="noopener noreferrer" data-weeks-cta>Prohlédnout Weeks tábory →</a>'
+            +   '<a class="nfc-celebration-cta" href="https://weeks.cz/kveten" target="_blank" rel="noopener noreferrer" data-weeks-cta>Tábory 16. a 17. května →</a>'
             + '</div>';
         }
 
