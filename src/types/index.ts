@@ -1,3 +1,5 @@
+import type { Circuit, CircuitComponent, ComponentType } from "@/types/cad";
+
 export type ThemeId =
   | "classic" | "sunrise" | "forest" | "ice"
   | "ember" | "lagoon" | "sand" | "midnight" | "volt";
@@ -52,6 +54,10 @@ export interface Task {
   reward: number;
   imageKey?: string;
   hints?: { code?: string; wiring?: string };
+  cad?: {
+    palette: ComponentType[];
+    seed?: CircuitComponent[];
+  };
 }
 
 export interface Section {
@@ -98,6 +104,7 @@ export interface PerStudentAccount {
   account: AccountState;
   tasks: Record<string, TaskState>;
   sections: Record<SectionId, { unlocked: boolean }>;
+  circuits: Record<string, Circuit>;          // task-id → saved circuit
 }
 
 export interface GameState {
@@ -116,6 +123,7 @@ export interface GameState {
   screen: ScreenState;
   // Set když user propojil Supabase účet. null = PIN-only / anonymous.
   linkedUserId?: string | null;
+  circuits: Record<string, Circuit>;          // current student's circuits (view)
 }
 
 // JSONB shape uložený v learning_accounts.state
@@ -123,6 +131,7 @@ export interface SyncableState {
   account: AccountState;
   tasks: Record<string, TaskState>;
   sections: Record<SectionId, { unlocked: boolean }>;
+  circuits: Record<string, Circuit>;          // synced to cloud
 }
 
 // Event types posílané do learning_events

@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const CADModal = dynamic(() => import("@/components/cad/CADModal"), { ssr: false });
 import { Button } from "@/components/ui/Button";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { StarBadge } from "@/components/ui/StarBadge";
@@ -32,6 +36,8 @@ export function TaskDetail() {
   const dailyClaimed = hasClaimedDailyChallengeToday(state.account);
   const prevTaskId = getAdjacentTaskId(taskId, "prev");
   const nextTaskId = getAdjacentTaskId(taskId, "next");
+
+  const [cadOpen, setCadOpen] = useState(false);
 
   const completeId = taskId;
   const reward = task.reward;
@@ -101,6 +107,42 @@ export function TaskDetail() {
         </PanelGlass>
       )}
 
+      {task.cad && (
+        <div className="mt-3 rounded-lg border border-white/15 bg-white/5 p-3">
+          <button
+            type="button"
+            onClick={() => setCadOpen(true)}
+            className="flex items-center gap-2 rounded-md bg-[color:var(--theme-accent)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+          >
+            <span>▶</span> Postavit obvod
+          </button>
+          <p className="mt-2 text-xs text-white/60">
+            Otevře vizuální editor obvodu. Tvůj postup se uloží automaticky.
+          </p>
+        </div>
+      )}
+
+      {/* Daily challenge note */}
+      {isDaily && (
+        <PanelGlass className="flex items-center justify-between gap-4 border-amber-400/30 bg-amber-400/5">
+          <div>
+            <strong className="block text-sm text-amber-300">
+              {dailyClaimed ? "Denní výzva dnes splněna ✓" : `Dnešní denní výzva — +${REWARD_CONFIG.dailyChallengeStars} hvězdiček`}
+            </strong>
+            <p className="text-xs text-[color:var(--theme-muted)]">
+              {dailyClaimed
+                ? "Zítra se objeví nová denní výzva."
+                : "Odevzdej funkční kód a získej bonusové hvězdičky."}
+            </p>
+          </div>
+          {!dailyClaimed && (
+            <Button variant="secondary" size="sm" onClick={handleDailyChallenge}>
+              Odevzdat výzvu
+            </Button>
+          )}
+        </PanelGlass>
+      )}
+
       {/* Code validator */}
       <PanelGlass>
         <h3 className="mb-4 font-semibold text-base">Tvůj kód</h3>
@@ -136,6 +178,8 @@ export function TaskDetail() {
           )}
         </div>
       )}
+
+      <CADModal taskId={task.id} open={cadOpen} onClose={() => setCadOpen(false)} />
     </motion.div>
   );
 }
