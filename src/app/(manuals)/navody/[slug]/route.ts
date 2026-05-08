@@ -72,13 +72,13 @@ const NFC_GUIDE: NfcGuide = {
   slug: NFC_GUIDE_SLUG,
   title: "Přepiš si NFC čip",
   welcome:
-    "Jsem rád, že sis na tenhle čip vzpomněl. Tenhle návod je schválně krátký a měl by ti zabrat zhruba 5 minut.",
+    "Jsem rád, že sis na tenhle čip vzpomněl. Tenhle návod je schválně krátký a zabere ti zhruba 5 minut.",
   intro:
     "NFC čip umí uložit malý kousek dat, který telefon po přiložení hned přečte. Tady si ukážeme, jak do něj v aplikaci NFC Tools uložit kontakt, web nebo polohu, aby se na jiném telefonu rovnou otevřel.",
   appReason:
     "Pro přeprogramování budeme používat aplikaci NFC Tools, protože je jednoduchá, funguje na iPhonu i Androidu a umí přesně ty typy záznamů, které pro tenhle čip potřebujeme.",
   downloadReturn:
-    "Po stažení se sem vrať. Popup zůstane otevřený, takže stačí appku nainstalovat a pak pokračovat dalším krokem tady.",
+    "Po stažení se sem vrať. Toto okno zůstane otevřené, takže stačí aplikaci nainstalovat a pak tady pokračovat dalším krokem.",
   warningItems: [
     "Přepis nahradí to, co je na čipu uložené teď.",
     "Čip musí být zapisovatelný a nesmí být zamčený.",
@@ -548,7 +548,6 @@ function renderNfcStyles() {
         min-height: 0;
       }
 
-      .nfc-stage,
       .nfc-reference-card {
         border-radius: 24px;
         border: 1px solid var(--nfc-border);
@@ -560,13 +559,17 @@ function renderNfcStyles() {
         display: flex;
         flex-direction: column;
         min-height: 0;
-        padding: 20px;
+        padding: 0;
         overflow: visible;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
       }
 
       .nfc-stage-main {
         flex: 1 1 auto;
-        padding-bottom: 16px;
+        padding: 20px 20px 0;
       }
 
       .nfc-stage-lead {
@@ -574,20 +577,20 @@ function renderNfcStyles() {
       }
 
       .nfc-hero-model-card {
-        padding: 0;
-        overflow: visible;
-        border: none;
-        background: transparent;
-        box-shadow: none;
+        padding: 18px;
+        overflow: hidden;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(148, 163, 184, 0.12);
       }
 
       .nfc-hero-model-shell {
         position: relative;
-        border-radius: 24px;
+        border-radius: 18px;
         overflow: hidden;
-        background: #ffffff;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        box-shadow: 0 10px 28px rgba(148, 163, 184, 0.16);
+        background: transparent;
+        border: none;
+        box-shadow: none;
       }
 
       .nfc-hero-model-shell::after {
@@ -597,10 +600,11 @@ function renderNfcStyles() {
       .nfc-hero-model {
         display: block;
         width: 100%;
-        height: 320px;
+        height: 420px;
         border: 0;
         background: transparent;
-        object-fit: contain;
+        object-fit: cover;
+        object-position: center;
         filter: brightness(1.12) contrast(1.04) saturate(1.08);
       }
 
@@ -820,8 +824,10 @@ function renderNfcStyles() {
       .nfc-store-grid {
         grid-template-columns: 1fr;
         align-items: stretch;
+        justify-items: stretch;
         margin-top: 0;
-        gap: 6px;
+        gap: 8px;
+        width: 100%;
       }
 
       .nfc-store-button {
@@ -868,8 +874,8 @@ function renderNfcStyles() {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: min(100%, 204px);
-        height: 60px;
+        width: 100%;
+        height: 64px;
         padding: 0;
         border: none;
         background: transparent;
@@ -1038,11 +1044,11 @@ function renderNfcStyles() {
         justify-content: space-between;
         gap: 12px;
         flex: 0 0 auto;
-        margin-top: 14px;
-        padding-top: 14px;
+        margin-top: 18px;
+        padding-top: 0;
         padding-bottom: env(safe-area-inset-bottom);
-        border-top: 1px solid rgba(15, 23, 42, 0.08);
-        background: var(--nfc-panel-soft);
+        border-top: none;
+        background: transparent;
       }
 
       .nfc-step-button {
@@ -1130,7 +1136,7 @@ function renderNfcStyles() {
         }
 
         .nfc-hero-model {
-          height: 380px;
+          height: 470px;
         }
       }
 
@@ -1275,7 +1281,7 @@ function renderNfcPopupScript(guide: NfcGuide) {
             {
               kind: "image-step",
               title: "Povol NFC",
-              body: "Pokud tě aplikace po otevření zastaví chybou, zapni si v telefonu NFC a potom se vrať zpět do NFC Tools.",
+              body: "Pokud tě aplikace po otevření zastaví chybovým hlášením, zapni si v telefonu NFC a potom se vrať zpět do NFC Tools.",
               note: "",
               imageSrc: "/nfcapp-error.jpg",
               imageAlt: "NFC Tools error screenshot",
@@ -1325,7 +1331,7 @@ function renderNfcPopupScript(guide: NfcGuide) {
             {
               kind: "image-step",
               title: "Nahraj obsah na čip",
-              body: "Jakmile budeš mít záznam připravený, klepni na Write a přilož telefon k čipu. Na čip se vejde jen 144 bytes. Pokud NFC Tools ukazuje víc, napiš obsah stručněji. Kdyby se obsah na čip vešel špatně, zjednoduš ho a zkus zápis znovu.",
+              body: "Jakmile budeš mít záznam připravený, klepni na Write a přilož telefon k čipu. Na čip se vejde jen 144 bytů. Pokud NFC Tools ukazuje víc, napiš obsah stručněji. Když se obsah na čip nevejde, zjednoduš ho a zkus zápis znovu.",
               note: "",
               imageSrc: "/nfcapp-upload.jpg",
               imageAlt: "NFC Tools upload screenshot",
@@ -1438,7 +1444,7 @@ function renderNfcPopupScript(guide: NfcGuide) {
           return ''
             + '<div class="nfc-stage-card nfc-hero-model-card">'
             +   '<div class="nfc-hero-model-shell">'
-            +     '<img class="nfc-hero-model" src="/nfctagrender.png" alt="Render NFC klíčenky" loading="eager" decoding="async" />'
+            +     '<img class="nfc-hero-model" src="/nfc-hero-render.png" alt="Render NFC klíčenky" loading="eager" decoding="async" />'
             +   '</div>'
             +   '<div class="nfc-inline-actions">'
             +     '<button type="button" class="nfc-inline-button is-primary" data-wizard-action="next">Začít s návodem</button>'
