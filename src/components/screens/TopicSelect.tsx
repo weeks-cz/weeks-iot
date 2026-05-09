@@ -10,7 +10,11 @@ import { Workspace3D } from "@/components/3d/Workspace3D";
 import { TOPIC_OPTIONS } from "@/lib/topics";
 import type { TopicId } from "@/types";
 
-export function TopicSelect() {
+interface TopicSelectProps {
+  onBackToLanding?: () => void;
+}
+
+export function TopicSelect({ onBackToLanding }: TopicSelectProps) {
   const { dispatch } = useGameState();
   const [activeTopic, setActiveTopic] = useState<TopicId | null>(null);
   const [printMode, setPrintMode] = useState<"menu" | "studio">("menu");
@@ -82,9 +86,19 @@ export function TopicSelect() {
       exit={{ opacity: 0, y: -20 }}
     >
       <PanelGlass className="topic-panel w-full max-w-3xl">
-        <h1 className="mb-2 text-3xl font-bold">Vyber si téma tábora</h1>
+        {onBackToLanding && (
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            className="mb-5 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white/80 transition hover:border-white/20 hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Zpět na úvod
+          </button>
+        )}
+        <h1 className="mb-2 text-3xl font-bold">Vyber si část Učebny, do které chceš vstoupit</h1>
         <p className="mb-6 text-sm text-[color:var(--theme-muted)]">
-          Aktuálně je dostupný pouze IoT a elektronika. Další témata připravujeme — můžeš se podívat, co se chystá.
+          Některé části Učebny jsou zatím určené pro tábory Weeks. Veřejnou verzi postupně připravujeme.
         </p>
         <div className="topic-grid grid gap-4 sm:grid-cols-2">
           {TOPIC_OPTIONS.map((topic) => (
