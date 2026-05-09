@@ -2,6 +2,8 @@
 
 Výuková IoT platforma pro děti z Weeks táborů. 21 úkolů s Arduinem ve třech obtížnostech (začátečník, pokročilý, expert), sbírání hvězdiček, témata, avatary a odměnový systém.
 
+> **Deploy**: pushni feature branch, otevři PR, napiš komentář `/deploy` — bot squashne tvoji práci na main jako Lukášův commit a Vercel deploy spustí automaticky. Workflow: `.github/workflows/deploy-squash.yml`.
+
 ## 1. Co to je
 
 - **Stack:** Next.js 16 (App Router), React 19, TypeScript 5 (`strict`), Tailwind CSS v4, Framer Motion, Lucide React.

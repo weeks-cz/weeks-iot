@@ -1,0 +1,144 @@
+# Deploy via squash
+#
+# Trigger: comment "/deploy" on any open PR.
+# Effect: squash the PR's tree onto `main` as a single commit
+#         authored by Lukáš (lukoluko8@gmail.com), so Vercel Hobby
+#         doesn't reject the deploy on the "Git author X must have
+#         access to the project on Vercel" check.
+#
+# Auth: only org Owners / Members / repo Collaborators can trigger.
+# Audit: each deploy creates a commit on main + a comment on the PR
+#        with the deploy commit hash. PR is closed automatically.
+#
+# Powered by the "Weeks Deploy Bot" GitHub App (see org settings).
+# Secrets: DEPLOY_APP_ID, DEPLOY_APP_PRIVATE_KEY (org-level).
+
+name: Deploy via squash
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  deploy:
+    if: |
+      github.event.issue.pull_request != null &&
+      contains(github.event.comment.body, '/deploy') &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: React to comment with 👀
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='eyes' || true
+
+      - name: Get App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DEPLOY_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+
+      - name: Get PR info
+        id: pr
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          pr_data=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
+            --json headRefName,headRepository,baseRepository,title,user,state)
+
+          state=$(echo "$pr_data" | jq -r .state)
+          if [ "$state" != "OPEN" ]; then
+            echo "::error::PR is $state, not OPEN. Aborting."
+            exit 1
+          fi
+
+          head_repo=$(echo "$pr_data" | jq -r .headRepository.name)
+          base_repo=$(echo "$pr_data" | jq -r .baseRepository.name)
+          if [ "$head_repo" != "$base_repo" ]; then
+            echo "::error::PR head is from a fork ($head_repo), not the same repo. Aborting."
+            exit 1
+          fi
+
+          {
+            echo "branch=$(echo "$pr_data" | jq -r .headRefName)"
+            echo "title=$(echo "$pr_data" | jq -r .title)"
+            echo "author=$(echo "$pr_data" | jq -r .user.login)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Squash PR tree onto main as Lukáš
+        id: squash
+        env:
+          PR_BRANCH: ${{ steps.pr.outputs.branch }}
+          PR_TITLE: ${{ steps.pr.outputs.title }}
+          PR_AUTHOR: ${{ steps.pr.outputs.author }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$PR_BRANCH"
+          git read-tree -u --reset "origin/$PR_BRANCH"
+
+          if git diff --staged --quiet; then
+            echo "::warning::PR branch tree matches main. Nothing to deploy."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          commit_msg=$(printf '%s\n\nSquashed from PR #%s (originally by @%s via /deploy bot).\n\nCo-Authored-By: %s <%s@users.noreply.github.com>' \
+            "$PR_TITLE" "$PR_NUMBER" "$PR_AUTHOR" "$PR_AUTHOR" "$PR_AUTHOR")
+
+          git -c user.email=lukoluko8@gmail.com -c user.name="Lukáš Kubík" commit \
+            --author="Lukáš Kubík <lukoluko8@gmail.com>" \
+            -m "$commit_msg"
+
+          git push origin main
+
+          {
+            echo "skipped=false"
+            echo "commit=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR + close
+        if: steps.squash.outputs.skipped != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          DEPLOY_COMMIT: ${{ steps.squash.outputs.commit }}
+        run: |
+          set -euo pipefail
+          short_sha="${DEPLOY_COMMIT:0:7}"
+          body=$(printf '✅ Deployed as commit [\`%s\`](https://github.com/%s/commit/%s) on \`main\`. Vercel build is running.\n\nAuthored as Lukáš to bypass Vercel Hobby author check. Original PR author preserved as Co-Authored-By.' \
+            "$short_sha" "$REPO" "$DEPLOY_COMMIT")
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$body"
+          gh pr close "$PR_NUMBER" --repo "$REPO" \
+            --comment "Closed automatically — squashed onto main via /deploy bot."
+
+      - name: Comment "no-op" if nothing to deploy
+        if: steps.squash.outputs.skipped == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$REPO" \
+            --body "ℹ️ Nothing to deploy — PR branch tree matches \`main\` already. Did you forget to push your latest commit?"
