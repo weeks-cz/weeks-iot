@@ -1,146 +1,105 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Bell, LockKeyhole, Mail, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/client";
-import { fetchCloudState } from "@/lib/cloud-sync";
 import { isValidEmail } from "@/lib/validation";
-import { useGameState } from "@/components/providers/GameStateProvider";
 
-type SubMode = "login" | "register" | "magic";
+interface EmailLoginTabProps {
+  onAuthenticated?: () => void;
+}
 
-export function EmailLoginTab() {
-  const { dispatch } = useGameState();
-  const [subMode, setSubMode] = useState<SubMode>("login");
+export function EmailLoginTab({ onAuthenticated: _onAuthenticated }: EmailLoginTabProps) {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [password2, setPassword2] = useState("");
-  const [nickname, setNickname] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  async function navigateAfterAuth(userId: string, metaNickname?: string) {
-    const cloud = await fetchCloudState(userId);
-    dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud, userId, metaNickname });
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setMsg(null);
 
-    if (subMode === "register") {
-      if (password.length < 6) { setMsg({ ok: false, text: "Heslo musí mít aspoň 6 znaků." }); return; }
-      if (password !== password2) { setMsg({ ok: false, text: "Hesla se neshodují." }); return; }
-      if (nickname.trim().length < 2) { setMsg({ ok: false, text: "Nickname musí mít aspoň 2 znaky." }); return; }
+    if (!isValidEmail(email)) {
+      setMsg({ ok: false, text: "Zadej prosím platný e-mail." });
+      return;
     }
-    if (subMode !== "magic" && password.length === 0) {
-      setMsg({ ok: false, text: "Zadej heslo." }); return;
-    }
-    if (!isValidEmail(email)) { setMsg({ ok: false, text: "Zadej platný email." }); return; }
 
-    const supabase = createClient();
     setBusy(true);
+    try {
+      const res = await fetch("/api/public-waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    if (subMode === "register") {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { nickname: nickname.trim() } },
-      });
-      if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
-      const userId = data.user?.id;
-      if (!userId) { setBusy(false); setMsg({ ok: false, text: "Účet vytvořen, ale session chybí — zkus se přihlásit." }); return; }
-      setMsg({ ok: true, text: "Účet vytvořen, přihlašuji…" });
-      await navigateAfterAuth(userId, nickname.trim());
-    } else if (subMode === "login") {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
-      const userId = data.user?.id;
-      if (!userId) { setBusy(false); setMsg({ ok: false, text: "Přihlášení selhalo — zkus to znovu." }); return; }
-      setMsg({ ok: true, text: "Přihlášeno, načítám…" });
-      const metaNickname = (data.user.user_metadata?.nickname as string | undefined) || undefined;
-      await navigateAfterAuth(userId, metaNickname);
-    } else {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (error) { setBusy(false); setMsg({ ok: false, text: error.message }); return; }
+      if (!res.ok) {
+        setMsg({ ok: false, text: "E-mail se nepodařilo uložit. Zkus to prosím za chvíli." });
+        return;
+      }
+
+      setMsg({ ok: true, text: "Díky. Jakmile veřejnou Učebnu spustíme, dáme ti vědět." });
+      setEmail("");
+    } catch {
+      setMsg({ ok: false, text: "Síťová chyba. Zkus to prosím za chvíli znovu." });
+    } finally {
       setBusy(false);
-      setMsg({ ok: true, text: "Mrkni do mailu — poslali jsme ti přihlašovací odkaz." });
     }
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs">
-        {(["login", "register", "magic"] as SubMode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={`flex-1 py-2 transition-colors ${
-              subMode === m
-                ? "bg-[color:var(--theme-accent-soft)] text-[color:var(--theme-accent)]"
-                : "hover:bg-white/5"
-            }`}
-            onClick={() => { setSubMode(m); setMsg(null); }}
-          >
-            {m === "login" ? "Mám účet" : m === "register" ? "Vytvořit účet" : "Poslat odkaz"}
-          </button>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-[#71b0ff]/24 bg-[#07111f]/55 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#71b0ff]/18 text-[#9fcbff]">
+            <LockKeyhole className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-[#9fcbff]">Veřejný přístup připravujeme</p>
+            <h2 className="mt-2 text-xl font-black text-[color:var(--theme-text)]">Učebna je teď určená hlavně pro tábory Weeks.</h2>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--theme-muted)]">
+              Přihlášení e-mailem a vytváření účtů pro veřejnost je zatím vypnuté. Studenti na táboře vstupují přes denní PIN a číslo studenta, lektor přes lektorský PIN.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { icon: Rocket, title: "Vývoj běží", text: "Ladíme domácí postup, účty a ukládání pokroku." },
+          { icon: Bell, title: "Dáme vědět", text: "Nech e-mail a ozveme se při veřejném spuštění." },
+          { icon: Mail, title: "Bez účtu", text: "Tímhle formulářem si účet nevytváříš." },
+        ].map((item) => (
+          <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+            <item.icon className="h-5 w-5 text-[#2dd4a6]" />
+            <p className="mt-3 text-sm font-black text-white">{item.title}</p>
+            <p className="mt-1 text-xs leading-5 text-white/52">{item.text}</p>
+          </div>
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="email@example.com"
-          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
-          required
-        />
-        {subMode !== "magic" && (
+      <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+        <label htmlFor="public-waitlist-email" className="block text-sm font-bold text-white/82">
+          Chci info o vydání pro veřejnost
+        </label>
+        <div className="flex flex-col gap-3 sm:flex-row">
           <input
-            type="password"
-            autoComplete={subMode === "register" ? "new-password" : "current-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Heslo"
-            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
+            id="public-waitlist-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="email@example.com"
+            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
             required
           />
-        )}
-        {subMode === "register" && (
-          <>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={password2}
-              onChange={(e) => setPassword2(e.target.value)}
-              placeholder="Heslo znovu"
-              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
-              required
-            />
-            <input
-              type="text"
-              maxLength={20}
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="Nickname (2–20 znaků, povinný)"
-              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm focus:border-[color:var(--theme-accent)] focus:outline-none"
-              required
-            />
-          </>
-        )}
+          <Button type="submit" size="md" className="shrink-0" disabled={busy}>
+            {busy ? "Ukládám…" : "Upozornit mě"}
+          </Button>
+        </div>
         {msg && (
           <p className={`text-sm ${msg.ok ? "text-[color:var(--theme-success)]" : "text-red-400"}`}>
             {msg.text}
           </p>
         )}
-        <Button type="submit" size="lg" className="w-full" disabled={busy}>
-          {busy ? "Pracuji…" : subMode === "register" ? "Vytvořit účet" : subMode === "login" ? "Přihlásit" : "Poslat odkaz"}
-        </Button>
       </form>
     </div>
   );

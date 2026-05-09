@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { BadgeCheck, KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PanelGlass } from "@/components/ui/PanelGlass";
 import { useGameState } from "@/components/providers/GameStateProvider";
@@ -65,29 +66,38 @@ export function PinEntry() {
     >
       {/* Logo */}
       <div className="text-center">
-        <div className="text-4xl font-black text-[color:var(--theme-accent)] tracking-tight mb-1">
-          Weeks
+        <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--theme-accent)]">
+          <BadgeCheck className="h-4 w-4" />
+          Táborový přístup
         </div>
-        <div className="text-sm text-[color:var(--theme-muted)]">
-          Téma: <strong className="text-[color:var(--theme-text)]">{topic?.label ?? "—"}</strong>
+        <div className="text-4xl font-black text-[color:var(--theme-accent)] tracking-tight mb-2">
+          Weeks Učebna
+        </div>
+        <div className="mx-auto max-w-md text-sm leading-6 text-[color:var(--theme-muted)]">
+          Část: <strong className="text-[color:var(--theme-text)]">{topic?.label ?? "—"}</strong>. Vstup pro studenty a lektory z táborů Weeks, veřejný přístup připravujeme.
         </div>
       </div>
 
-      <PanelGlass className="w-full max-w-md space-y-5">
+      <PanelGlass className="w-full max-w-2xl space-y-5">
         {/* Mode tabs — pill style */}
         <div className="flex gap-2 p-1 bg-black/20 rounded-2xl">
-          {(["student", "email", "lecturer"] as LoginMode[]).map((m) => (
+          {([
+            { id: "student", label: "Student", icon: KeyRound },
+            { id: "email", label: "Veřejnost", icon: Mail },
+            { id: "lecturer", label: "Lektor", icon: ShieldCheck },
+          ] as Array<{ id: LoginMode; label: string; icon: typeof KeyRound }>).map((item) => (
             <button
-              key={m}
+              key={item.id}
               type="button"
-              onClick={() => { setMode(m); setError(null); }}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                mode === m
+              onClick={() => { setMode(item.id); setError(null); }}
+              className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                mode === item.id
                   ? "bg-[color:var(--theme-accent)] text-[#0d1427]"
                   : "text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)]"
               }`}
             >
-              {m === "student" ? "Student" : m === "email" ? "Email" : "Lektor"}
+              <item.icon className="h-4 w-4" />
+              {item.label}
             </button>
           ))}
         </div>
