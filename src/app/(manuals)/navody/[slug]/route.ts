@@ -22,6 +22,15 @@ const LOTTIE_PLAYER_SCRIPT = readFileSync(
   "utf8",
 ).replaceAll("</script>", "<\\/script>");
 
+type NfcCampTerm = {
+  id: string;
+  label: string;
+  theme: "cyan" | "violet" | "green" | "amber";
+  dateText: string;
+  location: string;
+  href: string;
+};
+
 type NfcOptionId = "kontakt" | "web" | "poloha";
 
 type NfcReference = {
@@ -341,6 +350,41 @@ const NFC_GUIDE: NfcGuide = {
   ],
 };
 
+const NFC_CAMP_TERM_PLACEHOLDERS: NfcCampTerm[] = [
+  {
+    id: "placeholder-iot-weekend",
+    label: "Tábor chytrých technologií",
+    theme: "cyan",
+    dateText: "4. - 5. července",
+    location: "Praha",
+    href: TARGET_URL,
+  },
+  {
+    id: "placeholder-3d-print",
+    label: "3D tisk",
+    theme: "violet",
+    dateText: "Ne 21. června",
+    location: "Praha 4",
+    href: TARGET_URL,
+  },
+  {
+    id: "placeholder-iot-day",
+    label: "IoT & elektronika",
+    theme: "green",
+    dateText: "So 20. června",
+    location: "Praha 6",
+    href: TARGET_URL,
+  },
+  {
+    id: "placeholder-games",
+    label: "Vývoj her",
+    theme: "amber",
+    dateText: "Podzim 2026",
+    location: "Praha",
+    href: TARGET_URL,
+  },
+];
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -507,6 +551,112 @@ function renderBaseStyles() {
 
 function renderNfcStyles() {
   return `
+      .shell.shell--nfc {
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .nfc-shell-rail {
+        width: min(100%, 1120px);
+        pointer-events: auto;
+        overflow: hidden;
+      }
+
+      .nfc-shell-rail-card {
+        overflow: visible;
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+      }
+
+      .nfc-shell-rail-track {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .nfc-shell-rail-marquee {
+        display: flex;
+        width: max-content;
+        gap: 14px;
+        padding: 0;
+        animation: nfcTermsMarquee 26s linear infinite;
+      }
+
+      .nfc-shell-rail-card:hover .nfc-shell-rail-marquee {
+        animation-play-state: paused;
+      }
+
+      @keyframes nfcTermsMarquee {
+        from {
+          transform: translate3d(0, 0, 0);
+        }
+
+        to {
+          transform: translate3d(-50%, 0, 0);
+        }
+      }
+
+      .nfc-shell-term {
+        display: grid;
+        gap: 4px;
+        min-width: 284px;
+        padding: 10px 15px 9px;
+        border-radius: 18px;
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.24);
+        opacity: 1;
+      }
+
+      .nfc-shell-term--cyan {
+        background: linear-gradient(135deg, rgba(78, 114, 234, 0.94), rgba(86, 183, 224, 0.9));
+      }
+
+      .nfc-shell-term--violet {
+        background: linear-gradient(135deg, rgba(91, 93, 236, 0.94), rgba(116, 82, 226, 0.92));
+      }
+
+      .nfc-shell-term--green {
+        background: linear-gradient(135deg, rgba(67, 131, 195, 0.94), rgba(76, 190, 126, 0.9));
+      }
+
+      .nfc-shell-term--amber {
+        background: linear-gradient(135deg, rgba(197, 111, 55, 0.94), rgba(245, 177, 69, 0.92));
+      }
+
+      .nfc-shell-term strong {
+        font-size: 15px;
+        line-height: 1.12;
+      }
+
+      .nfc-shell-term span {
+        color: rgba(255, 255, 255, 0.84);
+        font-size: 12px;
+        line-height: 1.14;
+      }
+
+      .nfc-shell-term-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .nfc-shell-term-meta span,
+      .nfc-shell-term-meta em {
+        display: inline-block;
+      }
+
+      .nfc-shell-term em {
+        color: rgba(255, 255, 255, 0.95);
+        font-size: 11px;
+        font-style: normal;
+        font-weight: 700;
+      }
+
       .panel-nfc {
         display: flex;
         flex-direction: column;
@@ -530,7 +680,7 @@ function renderNfcStyles() {
         align-items: flex-start;
         justify-content: flex-start;
         gap: 14px;
-        margin-bottom: 18px;
+        margin-bottom: 12px;
       }
 
       .nfc-title {
@@ -1176,6 +1326,15 @@ function renderNfcStyles() {
       }
 
       @media (min-width: 768px) {
+        .shell.shell--nfc {
+          gap: 10px;
+        }
+
+        .nfc-shell-term {
+          min-width: 340px;
+          padding: 10px 16px 9px;
+        }
+
         .nfc-scroll {
           padding: 28px 28px 34px;
         }
@@ -1202,6 +1361,10 @@ function renderNfcStyles() {
       }
 
       @media (max-width: 420px) {
+        .nfc-shell-term {
+          min-width: 214px;
+        }
+
         .nfc-feedback-actions {
           grid-template-columns: 1fr;
         }
@@ -1209,10 +1372,44 @@ function renderNfcStyles() {
   `;
 }
 
+function renderNfcShellTicker(terms: NfcCampTerm[]) {
+  const items = [...terms, ...terms]
+    .map((term) => {
+      const safeLabel = escapeHtml(term.label);
+      const safeDate = escapeHtml(term.dateText);
+      const safeLocation = escapeHtml(term.location);
+      const safeHref = escapeHtml(term.href);
+
+      return `
+        <a class="nfc-shell-term nfc-shell-term--${term.theme}" href="${safeHref}" target="_blank" rel="noopener noreferrer">
+          <strong>${safeLabel}</strong>
+          <div class="nfc-shell-term-meta">
+            <span>${safeDate}</span>
+            <em>${safeLocation}</em>
+          </div>
+        </a>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="nfc-shell-rail" aria-label="Nejbližší termíny táborů">
+      <div class="nfc-shell-rail-card">
+        <div class="nfc-shell-rail-track">
+          <div class="nfc-shell-rail-marquee">
+            ${items}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderShellHtml(
   title: string,
   panelClassName: string,
   panelInnerHtml: string,
+  shellLeadHtml = "",
   extraStyles = "",
   extraScript = "",
 ) {
@@ -1243,7 +1440,8 @@ ${extraStyles}
         <div class="preview-photo-overlay"></div>
       </div>
       <div class="backdrop" onclick="if(window.gtag){window.gtag('event','klicenka_dismiss');} window.location.href='${TARGET_URL}'" aria-hidden="true"></div>
-      <div class="shell">
+      <div class="shell ${panelClassName === "panel-nfc" ? "shell--nfc" : ""}">
+        ${shellLeadHtml}
         <section class="panel ${panelClassName}" role="dialog" aria-modal="true" aria-label="${safeTitle}">
           ${panelInnerHtml}
         </section>
@@ -1718,6 +1916,7 @@ function renderNfcPopupHtml(guide: NfcGuide) {
     guide.title,
     "panel-nfc",
     renderNfcPopupInnerHtml(guide),
+    renderNfcShellTicker(NFC_CAMP_TERM_PLACEHOLDERS),
     renderNfcStyles(),
     renderNfcPopupScript(guide),
   );
