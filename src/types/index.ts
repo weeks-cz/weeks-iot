@@ -133,6 +133,7 @@ export interface SyncableState {
   tasks: Record<string, TaskState>;
   sections: Record<SectionId, { unlocked: boolean }>;
   circuits: Record<string, Circuit>;          // synced to cloud
+  codeDrafts?: Record<string, string>;        // synced 2026-06-20 — kód dítěte přežije přechod mezi zařízeními (optional kvůli starým řádkům)
 }
 
 // Event types posílané do learning_events

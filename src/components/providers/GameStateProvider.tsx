@@ -340,6 +340,11 @@ function reducer(state: GameState, action: Action): GameState {
             account: action.cloudData.account,
             tasks: action.cloudData.tasks,
             sections: action.cloudData.sections,
+            // Pull circuits + codeDrafts zpět z cloudu (dříve se jen pushovaly
+            // nahoru, ale nestahovaly — kód a obvody se mezi zařízeními ztrácely).
+            // Fallback na lokální stav u starých řádků bez těchto polí.
+            circuits: action.cloudData.circuits ?? state.circuits,
+            codeDrafts: action.cloudData.codeDrafts ?? state.codeDrafts,
           }
         : state;
       // Seed nickname from Supabase user_metadata if account doesn't have one yet
