@@ -11,6 +11,7 @@ import { PanelGlass } from "@/components/ui/PanelGlass";
 import { StarBadge } from "@/components/ui/StarBadge";
 import { CodeValidator } from "@/components/task/CodeValidator";
 import { HelpCards } from "@/components/task/HelpCards";
+import { TutorChat } from "@/components/task/TutorChat";
 import { TaskImage } from "@/components/task/TaskImage";
 import { useGameState } from "@/components/providers/GameStateProvider";
 import { findTask, isDailyChallengeTask, hasClaimedDailyChallengeToday, getAdjacentTaskId } from "@/lib/tasks";
@@ -148,6 +149,12 @@ export function TaskDetail() {
         <h3 className="mb-4 font-semibold text-base">Tvůj kód</h3>
         <CodeValidator taskId={task.id} onSuccess={handleSuccess} />
       </PanelGlass>
+
+      {/* AI mentor */}
+      <TutorChat
+        taskId={task.id}
+        task={{ title: task.title, description: task.description, sectionId: task.sectionId }}
+      />
 
       {/* Help cards */}
       <PanelGlass>
