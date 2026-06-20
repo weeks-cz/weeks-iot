@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { createRateLimiter } from "@/lib/tutor/rate-limit";
+
 export const runtime = "nodejs";
+
+// Anti-spam / cost guard — přísnější než chat, posílání e-mailů je dražší
+// a zneužitelnější (5 odeslání za minutu na jednu IP).
+const limiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
+
+function clientKey(req: NextRequest): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0]!.trim();
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
 
 // Allowlist for both `accessUrl` host AND request `Origin` header.
 // Tightened from `/\.vercel\.app$/` to a project-prefix regex (audit finding #9):
@@ -56,6 +68,14 @@ function isAllowedOrigin(originHeader: string | null): boolean {
 export async function POST(req: NextRequest) {
   if (!isAllowedOrigin(req.headers.get("origin"))) {
     return NextResponse.json({ ok: false, error: "Origin not allowed" }, { status: 403 });
+  }
+
+  const rl = limiter.check(clientKey(req), Date.now());
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    );
   }
 
   let payload: NotifyPayload;
