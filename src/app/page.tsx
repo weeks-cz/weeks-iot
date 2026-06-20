@@ -22,6 +22,7 @@ import { TaskDetail } from "@/components/screens/TaskDetail";
 import { StyleShop } from "@/components/screens/StyleShop";
 import { AvatarShop } from "@/components/screens/AvatarShop";
 import { LevelBadges } from "@/components/screens/LevelBadges";
+import { ProfileScreen } from "@/components/screens/ProfileScreen";
 import { isTopicEnabled } from "@/lib/topics";
 import type { ScreenState } from "@/types";
 
@@ -33,6 +34,7 @@ const SCREENS: Record<ScreenState["currentScreen"], ComponentType> = {
   "style-shop":   StyleShop,
   "avatar-shop":  AvatarShop,
   "level-badges": LevelBadges,
+  "profile":      ProfileScreen,
   "admin":        PinEntry, // /admin route handles its own UI
 };
 

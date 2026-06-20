@@ -95,6 +95,7 @@ export interface ScreenState {
     | "topic-select"               // added 2026-04-26 — gates entry to PIN
     | "pin-entry" | "task-list" | "task-detail"
     | "style-shop" | "avatar-shop" | "level-badges"
+    | "profile"                    // added 2026-06-20 — child progress hub
     | "admin";
   activeTaskId?: string;
   pinLevel: "none" | "daily" | "lecturer" | "admin";

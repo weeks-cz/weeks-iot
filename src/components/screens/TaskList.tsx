@@ -104,7 +104,7 @@ export function TaskList() {
           {!isAdmin && (
             <button
               type="button"
-              onClick={() => dispatch({ type: "SET_SCREEN", screen: { currentScreen: "avatar-shop", pinLevel: state.screen.pinLevel } })}
+              onClick={() => dispatch({ type: "SET_SCREEN", screen: { currentScreen: "profile", pinLevel: state.screen.pinLevel } })}
               className="flex items-center gap-2 rounded-full border border-white/12 bg-[color:var(--theme-panel)] px-3 py-1.5 text-sm font-medium hover:border-white/20 transition-colors"
             >
               <span className="relative h-7 w-7 overflow-hidden rounded-full bg-black/20 shrink-0">
