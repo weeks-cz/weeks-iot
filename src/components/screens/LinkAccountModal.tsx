@@ -50,7 +50,8 @@ export function LinkAccountModal({ open, onClose }: Props) {
         if (!userId) { setMsg({ ok: false, text: "Účet vytvořen, ale chybí session — opakuj prosím." }); return; }
 
         dispatch({ type: "SET_LINKED_USER", userId });
-        await syncToCloud({ ...state, linkedUserId: userId });
+        // První zápis po propojení účtu → bezpodmínečný (null), řádek nemusí existovat.
+        await syncToCloud({ ...state, linkedUserId: userId }, null);
         await emitEvent(userId, { event_type: "signup", metadata: { source: "pin-link" } });
 
         setMsg({ ok: true, text: "Účet propojen ✓" });

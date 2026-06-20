@@ -11,32 +11,82 @@ export function extractSyncableState(state: GameState): SyncableState {
   };
 }
 
-export async function fetchCloudState(userId: string): Promise<SyncableState | null> {
+/** Snapshot z cloudu i s verzí (`updated_at`) pro optimistický zámek. */
+export interface CloudSnapshot {
+  state: SyncableState;
+  updatedAt: string;
+}
+
+export async function fetchCloudState(userId: string): Promise<CloudSnapshot | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("learning_accounts")
-    .select("state")
+    .select("state, updated_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) {
     console.warn("[cloud-sync] fetch failed:", error.message);
     return null;
   }
-  return (data?.state as SyncableState | undefined) ?? null;
+  if (!data) return null;
+  return { state: data.state as SyncableState, updatedAt: data.updated_at as string };
 }
 
-export async function syncToCloud(state: GameState): Promise<{ ok: boolean; error?: string }> {
+export interface SyncResult {
+  ok: boolean;
+  /** true = cloud se od našeho načtení posunul; náš zápis byl zastaralý a NEzapsal se. */
+  conflict?: boolean;
+  /** nové `updated_at` po úspěšném zápisu — ulož jako další očekávanou verzi. */
+  updatedAt?: string;
+  error?: string;
+}
+
+/**
+ * Zápis stavu do cloudu s optimistickým zámkem.
+ *
+ * - `expectedUpdatedAt === null` → bezpodmínečný upsert (první zápis / propojení účtu).
+ * - `expectedUpdatedAt` je řetězec → zapíše JEN když se `updated_at` v cloudu shoduje
+ *   (tj. nikdo mezitím nezapsal). Když se neshoduje, vrátí `conflict` a nic nepřepíše —
+ *   volající má stáhnout novější stav (cloud vyhrává) místo přepsání zastaralými daty.
+ */
+export async function syncToCloud(
+  state: GameState,
+  expectedUpdatedAt: string | null,
+): Promise<SyncResult> {
   if (!state.linkedUserId) return { ok: true };
   const supabase = createClient();
   const blob = extractSyncableState(state);
-  const { error } = await supabase
+
+  // První zápis (neznáme verzi / řádek nemusí existovat) → insert přes upsert.
+  if (expectedUpdatedAt === null) {
+    const { data, error } = await supabase
+      .from("learning_accounts")
+      .upsert({ id: state.linkedUserId, state: blob })
+      .select("updated_at")
+      .single();
+    if (error) {
+      console.warn("[cloud-sync] insert failed:", error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true, updatedAt: data.updated_at as string };
+  }
+
+  // Optimistický zámek: přepiš jen pokud se cloud od našeho načtení nezměnil.
+  const { data, error } = await supabase
     .from("learning_accounts")
-    .upsert({ id: state.linkedUserId, state: blob });
+    .update({ state: blob })
+    .eq("id", state.linkedUserId)
+    .eq("updated_at", expectedUpdatedAt)
+    .select("updated_at");
   if (error) {
-    console.warn("[cloud-sync] upsert failed:", error.message);
+    console.warn("[cloud-sync] update failed:", error.message);
     return { ok: false, error: error.message };
   }
-  return { ok: true };
+  if (!data || data.length === 0) {
+    // Jiné zařízení / záložka zapsalo novější stav — náš zápis je zastaralý.
+    return { ok: false, conflict: true };
+  }
+  return { ok: true, updatedAt: data[0]!.updated_at as string };
 }
 
 export async function emitEvent(userId: string | null, event: LearningEvent): Promise<void> {

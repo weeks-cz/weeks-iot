@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -74,6 +75,7 @@ export type Action =
   | { type: "RESET_STUDENT"; studentNumber: string }
   | { type: "MARK_WELCOME_SEEN" }
   | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string; metaNickname?: string }
+  | { type: "CLOUD_RECONCILE"; cloudData: SyncableState }
   | { type: "SET_LINKED_USER"; userId: string }
   | { type: "CLEAR_LINKED_USER" }
   | { type: "SAVE_CIRCUIT"; taskId: string; circuit: Circuit };
@@ -360,6 +362,18 @@ function reducer(state: GameState, action: Action): GameState {
       };
     }
 
+    case "CLOUD_RECONCILE":
+      // Tichá synchronizace po konfliktu: převezmi cloud verzi sync. polí,
+      // ale NEMĚŇ obrazovku ani nereseeduj nick (na rozdíl od CLOUD_HYDRATE).
+      return {
+        ...state,
+        account: action.cloudData.account,
+        tasks: action.cloudData.tasks,
+        sections: action.cloudData.sections,
+        circuits: action.cloudData.circuits ?? state.circuits,
+        codeDrafts: action.cloudData.codeDrafts ?? state.codeDrafts,
+      };
+
     case "SET_LINKED_USER":
       return { ...state, linkedUserId: action.userId };
     case "CLEAR_LINKED_USER":
@@ -461,13 +475,17 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
 
   const { user } = useAuth();
 
+  // Poslední známá verze cloudu (`updated_at`) pro optimistický zámek při zápisu.
+  const cloudVersionRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     const metaNickname = (user.user_metadata?.nickname as string | undefined) || undefined;
     fetchCloudState(user.id).then((cloud) => {
       if (cancelled) return;
-      dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud, userId: user.id, metaNickname });
+      cloudVersionRef.current = cloud?.updatedAt ?? null;
+      dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud?.state ?? null, userId: user.id, metaNickname });
       if (cloud) {
         emitEvent(user.id, { event_type: "login", metadata: { method: "password" } });
       }
@@ -479,12 +497,25 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state.linkedUserId) return;
     const timer = setTimeout(() => {
-      syncToCloud(state).then((result) => {
-        if (!result.ok) {
-          console.warn("[cloud-sync] sync failed:", result.error);
-          setSyncFailed(true);
-          setTimeout(() => setSyncFailed(false), 5000);
+      syncToCloud(state, cloudVersionRef.current).then((result) => {
+        if (result.ok) {
+          if (result.updatedAt) cloudVersionRef.current = result.updatedAt;
+          return;
         }
+        if (result.conflict) {
+          // Cloud se mezitím posunul (jiné zařízení/záložka). Nepřepisuj ho
+          // zastaralými daty — stáhni novější stav a sjednoť (cloud vyhrává).
+          if (!state.linkedUserId) return;
+          fetchCloudState(state.linkedUserId).then((fresh) => {
+            if (!fresh) return;
+            cloudVersionRef.current = fresh.updatedAt;
+            dispatch({ type: "CLOUD_RECONCILE", cloudData: fresh.state });
+          });
+          return;
+        }
+        console.warn("[cloud-sync] sync failed:", result.error);
+        setSyncFailed(true);
+        setTimeout(() => setSyncFailed(false), 5000);
       });
     }, 1000);
     return () => clearTimeout(timer);
@@ -493,7 +524,9 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   // Flush on tab close (best-effort — browser won't wait for async)
   useEffect(() => {
     if (!state.linkedUserId) return;
-    const handler = () => { void syncToCloud(state); };
+    // Guarded i tady: když je naše verze zastaralá, radši nezapisuj (nepřepisuj
+    // novější cloud), než abychom při zavření záložky clobberovali jiné zařízení.
+    const handler = () => { void syncToCloud(state, cloudVersionRef.current); };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
