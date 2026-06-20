@@ -28,7 +28,8 @@ export function TutorChat({ taskId, task }: TutorChatProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
 
-  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
+  // Trailing slash kvůli next.config `trailingSlash: true` — jinak POST dostane 308 redirect.
+  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat/" }), []);
   const { messages, sendMessage, status, error, stop } = useChat({ transport });
 
   const busy = status === "submitted" || status === "streaming";
