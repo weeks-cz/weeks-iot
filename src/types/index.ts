@@ -142,7 +142,8 @@ export type LearningEventType =
   | "task_complete" | "task_skip"
   | "section_unlock"
   | "theme_purchase" | "avatar_purchase"
-  | "daily_challenge_claim";
+  | "daily_challenge_claim"
+  | "circuit_save";
 
 export interface LearningEvent {
   event_type: LearningEventType;
