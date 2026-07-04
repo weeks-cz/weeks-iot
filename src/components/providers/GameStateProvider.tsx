@@ -74,7 +74,7 @@ export type Action =
   | { type: "SET_CODE_DRAFT"; taskId: string; draft: string }
   | { type: "RESET_STUDENT"; studentNumber: string }
   | { type: "MARK_WELCOME_SEEN" }
-  | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string; metaNickname?: string }
+  | { type: "CLOUD_HYDRATE"; cloudData: SyncableState | null; userId: string; metaNickname?: string; plan?: string | null; planExpiresAt?: string | null }
   | { type: "CLOUD_RECONCILE"; cloudData: SyncableState }
   | { type: "SET_LINKED_USER"; userId: string }
   | { type: "CLEAR_LINKED_USER" }
@@ -358,6 +358,8 @@ function reducer(state: GameState, action: Action): GameState {
         ...merged,
         account,
         linkedUserId: action.userId,
+        plan: action.plan === "student" ? "student" : "free",
+        planExpiresAt: action.planExpiresAt ?? null,
         screen: { ...state.screen, currentScreen: "task-list" as const, pinLevel: "daily" as const },
       };
     }
@@ -485,7 +487,14 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     fetchCloudState(user.id).then((cloud) => {
       if (cancelled) return;
       cloudVersionRef.current = cloud?.updatedAt ?? null;
-      dispatch({ type: "CLOUD_HYDRATE", cloudData: cloud?.state ?? null, userId: user.id, metaNickname });
+      dispatch({
+        type: "CLOUD_HYDRATE",
+        cloudData: cloud?.state ?? null,
+        userId: user.id,
+        metaNickname,
+        plan: cloud?.plan,
+        planExpiresAt: cloud?.planExpiresAt,
+      });
       if (cloud) {
         emitEvent(user.id, { event_type: "login", metadata: { method: "password" } });
       }

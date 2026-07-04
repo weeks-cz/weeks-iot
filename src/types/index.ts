@@ -125,6 +125,9 @@ export interface GameState {
   // Set když user propojil Supabase účet. null = PIN-only / anonymous.
   linkedUserId?: string | null;
   circuits: Record<string, Circuit>;          // current student's circuits (view)
+  // Plan metadata — server-owned, never pushed to cloud (NOT in SyncableState)
+  plan?: "free" | "student" | null;
+  planExpiresAt?: string | null;
 }
 
 // JSONB shape uložený v learning_accounts.state

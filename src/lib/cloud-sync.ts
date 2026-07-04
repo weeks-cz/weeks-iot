@@ -16,13 +16,15 @@ export function extractSyncableState(state: GameState): SyncableState {
 export interface CloudSnapshot {
   state: SyncableState;
   updatedAt: string;
+  plan: string | null;
+  planExpiresAt: string | null;
 }
 
 export async function fetchCloudState(userId: string): Promise<CloudSnapshot | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("learning_accounts")
-    .select("state, updated_at")
+    .select("state, updated_at, plan, plan_expires_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) {
@@ -35,7 +37,12 @@ export async function fetchCloudState(userId: string): Promise<CloudSnapshot | n
     console.warn("[cloud-sync] cloud state failed validation — skipping hydrate");
     return null;
   }
-  return { state: clean, updatedAt: data.updated_at as string };
+  return {
+    state: clean,
+    updatedAt: data.updated_at as string,
+    plan: (data.plan as string | null) ?? null,
+    planExpiresAt: (data.plan_expires_at as string | null) ?? null,
+  };
 }
 
 export interface SyncResult {

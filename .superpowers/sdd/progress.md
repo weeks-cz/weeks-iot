@@ -11,3 +11,5 @@ Task C1: complete (commit ed6ccc3, review clean; trigger fn = public.touch_updat
 Task C2: complete (commit ce17522, review clean; 50 tests total)
 Task C3: complete (commit f99d044, review clean; minor: test param assertion parity)
 Task C4: complete (commit 7e49b8f, review clean; minor: HTML interpolation in email builder — inputs are server constants only, inherited pattern)
+Task C5: complete (commit a5e5e59, review clean)
+Task C6: complete (commits 2222c18 + fix 882cf77, review: Critical replay/retry bug in PLAN code found by opus review, fixed via atomic premium_activated_at claim, re-review approved all 6 scenarios)
