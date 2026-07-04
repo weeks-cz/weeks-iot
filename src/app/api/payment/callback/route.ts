@@ -35,13 +35,12 @@ export async function POST(req: Request) {
   const { data: payment } = await svc
     .from("payments")
     .select(
-      "id, user_id, period, amount_kc, billing_name, billing_email, status, comgate_payment_id, fakturoid_invoice_id, confirmation_sent_at"
+      "id, user_id, period, amount_kc, billing_name, billing_email, status, comgate_payment_id, fakturoid_invoice_id, confirmation_sent_at, premium_activated_at"
     )
     .eq("id", paymentId)
     .maybeSingle();
   if (!payment) return respond(1, "unknown payment");
   if (payment.comgate_payment_id !== transId) return respond(0, "stale transaction ignored");
-  if (payment.status === "completed") return respond(0, "already completed");
 
   // Nevěř callbacku — ověř stav u Comgate status API
   const status = await getStatus(transId, cfg);
@@ -52,8 +51,28 @@ export async function POST(req: Request) {
   if (status !== "paid") return respond(0, "still pending");
   if (!isPlanPeriod(payment.period)) return respond(1, "bad period");
 
-  await svc.from("payments").update({ status: "completed" }).eq("id", payment.id);
-  const expiresAt = await activatePremium(svc, payment.user_id, payment.period);
+  // Aktivace premium — atomický claim: premium_activated_at NULL → now().
+  // Zabraňuje dvojímu prodloužení při replayi callbacku; při selhání aktivace
+  // se claim uvolní a vrátíme code=1, ať to Comgate zkusí znovu.
+  let expiresAt: string | null = null;
+  const { data: activationClaim } = await svc
+    .from("payments")
+    .update({ status: "completed", premium_activated_at: new Date().toISOString() })
+    .eq("id", payment.id)
+    .is("premium_activated_at", null)
+    .select("id");
+  if (activationClaim && activationClaim.length > 0) {
+    try {
+      expiresAt = await activatePremium(svc, payment.user_id, payment.period);
+    } catch (e) {
+      console.error("[payment/callback] activation failed", e);
+      await svc
+        .from("payments")
+        .update({ premium_activated_at: null })
+        .eq("id", payment.id);
+      return respond(1, "activation failed");
+    }
+  }
 
   // Faktura — idempotentní claim: fakturoid_invoice_id NULL → 'pending' → id
   if (isFakturoidConfigured() && !payment.fakturoid_invoice_id) {
@@ -91,7 +110,17 @@ export async function POST(req: Request) {
   }
 
   // Potvrzovací e-mail — idempotentní claim přes confirmation_sent_at
-  if (isEmailConfigured() && payment.billing_email && !payment.confirmation_sent_at) {
+  // Pokud je aktivace už hotova (replay), expiresAt je null → fetch aktuální z learning_accounts
+  if (!expiresAt) {
+    const { data: acct } = await svc
+      .from("learning_accounts")
+      .select("plan_expires_at")
+      .eq("id", payment.user_id)
+      .maybeSingle();
+    expiresAt = (acct?.plan_expires_at as string | null) ?? null;
+  }
+
+  if (isEmailConfigured() && payment.billing_email && expiresAt && !payment.confirmation_sent_at) {
     const { data: claimed } = await svc
       .from("payments")
       .update({ confirmation_sent_at: new Date().toISOString() })

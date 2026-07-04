@@ -19,6 +19,7 @@ create table if not exists public.payments (
     check (status in ('pending', 'completed', 'cancelled')),
   fakturoid_invoice_id  text,
   confirmation_sent_at  timestamptz,
+  premium_activated_at  timestamptz comment 'Idempotency claim for plan activation — NULL → now() atomic update guards against replay',
   created_at            timestamptz not null default now(),
   updated_at            timestamptz not null default now()
 );
