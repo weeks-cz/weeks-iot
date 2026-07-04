@@ -14,5 +14,6 @@
       "destination": "/navody/nfc-prepis-cipu/",
       "permanent": false
     }
-  ]
+  ],
+  "crons": [{ "path": "/api/cron/retention", "schedule": "0 3 * * 0" }]
 }
