@@ -19,10 +19,13 @@ create table if not exists public.payments (
     check (status in ('pending', 'completed', 'cancelled')),
   fakturoid_invoice_id  text,
   confirmation_sent_at  timestamptz,
-  premium_activated_at  timestamptz comment 'Idempotency claim for plan activation — NULL → now() atomic update guards against replay',
+  premium_activated_at  timestamptz,
   created_at            timestamptz not null default now(),
   updated_at            timestamptz not null default now()
 );
+
+comment on column public.payments.premium_activated_at is
+  'Idempotenční claim aktivace premium — atomický UPDATE NULL → now() brání dvojímu prodloužení při replayi callbacku';
 
 create unique index if not exists idx_payments_comgate_id
   on public.payments (comgate_payment_id) where comgate_payment_id is not null;
@@ -43,6 +46,7 @@ end $$;
 -- Žádná insert/update politika pro authenticated → zápis jen service role.
 revoke insert, update, delete on public.payments from anon, authenticated;
 
+drop trigger if exists payments_updated_at on public.payments;
 create trigger payments_updated_at
   before update on public.payments
   for each row execute function public.touch_updated_at();
