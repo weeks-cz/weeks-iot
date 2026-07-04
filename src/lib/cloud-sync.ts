@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeCloudState } from "@/lib/cloud-validate";
 import type { GameState, LearningEvent, SyncableState } from "@/types";
 
 export function extractSyncableState(state: GameState): SyncableState {
@@ -15,13 +16,15 @@ export function extractSyncableState(state: GameState): SyncableState {
 export interface CloudSnapshot {
   state: SyncableState;
   updatedAt: string;
+  plan: string | null;
+  planExpiresAt: string | null;
 }
 
 export async function fetchCloudState(userId: string): Promise<CloudSnapshot | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("learning_accounts")
-    .select("state, updated_at")
+    .select("state, updated_at, plan, plan_expires_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) {
@@ -29,7 +32,17 @@ export async function fetchCloudState(userId: string): Promise<CloudSnapshot | n
     return null;
   }
   if (!data) return null;
-  return { state: data.state as SyncableState, updatedAt: data.updated_at as string };
+  const clean = sanitizeCloudState(data.state);
+  if (!clean) {
+    console.warn("[cloud-sync] cloud state failed validation — skipping hydrate");
+    return null;
+  }
+  return {
+    state: clean,
+    updatedAt: data.updated_at as string,
+    plan: (data.plan as string | null) ?? null,
+    planExpiresAt: (data.plan_expires_at as string | null) ?? null,
+  };
 }
 
 export interface SyncResult {

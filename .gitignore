@@ -49,3 +49,6 @@ yarn-error.log*
 
 # vitest
 .vitest-cache/
+
+# SDD working files (briefs/ledger) — session scratch, not for the public repo
+.superpowers/

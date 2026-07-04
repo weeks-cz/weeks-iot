@@ -125,6 +125,9 @@ export interface GameState {
   // Set když user propojil Supabase účet. null = PIN-only / anonymous.
   linkedUserId?: string | null;
   circuits: Record<string, Circuit>;          // current student's circuits (view)
+  // Plan metadata — server-owned, never pushed to cloud (NOT in SyncableState)
+  plan?: "free" | "student" | null;
+  planExpiresAt?: string | null;
 }
 
 // JSONB shape uložený v learning_accounts.state
@@ -142,7 +145,8 @@ export type LearningEventType =
   | "task_complete" | "task_skip"
   | "section_unlock"
   | "theme_purchase" | "avatar_purchase"
-  | "daily_challenge_claim";
+  | "daily_challenge_claim"
+  | "circuit_save";
 
 export interface LearningEvent {
   event_type: LearningEventType;

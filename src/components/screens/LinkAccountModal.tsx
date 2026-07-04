@@ -124,6 +124,11 @@ export function LinkAccountModal({ open, onClose }: Props) {
               ))}
             </div>
 
+            <p className="mt-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-600">
+              💡 Do cloudu se ukládá jen postup tohoto propojeného účtu. Táborové PIN
+              profily zůstávají uložené jen v tomhle zařízení a propojením se nepřenášejí.
+            </p>
+
             <form onSubmit={handleSubmit} className="space-y-3">
               <input
                 type="email" autoComplete="email" required

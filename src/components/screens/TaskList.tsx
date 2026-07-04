@@ -13,8 +13,10 @@ import { SECTIONS, getAllTasks, getDailyChallengeTaskId, hasClaimedDailyChalleng
 import { LEVEL_BADGES, REWARD_CONFIG } from "@/lib/rewards";
 import { STYLE_SHOP_CONFIG } from "@/lib/config";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
+import { hasPremium } from "@/lib/payments/plans";
 import { LinkAccountModal } from "@/components/screens/LinkAccountModal";
 import { WelcomeModal } from "@/components/screens/WelcomeModal";
+import { UpgradeModal } from "@/components/screens/UpgradeModal";
 import type { Task } from "@/types";
 
 export function TaskList() {
@@ -26,6 +28,7 @@ export function TaskList() {
   const [nicknameInput, setNicknameInput] = useState(account.nickname ?? "");
   const [nickMsg, setNickMsg] = useState<string | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   const allTasks = getAllTasks();
   const completedCount = Object.values(state.tasks).filter((t) => t.status === "completed").length;
@@ -232,7 +235,11 @@ export function TaskList() {
 
       {/* ── Section blocks ── */}
       {SECTIONS.map((section) => {
-        const unlocked = isAdmin || (state.sections[section.id]?.unlocked ?? false);
+        const premium = hasPremium(state.plan, state.planExpiresAt);
+        const effectiveUnlocked =
+          isAdmin ||
+          (state.sections[section.id]?.unlocked ?? false) ||
+          (Boolean(state.linkedUserId) && premium);
         return (
           <section key={section.id} className="space-y-2">
             {/* Section header */}
@@ -241,7 +248,7 @@ export function TaskList() {
                 {section.label}
               </h2>
               <span className="text-xs text-[color:var(--theme-muted)] opacity-60">
-                {unlocked
+                {effectiveUnlocked
                   ? `${section.tasks.filter((t) => state.tasks[t.id]?.status === "completed").length} / ${section.tasks.length} splněno`
                   : "🔒 zamčeno"}
               </span>
@@ -255,8 +262,8 @@ export function TaskList() {
                 <button
                   key={t.id}
                   type="button"
-                  className={`task-row w-full text-left ${done ? "task-done" : ""} ${!unlocked ? "task-locked" : ""}`}
-                  onClick={() => unlocked && openTask(t)}
+                  className={`task-row w-full text-left ${done ? "task-done" : ""} ${!effectiveUnlocked ? "task-locked" : ""}`}
+                  onClick={() => effectiveUnlocked && openTask(t)}
                 >
                   <div className={done ? "task-dot-done" : "task-dot-open"} />
                   <div className="flex-1 min-w-0">
@@ -287,21 +294,34 @@ export function TaskList() {
             })}
 
             {/* Unlock CTA row for locked sections */}
-            {!unlocked && section.unlockCost !== undefined && (
-              <button
-                type="button"
-                onClick={() => unlockSection(section.id as "advanced" | "expert")}
-                disabled={account.stars < section.unlockCost}
-                className="w-full flex items-center justify-between rounded-xl border-2 border-dashed border-[color:var(--theme-accent)]/20 bg-[color:var(--theme-accent-soft)] px-5 py-4 text-left transition-colors hover:border-[color:var(--theme-accent)]/40 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <span className="flex items-center gap-2 font-semibold text-[color:var(--theme-text)]">
-                  <Lock className="h-4 w-4" />
-                  Odemknout {section.label}
-                </span>
-                <span className="text-sm font-bold text-[color:var(--theme-star)]">
-                  {section.unlockCost} ★
-                </span>
-              </button>
+            {!effectiveUnlocked && section.unlockCost !== undefined && (
+              state.linkedUserId && !premium ? (
+                <button
+                  type="button"
+                  onClick={() => setUpgradeModalOpen(true)}
+                  className="w-full flex items-center justify-between rounded-xl border-2 border-dashed border-[color:var(--theme-accent)]/20 bg-[color:var(--theme-accent-soft)] px-5 py-4 text-left transition-colors hover:border-[color:var(--theme-accent)]/40"
+                >
+                  <span className="flex items-center gap-2 font-semibold text-[color:var(--theme-text)]">
+                    <Lock className="h-4 w-4" />
+                    Odemkni {section.label} s Weeks Premium
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => unlockSection(section.id as "advanced" | "expert")}
+                  disabled={account.stars < section.unlockCost}
+                  className="w-full flex items-center justify-between rounded-xl border-2 border-dashed border-[color:var(--theme-accent)]/20 bg-[color:var(--theme-accent-soft)] px-5 py-4 text-left transition-colors hover:border-[color:var(--theme-accent)]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center gap-2 font-semibold text-[color:var(--theme-text)]">
+                    <Lock className="h-4 w-4" />
+                    Odemknout {section.label}
+                  </span>
+                  <span className="text-sm font-bold text-[color:var(--theme-star)]">
+                    {section.unlockCost} ★
+                  </span>
+                </button>
+              )
             )}
           </section>
         );
@@ -394,6 +414,7 @@ export function TaskList() {
       )}
 
       <LinkAccountModal open={linkModalOpen} onClose={() => setLinkModalOpen(false)} />
+      <UpgradeModal open={upgradeModalOpen} onClose={() => setUpgradeModalOpen(false)} />
     </motion.div>
   );
 }
