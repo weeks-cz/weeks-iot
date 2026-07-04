@@ -522,14 +522,20 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flush on tab close (best-effort — browser won't wait for async)
+  const latestStateRef = useRef(state);
+  useEffect(() => { latestStateRef.current = state; });
+
   useEffect(() => {
-    if (!state.linkedUserId) return;
-    // Guarded i tady: když je naše verze zastaralá, radši nezapisuj (nepřepisuj
-    // novější cloud), než abychom při zavření záložky clobberovali jiné zařízení.
-    const handler = () => { void syncToCloud(state, cloudVersionRef.current); };
+    const handler = () => {
+      const s = latestStateRef.current;
+      if (!s.linkedUserId) return;
+      // Guarded i tady: když je naše verze zastaralá, radši nezapisuj (nepřepisuj
+      // novější cloud), než abychom při zavření záložky clobberovali jiné zařízení.
+      void syncToCloud(s, cloudVersionRef.current);
+    };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const dispatchWithEvents = useCallback((action: Action) => {
     dispatch(action);
@@ -597,6 +603,15 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
           event_type: "daily_challenge_claim",
           task_id: getDailyChallengeTaskId() ?? null,
         });
+        break;
+      }
+      case "SAVE_CIRCUIT": {
+        if (!state.adminPreviewActive) {
+          emitEvent(state.linkedUserId ?? null, {
+            event_type: "circuit_save",
+            task_id: action.taskId,
+          });
+        }
         break;
       }
     }
