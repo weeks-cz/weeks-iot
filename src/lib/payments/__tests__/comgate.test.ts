@@ -37,6 +37,7 @@ describe("comgate client (subscription variant)", () => {
     expect(p.get("url_paid")).toBe("https://iot.weeks.cz/premium/dekujeme?paymentId=pay-123");
     expect(p.get("url_pending")).toBe("https://iot.weeks.cz/premium/dekujeme?paymentId=pay-123");
     expect(p.get("url_cancelled")).toBe("https://iot.weeks.cz/premium/zruseno");
+    expect(p.get("test")).toBe("true");
   });
   it("parsuje create response", () => {
     const r = parseCreateResponse("code=0&message=OK&transId=AB12-CD34-EF56&redirect=https%3A%2F%2Fpayments.comgate.cz%2Fx");

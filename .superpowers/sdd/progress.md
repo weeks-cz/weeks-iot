@@ -13,3 +13,5 @@ Task C3: complete (commit f99d044, review clean; minor: test param assertion par
 Task C4: complete (commit 7e49b8f, review clean; minor: HTML interpolation in email builder — inputs are server constants only, inherited pattern)
 Task C5: complete (commit a5e5e59, review clean)
 Task C6: complete (commits 2222c18 + fix 882cf77, review: Critical replay/retry bug in PLAN code found by opus review, fixed via atomic premium_activated_at claim, re-review approved all 6 scenarios)
+Task C7: complete (commit 1663184, review clean; minors: extra sentence on zruseno page [keep], modal msg persists on reopen [final review triage])
+Task C8: complete (commit a5ec2ac, review: Important finding [.env.local.example vs .env.example] adjudicated as false positive — controller mandated existing-convention override; docs factually verified)

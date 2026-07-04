@@ -21,7 +21,7 @@ export default function CancelledPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-white">Platba byla zrušena</h1>
           <p className="text-[color:var(--theme-muted)]">
-            Nic jsme ti neúčtovali. Můžeš to zkusit znovu kdykoliv.
+            Nic jsme ti neúčtovali.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +17,13 @@ export function UpgradeModal({ open, onClose }: Props) {
   const [billingName, setBillingName] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Clear error message when modal opens
+  useEffect(() => {
+    if (open) {
+      setMsg(null);
+    }
+  }, [open]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

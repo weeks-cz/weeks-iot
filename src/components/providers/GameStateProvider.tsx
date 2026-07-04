@@ -616,6 +616,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       }
       case "SAVE_CIRCUIT": {
         if (!state.adminPreviewActive) {
+          // typ Circuit nemá pole s počtem komponent vhodné pro analytiku
           emitEvent(state.linkedUserId ?? null, {
             event_type: "circuit_save",
             task_id: action.taskId,
