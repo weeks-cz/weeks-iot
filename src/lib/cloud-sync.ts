@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeCloudState } from "@/lib/cloud-validate";
 import type { GameState, LearningEvent, SyncableState } from "@/types";
 
 export function extractSyncableState(state: GameState): SyncableState {
@@ -29,7 +30,12 @@ export async function fetchCloudState(userId: string): Promise<CloudSnapshot | n
     return null;
   }
   if (!data) return null;
-  return { state: data.state as SyncableState, updatedAt: data.updated_at as string };
+  const clean = sanitizeCloudState(data.state);
+  if (!clean) {
+    console.warn("[cloud-sync] cloud state failed validation — skipping hydrate");
+    return null;
+  }
+  return { state: clean, updatedAt: data.updated_at as string };
 }
 
 export interface SyncResult {
