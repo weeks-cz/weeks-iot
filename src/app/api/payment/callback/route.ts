@@ -29,7 +29,11 @@ export async function POST(req: Request) {
   const paymentId = params.get("refId");
   if (!transId || !paymentId) return respond(1, "missing ids");
 
-  const svc = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  // Vždy projekt Učebny (viz create route) — SUPABASE_URL v repu patří hubu.
+  const svc = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
 
   // Načti platbu a ignoruj zastaralé callbacky (superseded transakce)
   const { data: payment } = await svc

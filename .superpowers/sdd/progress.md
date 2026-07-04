@@ -15,3 +15,6 @@ Task C5: complete (commit a5e5e59, review clean)
 Task C6: complete (commits 2222c18 + fix 882cf77, review: Critical replay/retry bug in PLAN code found by opus review, fixed via atomic premium_activated_at claim, re-review approved all 6 scenarios)
 Task C7: complete (commit 1663184, review clean; minors: extra sentence on zruseno page [keep], modal msg persists on reopen [final review triage])
 Task C8: complete (commit a5ec2ac, review: Important finding [.env.local.example vs .env.example] adjudicated as false positive — controller mandated existing-convention override; docs factually verified)
+Final review: With fixes -> fix commit 8580a87 (modal msg reset, zruseno copy, comgate test assertion, cron comment, circuit_save comment). All 5 applied, 62/62 green.
+Task C9: complete (build OK with env, pushed, PR https://github.com/weeks-cz/weeks-iot/pull/5, kanban comments 3x201)
+ALL TASKS COMPLETE 2026-07-04.

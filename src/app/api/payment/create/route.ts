@@ -15,7 +15,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Platby zatím nejsou zapnuté." }, { status: 503 });
   }
 
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Vždy projekt Učebny — SUPABASE_URL v tomhle repu historicky ukazuje na hub,
+  // proto URL bereme výhradně z NEXT_PUBLIC_SUPABASE_URL (stejná DB jako klient).
+  // SUPABASE_SERVICE_ROLE_KEY = service klíč projektu Učebny.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !anon || !service) {

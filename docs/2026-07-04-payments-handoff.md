@@ -1,6 +1,8 @@
 # Handoff: Premium subscriptions a fakturace (2026-07-04)
 
-Tato dokumentace zachycuje stav implementace placené verze app.weeks.cz a způsob spuštění v produkci.
+Tato dokumentace zachycuje stav implementace placené verze iot.weeks.cz a způsob spuštění v produkci.
+
+> **⚠️ Dva Supabase projekty!** Repo pracuje s projektem **Učebny** (`izrskvooxsdyzwqrwhev` — účty dětí, learning_accounts/learning_events/payments; hodnota `NEXT_PUBLIC_SUPABASE_URL`). Hub projekt (`qtxiwtinwcagsyhwaeda` — kanban weeks-hub) s Učebnou NESOUVISÍ. Migrace i service klíč patří VÝHRADNĚ projektu Učebny. Server routes záměrně nečtou `SUPABASE_URL` (historicky mířil na hub).
 
 ## Aktuální stav (Part A, B, C)
 
@@ -12,8 +14,8 @@ Tato dokumentace zachycuje stav implementace placené verze app.weeks.cz a způs
 
 ### Part B: Security migrace + retention cron
 - ✅ Migrace 002: column-level grants (role-auth-bucket-policy)
-- ✅ /api/cron/retention: weekly cleanup learning_events starších než 30 dní
-- ✅ Vercel cron middleware (vercel.json: neděle 3:00 UTC)
+- ✅ /api/cron/retention: denní cleanup learning_events starších než 365 dní; zároveň keep-alive proti auto-pauze Supabase free tieru
+- ✅ Vercel cron (vercel.json: denně 3:00 UTC)
 - ✅ Security review dokumentace (docs/2026-07-04-security-review.md)
 
 ### Part C: Premium subscriptions + fakturace
@@ -47,10 +49,9 @@ Tato dokumentace zachycuje stav implementace placené verze app.weeks.cz a způs
 | `RESEND_API_KEY` | API klíč Resend (transakční e-maily) | src/lib/payments/email.ts | Required* |
 | `RESEND_FROM` | From header (default: "Weeks <info@weeks.cz>") | src/lib/payments/email.ts | String |
 | `CRON_SECRET` | Authorization secret pro /api/cron/retention | src/app/api/cron/retention/route.ts | Required |
-| `SUPABASE_URL` | URL Supabase (verze se admin klíčem) | src/app/api/payment/create/route.ts | URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (admin) | src/app/api/payment/create/route.ts, /cron | Required |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL (veřejná) | src/app/api/payment/create/route.ts | URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | src/app/api/payment/create/route.ts | Required |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key projektu **Učebny** (NE hubu!) | /api/payment/create, /api/payment/callback, /api/cron/retention | Required |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL projektu Učebny — používají ji i server routes | klient + všechny payment/cron routes | URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key projektu Učebny | klient + /api/payment/create (ověření tokenu) | Required |
 
 **Required* = RESEND_API_KEY není povinný (fallback chybí e-maily), ale vyžaduje se pro funčnost.*
 
@@ -58,8 +59,8 @@ Tato dokumentace zachycuje stav implementace placené verze app.weeks.cz a způs
 
 ## Checklist spuštění (5 kroků)
 
-1. aplikovat migrace 002 + 003 v Supabase (SQL editor, projekt qtxiwtinwcagsyhwaeda),
-2. Vercel env: `AI_GATEWAY_API_KEY` (tutor), `COMGATE_*` (zprvu `COMGATE_TEST=true`), `FAKTUROID_*`, `RESEND_*`, `CRON_SECRET`,
+1. aplikovat migrace 002 + 003 v Supabase (SQL editor, projekt Učebny `izrskvooxsdyzwqrwhev` — NE hub!),
+2. Vercel env: `AI_GATEWAY_API_KEY` (tutor), `SUPABASE_SERVICE_ROLE_KEY` (service klíč projektu Učebny z dashboardu → Settings → API), `COMGATE_*` (zprvu `COMGATE_TEST=true`), `FAKTUROID_*`, `RESEND_*`, `CRON_SECRET`; Supabase `NEXT_PUBLIC_*` proměnné přepnout na **All Environments** (ať fungují preview deploye),
 3. v Comgate portálu povolit doménu iot.weeks.cz + nastavit callback URL `https://iot.weeks.cz/api/payment/callback`,
 4. testovací platba v test režimu end-to-end (create → brána → callback → plan aktivní → faktura v Fakturoid testu → e-mail),
 5. `COMGATE_TEST=false` + sundat noindex až při veřejném launchi.
@@ -68,9 +69,9 @@ Tato dokumentace zachycuje stav implementace placené verze app.weeks.cz a způs
 
 ## Poznamení
 
-- **Projekt Supabase:** qtxiwtinwcagsyhwaeda
+- **Projekt Supabase (Učebna):** izrskvooxsdyzwqrwhev — pozor, free tier se auto-pauzuje po ~7 dnech neaktivity (stalo se v červnu 2026); denní retention cron slouží i jako keep-alive, ale funguje až s nastaveným `CRON_SECRET` + service klíčem
 - **Produkce:** iot.weeks.cz (Vercel)
 - **Domény:** weeks.cz (Resend, ověřena v eu-west-1)
-- **Comgate:** testovací režim aktivní po default (bezpečné)
-- **Fakturoid:** tarif "Na lehko" (limit 5 odběratelů + API, bez mailů)
-- **Cron:** každou neděli v 3:00 UTC (vercel.json)
+- **Comgate:** testovací režim aktivní by default (bezpečné)
+- **Fakturoid:** tarif „Na lehko" — API vystavení i odeslání dokladu potvrzeno podporou
+- **Cron:** denně v 3:00 UTC (vercel.json)
