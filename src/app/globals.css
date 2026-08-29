@@ -156,6 +156,71 @@
     font-size: clamp(1.375rem, 2.5vw, 1.875rem);
   }
 
+  /* ── Dětská zóna ────────────────────────────────────────────────────
+     Lekce čte desetileté dítě na telefonu. Texty jsou proto o stupeň
+     větší než v rodičovské zóně a řádkování volnější — ne aby to bylo
+     „hravé", ale aby se to dalo přečíst bez námahy. */
+
+  .lesson-body {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+
+  @media (min-width: 640px) {
+    .lesson-body {
+      font-size: 1.125rem;
+    }
+  }
+
+  /* Instrukce aktuálního kroku. Je to ta nejdůležitější věta na
+     obrazovce a musí se dát přečíst koutkem oka. */
+  .step-instruction {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    font-size: clamp(1.125rem, 2.2vw, 1.5rem);
+  }
+
+  /* ── Pohyb ──────────────────────────────────────────────────────────
+     Odezva na akci, ne dekorace. Každá z těchhle animací říká „tohle se
+     právě stalo" — a všechny se vypnou, když si uživatel v systému
+     vyžádal omezený pohyb (viz reset výše). */
+
+  @keyframes weeks-pop {
+    0% { transform: scale(0.7); opacity: 0; }
+    60% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes weeks-slide-in {
+    from { transform: translateY(6px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes weeks-check {
+    0% { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+    70% { transform: scale(1.2) rotate(3deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+
+  @keyframes weeks-nudge {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+
+  @keyframes weeks-glow {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-trust-500) 45%, transparent); }
+    50% { box-shadow: 0 0 0 10px transparent; }
+  }
+
+  .animate-pop { animation: weeks-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .animate-slide-in { animation: weeks-slide-in 220ms ease-out both; }
+  .animate-check { animation: weeks-check 340ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .animate-nudge { animation: weeks-nudge 320ms ease-in-out; }
+  .animate-glow { animation: weeks-glow 1.4s ease-out 2; }
+
   /* Technický popisek nad nadpisem — „REGISTRACE / KROK 2 ZE 4". */
   .mono-label {
     font-family: var(--font-mono);

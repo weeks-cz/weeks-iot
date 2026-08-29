@@ -152,3 +152,61 @@ describe("posun na zvýrazněné piny", () => {
     expect(ensureVisible(circuit, [], viewport, view)).toBeNull();
   });
 });
+
+describe("součástka zapíchnutá do breadboardu", () => {
+  /* Rezistor nožičkami přesně v dírkách A-1 a A-5. Breadboard je na
+     (0,400), řada A má dy=2, sloupce začínají na dx=0. */
+  const stuck: Circuit = {
+    comps: [
+      { id: "bb", type: "breadboard-half", x: 0, y: 400, rotation: 0 },
+      { id: "r", type: "resistor-220", x: 0, y: 400 + 2 * PITCH, rotation: 0 },
+    ],
+    wires: [],
+  };
+
+  it("nožička v dírce je s tou dírkou spojená", async () => {
+    const { resolveNets, pinKey } = await import("../nets");
+
+    /* Bez tohohle byla deska jen obrázek: dítě do ní zapíchlo součástku,
+       vypadalo to zapojeně a nebylo. */
+    const nets = resolveNets(stuck);
+    expect(nets.connected(pinKey("r", "a"), pinKey("bb", "row-A-1"))).toBe(true);
+  });
+
+  it("spojení se šíří celým sloupcem, ne jen do té jedné dírky", async () => {
+    const { resolveNets, pinKey } = await import("../nets");
+
+    const nets = resolveNets(stuck);
+    expect(nets.connected(pinKey("r", "a"), pinKey("bb", "row-E-1"))).toBe(true);
+  });
+
+  it("příkop pořád odděluje — spodní půlka spojená není", async () => {
+    const { resolveNets, pinKey } = await import("../nets");
+
+    const nets = resolveNets(stuck);
+    expect(nets.connected(pinKey("r", "a"), pinKey("bb", "row-F-1"))).toBe(false);
+  });
+
+  it("dvě součástky na sobě se nespojí — to není zapíchnutí, to je nepořádek", async () => {
+    const { resolveNets, pinKey } = await import("../nets");
+
+    const stacked: Circuit = {
+      comps: [
+        { id: "bb", type: "breadboard-half", x: 0, y: 0, rotation: 0 },
+        { id: "r1", type: "resistor-220", x: 500, y: 500, rotation: 0 },
+        { id: "r2", type: "resistor-220", x: 500, y: 500, rotation: 0 },
+      ],
+      wires: [],
+    };
+
+    const nets = resolveNets(stacked);
+    expect(nets.connected(pinKey("r1", "a"), pinKey("r2", "a"))).toBe(false);
+  });
+
+  it("klik na nožičku chytne nožičku, ne dírku pod ní", () => {
+    /* Jinak drát vede viditelně jinam, než dítě mířilo — a přesně to
+       působilo, že se builder ovládá mizerně. */
+    const hit = pinAt(stuck, { x: 0, y: 400 + 2 * PITCH });
+    expect(hit?.pin.compId).toBe("r");
+  });
+});

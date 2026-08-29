@@ -1,5 +1,6 @@
 import type { Circuit, CircuitComponent, PinRef } from "./types";
 import { getComponentSpec } from "./components";
+import { PITCH } from "./constants";
 
 /**
  * Elektrický model obvodu.
@@ -98,6 +99,68 @@ export interface NetMap {
 }
 
 /**
+ * Součástky zapíchnuté do breadboardu.
+ *
+ * Na skutečné desce se nožička zastrčí do dírky a je tím spojená se
+ * zbytkem sloupce. Tady se to pozná podle polohy: pin součástky leží
+ * přesně na pinu breadboardu.
+ *
+ * ── Proč to musí být ───────────────────────────────────────────────────────
+ * Bez toho byla deska jen obrázek. Dítě do ní zapíchlo rezistor, vypadalo
+ * to zapojeně a nebylo — muselo vést drátek přímo na nožičku, což na
+ * skutečné desce nikdo nedělá. A protože nožička leží na dírce, kliknutí
+ * se chytalo na dírku pod ní a drát vedl někam úplně jinam, než dítě
+ * vidělo.
+ *
+ * Spojuje se jen to, co se do desky opravdu zapichuje. Arduino se do
+ * breadboardu nezastrkává a dvě součástky přes sebe jsou nepořádek na
+ * ploše, ne elektrický spoj.
+ */
+const PLUGGABLE: ReadonlySet<string> = new Set([
+  "led-red",
+  "led-yellow",
+  "led-green",
+  "led-blue",
+  "led-rgb",
+  "resistor-220",
+  "pushbutton",
+  "piezo-buzzer",
+  "potentiometer",
+  "photoresistor",
+]);
+
+function breadboardContacts(circuit: Circuit): PinKey[][] {
+  const boards = new Set(
+    circuit.comps.filter((c) => c.type === "breadboard-half").map((c) => c.id),
+  );
+  if (boards.size === 0) return [];
+
+  const byPosition = new Map<string, PinKey[]>();
+
+  for (const comp of circuit.comps) {
+    if (!boards.has(comp.id) && !PLUGGABLE.has(comp.type)) continue;
+
+    for (const pin of getComponentSpec(comp.type).pins) {
+      const key = `${comp.x + pin.dx * PITCH},${comp.y + pin.dy * PITCH}`;
+      const list = byPosition.get(key) ?? [];
+      list.push(pinKey(comp.id, pin.name));
+      byPosition.set(key, list);
+    }
+  }
+
+  const groups: PinKey[][] = [];
+  for (const pins of byPosition.values()) {
+    if (pins.length < 2) continue;
+    /* Aspoň jedna strana musí být deska — jinak jsou to jen dvě součástky
+       položené na sobě. */
+    if (!pins.some((k) => boards.has(k.slice(0, k.indexOf("#"))))) continue;
+    groups.push(pins);
+  }
+
+  return groups;
+}
+
+/**
  * Rozklad obvodu do sítí.
  *
  * Součástky se sem NEZAPOČÍTÁVAJÍ. Rezistor ani LED nejsou vodič — spojení
@@ -116,6 +179,12 @@ export function resolveNets(circuit: Circuit): NetMap {
     for (const group of breadboardGroups(comp)) {
       for (let i = 1; i < group.length; i++) uf.union(group[0]!, group[i]!);
     }
+  }
+
+  /* Nožičky zastrčené do dírek. Musí se to udělat až po vnitřním
+     propojení desky, aby se spojení šířilo celým sloupcem. */
+  for (const group of breadboardContacts(circuit)) {
+    for (let i = 1; i < group.length; i++) uf.union(group[0]!, group[i]!);
   }
 
   for (const wire of circuit.wires) {

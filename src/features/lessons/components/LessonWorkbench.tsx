@@ -8,6 +8,7 @@ import { CircuitBuilder } from "@/features/circuit/components/CircuitBuilder";
 import { useWokwiElements } from "@/features/circuit/components/useWokwiElements";
 import { checkWiring } from "@/features/circuit/wiring-check";
 import type { Circuit } from "@/features/circuit/types";
+import { Celebration } from "./Celebration";
 import { CodeEditor } from "./CodeEditor";
 import { PartsIntro } from "./PartsIntro";
 import { CurrentStep, StepList } from "./WiringGuide";
@@ -161,6 +162,11 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Odměna za dvacet minut práce. Zelený rámeček je oznámení,
+          konfety jsou odměna — a ten rozdíl je přesně to, proč se
+          v Duolingu chce pokračovat. */}
+      <Celebration active={solved} />
+
       <Stepper steps={STEPS} current={step} label="Postup lekcí" />
 
       {step === STEP.BRIEF && (
@@ -173,7 +179,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
           <div className="flex flex-col gap-3">
             {lesson.brief.map((paragraph) => (
-              <p key={paragraph} className="max-w-prose leading-relaxed text-ink-700">
+              <p key={paragraph} className="lesson-body max-w-prose text-ink-700">
                 {paragraph}
               </p>
             ))}
@@ -182,8 +188,8 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
           {lesson.concept && (
             <Card className="border-l-4 border-l-primary-600 p-5">
               <MonoLabel className="mb-2">Nová věc</MonoLabel>
-              <h3 className="mb-2 font-semibold text-ink">{lesson.concept.title}</h3>
-              <p className="max-w-prose leading-relaxed text-ink-500">{lesson.concept.body}</p>
+              <h3 className="mb-2 text-lg font-semibold text-ink">{lesson.concept.title}</h3>
+              <p className="lesson-body max-w-prose text-ink-500">{lesson.concept.body}</p>
             </Card>
           )}
 
@@ -201,7 +207,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
             Seznam se se součástkami
           </h2>
 
-          <p className="max-w-prose leading-relaxed text-ink-500">
+          <p className="lesson-body max-w-prose text-ink-500">
             Tohle jsou všechny součástky, které budeš potřebovat. Podívej se na
             ně — za chvíli je budeš skládat dohromady.
           </p>
@@ -241,6 +247,9 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
             /* Piny aktuálního kroku blikají, takže je vidět, kam kliknout.
                Bez toho je plocha les stejných teček. */
             highlightPins={step2?.pins}
+            /* Krok „polož součástku" rozsvítí tu správnou kartičku
+               v paletě, ať ji dítě nehledá podle názvu. */
+            suggested={step2?.place ?? null}
             showPins
             /* Vyšší než jinde: v tomhle kroku se do plochy míří prstem
                a čím větší je, tím větší jsou rozestupy mezi nožičkami.
@@ -248,8 +257,8 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                obrazovku — návod pojede s ním. */
             height={560}
             toolbar={<CurrentStep steps={steps} current={step2} />}
+            resetTo={seed}
             onReset={() => {
-              setCircuit(seed);
               setWiringChecked(false);
               setRun(null);
             }}
@@ -415,13 +424,15 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
               {run?.passed && (
                 <>
-                  <Alert tone="success" title="Funguje to!">
-                    Program dělá přesně to, co měl. Podívej se, jak obvod běží —
-                    a až se vynadíváš, pojď dál.
-                  </Alert>
+                  <div className="animate-pop">
+                    <Alert tone="success" title="Funguje to!">
+                      Program dělá přesně to, co měl. Podívej se, jak obvod běží —
+                      a až se vynadíváš, pojď dál.
+                    </Alert>
+                  </div>
 
                   <div>
-                    <Button size="lg" onClick={onContinue}>
+                    <Button size="lg" className="animate-glow" onClick={onContinue}>
                       Mám hotovo →
                     </Button>
                   </div>

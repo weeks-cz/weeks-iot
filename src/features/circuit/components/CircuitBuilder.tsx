@@ -23,7 +23,17 @@ interface Props {
   highlightPins?: PinRef[];
   /** Ukázat tečky pinů i bez najetí myší. Zapíná se v kroku zapojování. */
   showPins?: boolean;
-  /** Vrátit obvod do výchozího stavu lekce. */
+  /** Součástka, kterou po dítěti chce aktuální krok návodu. */
+  suggested?: ComponentType | null;
+  /**
+   * Obvod, na který se dítě vrátí tlačítkem „Začít znovu".
+   *
+   * Musí to být VÝCHOZÍ stav lekce, ne ten aktuální. Dřív se sem posílal
+   * aktuální obvod, takže tlačítko resetovalo na to, co už tam bylo —
+   * kliklo se a nestalo se nic.
+   */
+  resetTo?: Circuit;
+  /** Zavolá se po resetu, aby o něm věděla i lekce. */
   onReset?: () => void;
   readOnly?: boolean;
   height?: number;
@@ -58,6 +68,8 @@ export function CircuitBuilder({
   flagged,
   highlightPins,
   showPins,
+  suggested,
+  resetTo,
   onReset,
   readOnly,
   height = 460,
@@ -205,6 +217,7 @@ export function CircuitBuilder({
             armed={state.armed}
             dispatch={dispatch}
             ready={ready}
+            suggested={suggested}
             disabled={!ready}
           />
         )}
@@ -253,12 +266,15 @@ export function CircuitBuilder({
                 </button>
               )}
 
-              {onReset && !readOnly && (
+              {resetTo && !readOnly && (
                 <button
                   type="button"
                   onClick={() => {
-                    onReset();
-                    dispatch({ type: "RESET", circuit: initialCircuit });
+                    dispatch({ type: "RESET", circuit: resetTo });
+                    /* Výřez taky, jinak zůstane odjetý někam, kde po
+                       resetu nic není. */
+                    requestAnimationFrame(() => fit(resetTo));
+                    onReset?.();
                   }}
                   className="flex items-center gap-1.5 rounded-md border border-ink/20 bg-paper px-2.5 py-1.5 text-xs text-ink-500 shadow-sm hover:border-ink/40 hover:text-ink"
                 >

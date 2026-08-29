@@ -25,6 +25,9 @@ export interface PinHit {
   distance: number;
 }
 
+/** O kolik smí být pin součástky dál než dírka, aby ještě vyhrál. */
+const COMPONENT_BIAS = PITCH;
+
 /**
  * Nejbližší pin k bodu na ploše.
  *
@@ -37,17 +40,27 @@ export function pinAt(
   options: { radius?: number } = {},
 ): PinHit | null {
   const radius = options.radius ?? SNAP_RADIUS;
+
   let best: PinHit | null = null;
+  let bestScore = Infinity;
 
   for (const comp of circuit.comps) {
+    /* Nožička součástky vyhrává nad dírkou pod sebou. Klikat „na rezistor"
+       a chytat dírku, na které leží, je matoucí — i když je to elektricky
+       totéž, drát pak vede viditelně jinam, než dítě mířilo. */
+    const bias = comp.type === "breadboard-half" ? COMPONENT_BIAS : 0;
+
     for (const pin of getComponentSpec(comp.type).pins) {
       const pos = resolvePinPosition(comp, pin.name);
       if (!pos) continue;
 
       const distance = Math.hypot(pos.x - point.x, pos.y - point.y);
       if (distance > radius) continue;
-      if (best && best.distance <= distance) continue;
 
+      const score = distance + bias;
+      if (score >= bestScore) continue;
+
+      bestScore = score;
       best = { pin: { compId: comp.id, pinName: pin.name }, distance };
     }
   }

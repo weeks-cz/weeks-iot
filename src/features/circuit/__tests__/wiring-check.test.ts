@@ -3,8 +3,14 @@ import { PITCH } from "../constants";
 import { checkWiring, type WiringSpec } from "../wiring-check";
 import type { Circuit, CircuitComponent, Wire } from "../types";
 
+/* Součástky se rozmisťují, ne skládají na sebe: nožička ležící v dírce
+   breadboardu je od teď elektricky spojená, takže hromada na (0,0) by
+   propojila i to, co test schválně nepropojuje drátkem. Rezistor oběma
+   nožičkami v napájecí liště je zkrat — a je správně, že to obvod pozná. */
+let placed = 0;
 function comp(id: string, type: CircuitComponent["type"]): CircuitComponent {
-  return { id, type, x: 0, y: 0, rotation: 0 };
+  placed += 1;
+  return { id, type, x: placed * 12 * PITCH, y: placed * 9 * PITCH, rotation: 0 };
 }
 
 let seq = 0;

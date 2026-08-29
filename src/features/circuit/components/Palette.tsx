@@ -11,6 +11,8 @@ interface Props {
   dispatch: React.Dispatch<BuilderAction>;
   /** Jsou už načtené Wokwi prvky? Bez nich není co kreslit. */
   ready: boolean;
+  /** Součástka, kterou po dítěti chce aktuální krok. Zvýrazní se. */
+  suggested?: ComponentType | null;
   disabled?: boolean;
 }
 
@@ -64,7 +66,7 @@ function ComponentPreview({ type }: { type: ComponentType }) {
  * neexistuje. Tady se součástka klepnutím „vezme do ruky" a druhým klepnutím
  * položí. Myš i prst dělají totéž a nikdo se nemusí učit dvě ovládání.
  */
-export function Palette({ palette, armed, dispatch, ready, disabled }: Props) {
+export function Palette({ palette, armed, dispatch, ready, suggested, disabled }: Props) {
   return (
     <div className="flex gap-2 overflow-x-auto p-2 sm:h-full sm:w-40 sm:shrink-0 sm:flex-col sm:overflow-y-auto sm:border-r sm:border-ink/10">
       <p className="hidden px-1 pb-1 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-ink-300 sm:block">
@@ -74,6 +76,9 @@ export function Palette({ palette, armed, dispatch, ready, disabled }: Props) {
       {palette.map((type) => {
         const spec = getComponentSpec(type);
         const isArmed = armed === type;
+        /* Součástka, kterou právě chce návod. Bez tohohle je paleta řada
+           stejných kartiček a dítě musí porovnávat názvy s instrukcí. */
+        const isSuggested = !isArmed && suggested === type;
 
         return (
           <button
@@ -82,12 +87,20 @@ export function Palette({ palette, armed, dispatch, ready, disabled }: Props) {
             disabled={disabled}
             aria-pressed={isArmed}
             onClick={() => dispatch({ type: "ARM", kind: isArmed ? null : type })}
-            className={`flex w-24 shrink-0 flex-col items-center gap-1 rounded-md border p-2 text-center transition sm:w-full ${
+            className={`relative flex w-24 shrink-0 flex-col items-center gap-1 rounded-md border p-2 text-center transition sm:w-full ${
               isArmed
                 ? "border-primary-600 bg-primary-50 shadow-hard"
-                : "border-ink/15 bg-paper hover:border-ink/40"
+                : isSuggested
+                  ? "border-cta-500 bg-cta-50 shadow-hard-sm"
+                  : "border-ink/15 bg-paper hover:border-ink/40"
             } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
           >
+            {isSuggested && (
+              <span
+                aria-hidden="true"
+                className="absolute -right-1 -top-1 flex size-3 animate-pulse rounded-full bg-cta-500 ring-2 ring-paper"
+              />
+            )}
             {ready ? (
               <ComponentPreview type={type} />
             ) : (

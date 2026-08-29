@@ -17,10 +17,13 @@ function w(a: [string, string], b: [string, string]): Wire {
   };
 }
 
-const UNO = comp("uno", "arduino-uno");
-const BB = comp("bb", "breadboard-half");
-const LED = comp("led", "led-red");
-const RES = comp("r", "resistor-220");
+/* Rozmístěné, ne všechny na (0,0). Nožička ležící v dírce breadboardu je
+   od teď elektricky spojená — součástky naskládané na sebe by proto
+   propojily i to, co tenhle test schválně nepropojuje drátkem. */
+const UNO = comp("uno", "arduino-uno", 0, 40);
+const BB = comp("bb", "breadboard-half", 0, 0);
+const LED = comp("led", "led-red", 40, 40);
+const RES = comp("r", "resistor-220", 50, 40);
 
 /** Správné zapojení: D8 → rezistor → anoda, katoda → GND. */
 function correctCircuit(): Circuit {
