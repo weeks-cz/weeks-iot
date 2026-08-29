@@ -105,20 +105,43 @@ export const avatarSchema = z
  * podle čl. 7 odst. 2 GDPR neplatné — souhlas musí být konkrétní
  * a oddělitelný. Obchodní sdělení proto smí zůstat false.
  */
-export const onboardingSchema = z.object({
-  regionCode: regionSchema,
-  childNick: nickSchema,
-  childBirthYear: birthYearSchema,
-  childAvatar: avatarSchema.optional(),
+export const onboardingSchema = z
+  .object({
+    regionCode: regionSchema,
+    childNick: nickSchema,
+    childBirthYear: birthYearSchema,
+    childAvatar: avatarSchema.optional(),
 
-  acceptTerms: z.literal(true, {
-    message: "Bez potvrzení podmínek nejde účet založit",
-  }),
-  parentalConsent: z.literal(true, {
-    message: "Bez souhlasu zákonného zástupce nemůžeme údaje dítěte zpracovávat",
-  }),
-  marketingConsent: z.boolean().default(false),
-});
+    acceptTerms: z.literal(true, {
+      message: "Bez potvrzení podmínek nejde účet založit",
+    }),
+    /* Jeden z těch dvou musí být true — který, rozhoduje věk. Nejde to
+       vyjádřit jako z.literal(true) u obou, protože pak by nešlo projít
+       nikdy: nikdo nedává oba souhlasy naráz. */
+    parentalConsent: z.boolean().default(false),
+    selfConsent: z.boolean().default(false),
+    marketingConsent: z.boolean().default(false),
+  })
+  .superRefine((data, ctx) => {
+    if (needsParentalConsent(data.childBirthYear)) {
+      if (!data.parentalConsent) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["parentalConsent"],
+          message: "Bez souhlasu zákonného zástupce nemůžeme údaje dítěte zpracovávat",
+        });
+      }
+      return;
+    }
+
+    if (!data.selfConsent) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["selfConsent"],
+        message: "Bez souhlasu nemůžeme tvoje údaje zpracovávat",
+      });
+    }
+  });
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
 

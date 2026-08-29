@@ -12,11 +12,16 @@ import type { ConsentKind } from "@/lib/supabase/types";
  *
  * ── Právní rámec ───────────────────────────────────────────────────────────
  * Česká republika snížila věk digitálního souhlasu na 15 let
- * (§ 7 zák. č. 110/2019 Sb., k čl. 8 GDPR). Cílová skupina učebny je
- * 10–15 let, takže prakticky celé publikum potřebuje souhlas toho, kdo má
- * rodičovskou odpovědnost. Proto zakládá účet rodič.
+ * (§ 7 zák. č. 110/2019 Sb., k čl. 8 GDPR). Z toho plyne rozdvojení:
  *
- * Tři prvky jsou schválně oddělené. Sdružený box „souhlasím se vším" by byl
+ *   • dítě mladší 15 let  → účet zakládá rodič, souhlas dává zákonný zástupce
+ *   • od 15 let výš       → účet i souhlas patří samotnému uživateli
+ *
+ * Nikdy obojí. Dva souhlasy k témuž zpracování by si odporovaly, a nutit
+ * patnáctiletého zaškrtnout „jsem zákonný zástupce" by vyrobilo nepravdivý
+ * záznam — ledger, který obsahuje nepravdu, přestává být dokladem.
+ *
+ * Prvky jsou schválně oddělené. Sdružený box „souhlasím se vším" by byl
  * neplatný — souhlas musí být konkrétní, informovaný a oddělitelný
  * (čl. 7 odst. 2 GDPR). Ani jeden není předvyplněný.
  */
@@ -134,6 +139,83 @@ základě oprávněného zájmu podle čl. 6 odst. 1 písm. f) GDPR, a to výhra
 jako doklad o tom, že souhlas byl udělen.`,
 };
 
+export const SELF_TEXT: ConsentText = {
+  kind: "self",
+  version: "self-v1",
+  required: true,
+  label: "Souhlasím se zpracováním svých údajů pro provoz učebny.",
+  full: `SOUHLAS SE ZPRACOVÁNÍM OSOBNÍCH ÚDAJŮ
+
+Správce osobních údajů: ${CONTROLLER_LINE}
+
+1. KDO TENHLE SOUHLAS DÁVÁ
+Tento souhlas uděluješ sám nebo sama za sebe. Podle § 7 zákona
+č. 110/2019 Sb. může se zpracováním svých údajů v online službě souhlasit
+každý od 15 let věku; do té doby musí souhlas dát zákonný zástupce.
+
+2. JAKÉ ÚDAJE ZPRACOVÁVÁME
+  • e-mailovou adresu, kterou sis zaregistroval/a,
+  • přezdívku (nemusí to být tvé skutečné jméno),
+  • rok narození (nikoli přesné datum),
+  • kraj, ve kterém bydlíš,
+  • zvolený avatar,
+  • postup v lekcích: kdy jsi lekci začal/a, kdy dokončil/a a jak dlouho ti trvala,
+  • projekty, které v učebně vytvoříš (zapojení obvodů, 3D modely, kód).
+
+Záměrně nesbíráme jméno a příjmení, adresu, fotografii ani zdravotní údaje.
+
+3. K ČEMU ÚDAJE POUŽÍVÁME
+  • abychom ti mohli ukázat tvůj postup a uložit tvé projekty,
+  • abychom obsah přizpůsobili věkové skupině,
+  • abychom v souhrnné a anonymizované podobě vyhodnocovali, které lekce
+    lidé dokončují a které je ztrácejí.
+
+Údaje NEPOUŽÍVÁME k reklamnímu cílení a nepředáváme je třetím stranám
+k marketingovým účelům. Neprovádíme automatizované rozhodování ani
+profilování s právními účinky.
+
+4. PRÁVNÍ ZÁKLAD
+Tvůj souhlas podle čl. 6 odst. 1 písm. a) GDPR.
+
+5. KDO SE K ÚDAJŮM DOSTANE
+Zpracovatelé, kteří pro nás zajišťují technický provoz:
+  • Supabase — databáze a přihlašování (servery v Evropské unii),
+  • Vercel — provoz aplikace,
+  • Resend — odesílání e-mailů.
+S každým z nich máme uzavřenou smlouvu o zpracování osobních údajů.
+Údaje nepředáváme mimo Evropský hospodářský prostor bez odpovídajících záruk.
+
+6. JAK DLOUHO ÚDAJE UCHOVÁVÁME
+Po dobu trvání účtu. Po jeho zrušení nebo po odvolání tohoto souhlasu je
+smažeme nejpozději do 30 dnů.
+
+7. ODVOLÁNÍ SOUHLASU
+Souhlas můžeš kdykoli odvolat jediným tlačítkem v sekci Účet → Souhlasy,
+tedy stejně snadno, jako jsi jej udělil/a. Odvolání nemá vliv na zákonnost
+zpracování před jeho odvoláním.
+
+Upozornění: bez tohoto souhlasu nemá zpracování tvých údajů právní základ.
+Jeho odvolání proto znamená zrušení účtu včetně postupu a projektů.
+Před zrušením si projekty můžeš stáhnout.
+
+8. NĚKTERÉ VĚCI POTŘEBUJÍ RODIČE I TAK
+Pokud ti ještě nebylo 18, k zaplacení předplatného a k přihlášení na letní
+tábor je stále potřeba tvůj zákonný zástupce. Obsah učebny zdarma
+používáš bez něj.
+
+9. TVÁ PRÁVA
+Máš právo na přístup k údajům, jejich opravu, výmaz, omezení zpracování,
+přenositelnost a právo vznést námitku. Uplatníš je na ${CONTROLLER.email}.
+Máš také právo podat stížnost u Úřadu pro ochranu osobních údajů,
+Pplk. Sochora 27, 170 00 Praha 7, uoou.cz.
+
+10. ZÁZNAM O SOUHLASU
+K tomuto souhlasu ukládáme datum a čas udělení, verzi znění, jeho plné
+znění a tvou IP adresu s údajem o prohlížeči. IP adresu zpracováváme na
+základě oprávněného zájmu podle čl. 6 odst. 1 písm. f) GDPR, a to výhradně
+jako doklad o tom, že souhlas byl udělen.`,
+};
+
 export const MARKETING_TEXT: ConsentText = {
   kind: "marketing",
   version: "marketing-v1",
@@ -164,8 +246,21 @@ nezávisle na tomto souhlasu, protože bez nich nelze účet provozovat.`,
 export const CONSENT_TEXTS: readonly ConsentText[] = [
   TERMS_TEXT,
   PARENTAL_TEXT,
+  SELF_TEXT,
   MARKETING_TEXT,
 ] as const;
+
+/**
+ * Které souhlasy se ptají podle věku učícího se.
+ *
+ * Pod 15 let souhlasí zákonný zástupce, od 15 člověk sám za sebe. Nikdy
+ * obojí — dva souhlasy k témuž zpracování by si navzájem odporovaly.
+ */
+export function consentTextsForAge(isMinor: boolean): readonly ConsentText[] {
+  return CONSENT_TEXTS.filter((t) =>
+    t.kind === "parental" ? isMinor : t.kind === "self" ? !isMinor : true,
+  );
+}
 
 export function consentTextFor(kind: ConsentKind): ConsentText {
   const found = CONSENT_TEXTS.find((t) => t.kind === kind);

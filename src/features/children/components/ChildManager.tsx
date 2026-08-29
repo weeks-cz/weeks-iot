@@ -12,7 +12,7 @@ import {
   setChildPinAction,
   unlockChildAction,
 } from "../actions";
-import { AVATARS, avatarGlyph } from "../avatars";
+import { AVATARS, Avatar } from "../avatars";
 import type { ChildSummary } from "../queries";
 
 const EMPTY: ActionState = {};
@@ -102,9 +102,7 @@ function AddChildForm() {
                   defaultChecked={index === 0}
                   className="sr-only"
                 />
-                <span className="text-2xl" aria-hidden="true">
-                  {avatar.glyph}
-                </span>
+                <Avatar id={avatar.id} className="block size-7 text-ink" />
                 <span className="sr-only">{avatar.label}</span>
               </label>
             ))}
@@ -241,9 +239,7 @@ export function ChildManager({ profiles }: { profiles: ChildSummary[] }) {
         <Card key={child.id} className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="text-3xl" aria-hidden="true">
-                {avatarGlyph(child.avatar)}
-              </span>
+              <Avatar id={child.avatar} className="block size-10 shrink-0 text-ink" />
               <div>
                 <h2 className="heading-3 text-ink">{child.nick}</h2>
                 <p className="font-mono text-xs text-ink-500">

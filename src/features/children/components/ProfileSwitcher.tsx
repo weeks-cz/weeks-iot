@@ -6,7 +6,7 @@ import { TextField } from "@/components/ui/Field";
 import { Alert, Card } from "@/components/ui/Surface";
 import type { ActionState } from "@/features/actions";
 import { switchChildAction } from "../actions";
-import { avatarGlyph } from "../avatars";
+import { Avatar } from "../avatars";
 import type { ChildSummary } from "../queries";
 
 const EMPTY: ActionState = {};
@@ -28,9 +28,7 @@ export function ProfileSwitcher({ profiles }: { profiles: ChildSummary[] }) {
     return (
       <Card className="mx-auto max-w-sm p-6">
         <div className="mb-4 text-center">
-          <span className="text-5xl" aria-hidden="true">
-            {avatarGlyph(selected.avatar)}
-          </span>
+          <Avatar id={selected.avatar} className="mx-auto block size-16 text-ink" />
           <h2 className="heading-3 mt-2">{selected.nick}</h2>
         </div>
 
@@ -85,9 +83,7 @@ export function ProfileSwitcher({ profiles }: { profiles: ChildSummary[] }) {
                 className="card-maker card-maker-hover flex w-full flex-col items-center gap-2 p-6
                            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
               >
-                <span className="text-5xl" aria-hidden="true">
-                  {avatarGlyph(child.avatar)}
-                </span>
+                <Avatar id={child.avatar} className="block size-14 text-ink" />
                 <span className="heading-3 text-ink">{child.nick}</span>
                 <span className="mono-label">chráněno pinem</span>
               </button>
@@ -100,9 +96,7 @@ export function ProfileSwitcher({ profiles }: { profiles: ChildSummary[] }) {
                   className="card-maker card-maker-hover flex w-full flex-col items-center gap-2 p-6
                              focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                 >
-                  <span className="text-5xl" aria-hidden="true">
-                    {avatarGlyph(child.avatar)}
-                  </span>
+                  <Avatar id={child.avatar} className="block size-14 text-ink" />
                   <span className="heading-3 text-ink">{child.nick}</span>
                   <span className="mono-label">
                     {child.lessonsCompleted > 0

@@ -8,7 +8,7 @@
  * Do té doby platí: kdo mění migraci, mění i tenhle soubor.
  */
 
-export type ConsentKind = "terms" | "parental" | "marketing";
+export type ConsentKind = "terms" | "parental" | "self" | "marketing";
 export type ProgressStatus = "started" | "completed";
 export type ProjectKind = "circuit" | "model" | "code";
 export type Plan = "free" | "premium";

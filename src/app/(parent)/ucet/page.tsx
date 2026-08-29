@@ -5,7 +5,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Alert, Badge, Card, MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
 import { segmentForRegion } from "@/lib/regions";
-import { avatarGlyph } from "@/features/children/avatars";
+import { Avatar } from "@/features/children/avatars";
 import { getChildren } from "@/features/children/queries";
 import { getCampCatchment } from "@/features/onboarding/queries";
 import { consentStatuses } from "@/features/consent/logic";
@@ -85,9 +85,7 @@ export default async function AccountPage({
               <li key={child.id}>
                 <Card interactive className="h-full p-5">
                   <div className="mb-3 flex items-start justify-between gap-2">
-                    <span className="text-4xl" aria-hidden="true">
-                      {avatarGlyph(child.avatar)}
-                    </span>
+                    <Avatar id={child.avatar} className="block size-12 text-ink" />
                     {child.isLocked ? (
                       <Badge tone="danger">zamčeno</Badge>
                     ) : child.hasPin ? (

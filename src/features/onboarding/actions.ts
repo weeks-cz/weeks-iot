@@ -6,11 +6,11 @@ import { z } from "zod";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { EVENT } from "@/features/analytics/events";
-import { CONSENT_TEXTS } from "@/features/consent/texts";
+import { consentTextsForAge } from "@/features/consent/texts";
 import { adoptSession, lessonKey, mergeWithExisting } from "@/features/anon-session/adopt";
 import { anonSessionSchema, type AnonSession } from "@/features/anon-session/schema";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
-import { onboardingSchema } from "./schema";
+import { needsParentalConsent, onboardingSchema } from "./schema";
 
 /**
  * Dokončení onboardingu.
@@ -68,6 +68,7 @@ export async function completeOnboardingAction(
        schéma schválně nepřijímá řetězec, protože "false" je v JS pravdivé. */
     acceptTerms: formData.get("acceptTerms") === "on",
     parentalConsent: formData.get("parentalConsent") === "on",
+    selfConsent: formData.get("selfConsent") === "on",
     marketingConsent: formData.get("marketingConsent") === "on",
   });
 
@@ -82,13 +83,19 @@ export async function completeOnboardingAction(
      Pořadí je záměrné. Kdyby se nejdřív založil profil dítěte a zápis
      souhlasu pak selhal, měli bychom v databázi údaje dítěte bez právního
      základu. Opačně vznikne jen souhlas bez profilu, což je neškodné. */
-  for (const text of CONSENT_TEXTS) {
+  /* Věk se přepočítá na serveru z odeslaného ročníku — klient si nesmí
+     vybrat, který souhlas mu stačí. */
+  const isMinor = needsParentalConsent(input.childBirthYear);
+
+  for (const text of consentTextsForAge(isMinor)) {
     const granted =
       text.kind === "terms"
         ? input.acceptTerms
         : text.kind === "parental"
           ? input.parentalConsent
-          : input.marketingConsent;
+          : text.kind === "self"
+            ? input.selfConsent
+            : input.marketingConsent;
 
     /* Nezaškrtnutá obchodní sdělení se nezapisují vůbec. Řádek
        granted = false by tvrdil, že člověk aktivně odmítl, zatímco on jen
@@ -189,6 +196,7 @@ export async function completeOnboardingAction(
         region: input.regionCode,
         birth_year: input.childBirthYear,
         marketing: input.marketingConsent,
+        self_managed: !isMinor,
         had_anon_progress: Boolean(anon?.lessons.length),
       },
     },

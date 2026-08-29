@@ -5,23 +5,14 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox, SelectField, TextField } from "@/components/ui/Field";
 import { Alert, MonoLabel, Stepper } from "@/components/ui/Surface";
 import { useAnonSessionRaw } from "@/features/anon-session/useAnonSession";
-import { CONSENT_TEXTS } from "@/features/consent/texts";
+import { AVATARS, Avatar } from "@/features/children/avatars";
+import { consentTextsForAge } from "@/features/consent/texts";
 import type { ActionState } from "@/features/actions";
-import { AVATARS } from "@/features/children/avatars";
 import { completeOnboardingAction } from "../actions";
-import { birthYearRange } from "../schema";
+import { birthYearRange, needsParentalConsent } from "../schema";
 
-const STEPS = ["Kraj", "Dítě", "Souhlasy"] as const;
+const STEPS = ["Kdo se učí", "Kraj", "Souhlasy"] as const;
 const EMPTY: ActionState = {};
-
-/** Ke kterému kroku patří chyba ze serveru. null = k žádnému. */
-function stepForErrors(errors: Record<string, string> | undefined): number | null {
-  if (!errors) return null;
-  if (errors.regionCode) return 0;
-  if (errors.childNick || errors.childBirthYear) return 1;
-  if (errors.acceptTerms || errors.parentalConsent) return 2;
-  return null;
-}
 
 interface RegionOption {
   code: string;
@@ -29,30 +20,35 @@ interface RegionOption {
   isCatchment: boolean;
 }
 
+/** Ke kterému kroku patří chyba ze serveru. null = k žádnému. */
+function stepForErrors(errors: Record<string, string> | undefined): number | null {
+  if (!errors) return null;
+  if (errors.childNick || errors.childBirthYear) return 0;
+  if (errors.regionCode) return 1;
+  if (errors.acceptTerms || errors.parentalConsent || errors.selfConsent) return 2;
+  return null;
+}
+
 /**
- * Onboarding rodiče.
+ * Onboarding.
  *
- * Jeden formulář, tři kroky, jedna URL. Kroky jako samostatné stránky by
- * znamenaly, že zpětné tlačítko vyhodí z rozdělaného formuláře — a že se
- * do databáze musí zapisovat po částech, tedy i poloviční účty bez souhlasu.
+ * Rok narození se ptá jako PRVNÍ, protože rozhoduje o všem ostatním:
+ * dítě do 15 let potřebuje souhlas zákonného zástupce, od 15 let člověk
+ * souhlasí sám za sebe (§ 7 zák. 110/2019). Kdyby se ptal až nakonec,
+ * překreslil by se poslední krok pod rukama.
  *
- * Odesílá se až celek. Do té doby nic neopustí prohlížeč.
+ * Jeden formulář, tři kroky, jedna URL. Odesílá se až celek — dělené
+ * ukládání by nechávalo v databázi poloviční účty bez souhlasu.
  */
 export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
   const [step, setStep] = useState(0);
+  const [birthYear, setBirthYear] = useState("");
   const [state, submit, pending] = useActionState(completeOnboardingAction, EMPTY);
 
-  /* Relace se čte přes useSyncExternalStore, ne přes useState v efektu:
-     nespustí to kaskádu překreslení a nevznikne rozdíl mezi serverovým
-     a klientským výstupem. */
   const anonSession = useAnonSessionRaw();
-
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
 
-  /* Po přechodu na další krok se fokus přesune na jeho nadpis. Bez toho
-     zůstane u tlačítka „Pokračovat", čtečka nic neoznámí a uživatel
-     klávesnice se ocitne uprostřed formuláře, který nevidí. */
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
@@ -61,12 +57,8 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
     headingRef.current?.focus();
   }, [step]);
 
-  /* Chyba z validace na serveru může patřit ke kroku, který není vidět.
-     Bez přepnutí by odeslání „nic neudělalo" a nikdo by nevěděl proč.
-
-     Úprava stavu během renderu, ne v efektu — je to postup, který React
-     pro odvození stavu z props doporučuje. Efekt by komponentu překreslil
-     dvakrát a formulář by na okamžik blikl na špatném kroku. */
+  /* Úprava stavu během renderu, ne v efektu — efekt by komponentu
+     překreslil dvakrát a formulář by blikl na špatném kroku. */
   const [seenErrors, setSeenErrors] = useState(state.fieldErrors);
   if (state.fieldErrors !== seenErrors) {
     setSeenErrors(state.fieldErrors);
@@ -80,30 +72,115 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
   const catchment = regions.filter((r) => r.isCatchment);
   const rest = regions.filter((r) => !r.isCatchment);
 
+  /* Dokud rok není vybraný, počítáme s nezletilým — přísnější varianta
+     je ta bezpečná. */
+  const isMinor = birthYear === "" || needsParentalConsent(Number(birthYear));
+  const consents = consentTextsForAge(isMinor);
+
   return (
     <form action={submit} className="flex flex-col gap-6" noValidate>
       <input type="hidden" name="anonSession" value={anonSession} />
 
       <Stepper steps={STEPS} current={step} />
 
-      <h2
-        ref={headingRef}
-        tabIndex={-1}
-        className="heading-3 text-ink outline-none"
-      >
-        {step === 0 && "Odkud jste?"}
-        {step === 1 && "Kdo se bude učit?"}
+      <h2 ref={headingRef} tabIndex={-1} className="heading-3 text-ink outline-none">
+        {step === 0 && "Kdo se bude učit?"}
+        {step === 1 && "Odkud jste?"}
         {step === 2 && "Ještě souhlasy"}
       </h2>
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
 
-      {/* Kroky zůstávají v DOMu a jen se skrývají. Kdyby se odmontovaly,
-          přišel by uživatel při návratu o vyplněné hodnoty a prohlížeč by
-          neodeslal pole, která zrovna nejsou vidět. */}
+      {/* Kroky zůstávají v DOMu a jen se skrývají — odmontované pole by
+          prohlížeč při odeslání neposlal. `hidden` je zároveň vyřadí
+          z pořadí tabulátoru i z přístupnostního stromu. */}
 
-      {/* ── Krok 1: kraj ─────────────────────────────────────────────── */}
+      {/* ── Krok 1: kdo se učí ───────────────────────────────────────── */}
       <fieldset hidden={step !== 0} className="m-0 flex flex-col gap-4 border-0 p-0">
+        <legend className="sr-only">Profil učícího se</legend>
+
+        <SelectField
+          label="Rok narození"
+          name="childBirthYear"
+          required
+          mono
+          value={birthYear}
+          onChange={(e) => setBirthYear(e.target.value)}
+          hint="Ukládáme jen rok, ne přesné datum. Podle něj poznáme, kdo musí podepsat souhlas."
+          error={state.fieldErrors?.childBirthYear}
+        >
+          <option value="" disabled>
+            Vyberte rok
+          </option>
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </SelectField>
+
+        {birthYear !== "" && (
+          <Alert tone={isMinor ? "info" : "success"}>
+            {isMinor
+              ? "Účet spravuje rodič a v posledním kroku potvrdí souhlas zákonného zástupce. U dětí do 15 let to vyžaduje zákon."
+              : "Od 15 let si účet spravuješ sám — souhlas podepíšeš za sebe a rodiče k tomu nepotřebuješ."}
+          </Alert>
+        )}
+
+        <TextField
+          label={isMinor ? "Přezdívka dítěte" : "Tvoje přezdívka"}
+          name="childNick"
+          maxLength={24}
+          required
+          autoComplete="off"
+          hint={
+            isMinor
+              ? "Nemusí to být skutečné jméno. Uvidíte ji jen vy a dítě."
+              : "Nemusí to být tvoje skutečné jméno."
+          }
+          error={state.fieldErrors?.childNick}
+        />
+
+        <div>
+          <MonoLabel className="mb-2">Avatar</MonoLabel>
+          {/* auto-fill místo pevného počtu sloupců: dlaždice se přizpůsobí
+              šířce, takže delší popisky jako „Ozubené kolo" nevytečou ven. */}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-2">
+            {AVATARS.map((avatar, index) => (
+              <label
+                key={avatar.id}
+                className="flex cursor-pointer flex-col items-center gap-1.5 rounded-md border
+                           border-ink/15 bg-white px-1.5 py-3 text-center transition-colors
+                           hover:border-ink
+                           has-[:checked]:border-ink has-[:checked]:bg-primary-50
+                           has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2
+                           has-[:focus-visible]:outline-ink"
+              >
+                <input
+                  type="radio"
+                  name="childAvatar"
+                  value={avatar.id}
+                  defaultChecked={index === 0}
+                  className="sr-only"
+                />
+                <Avatar id={avatar.id} className="block size-8 text-ink" />
+                {/* break-words: delší popisek se zalomí uvnitř dlaždice
+                    místo aby přetekl přes okraj. */}
+                <span className="break-words text-[0.6875rem] leading-tight text-ink-500">
+                  {avatar.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <Button type="button" onClick={() => setStep(1)} fullWidth>
+          Pokračovat
+        </Button>
+      </fieldset>
+
+      {/* ── Krok 2: kraj ─────────────────────────────────────────────── */}
+      <fieldset hidden={step !== 1} className="m-0 flex flex-col gap-4 border-0 p-0">
         <legend className="sr-only">Kraj</legend>
 
         <SelectField
@@ -133,73 +210,6 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
           </optgroup>
         </SelectField>
 
-        <Button type="button" onClick={() => setStep(1)} fullWidth>
-          Pokračovat
-        </Button>
-      </fieldset>
-
-      {/* ── Krok 2: dítě ─────────────────────────────────────────────── */}
-      <fieldset hidden={step !== 1} className="m-0 flex flex-col gap-4 border-0 p-0">
-        <legend className="sr-only">Profil dítěte</legend>
-
-        <TextField
-          label="Přezdívka dítěte"
-          name="childNick"
-          maxLength={24}
-          required
-          autoComplete="off"
-          hint="Nemusí to být skutečné jméno. Uvidí ji jen vy a dítě."
-          error={state.fieldErrors?.childNick}
-        />
-
-        <SelectField
-          label="Rok narození"
-          name="childBirthYear"
-          required
-          defaultValue=""
-          mono
-          hint="Ukládáme jen rok, ne přesné datum — na věkovou skupinu to stačí."
-          error={state.fieldErrors?.childBirthYear}
-        >
-          <option value="" disabled>
-            Vyberte rok
-          </option>
-          {years.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </SelectField>
-
-        <div>
-          <MonoLabel className="mb-2">Avatar</MonoLabel>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {AVATARS.map((avatar, index) => (
-              <label
-                key={avatar.id}
-                className="flex cursor-pointer flex-col items-center gap-1 rounded-md border
-                           border-ink/15 bg-white p-3 transition-colors
-                           hover:border-ink
-                           has-[:checked]:border-ink has-[:checked]:bg-primary-50
-                           has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2
-                           has-[:focus-visible]:outline-ink"
-              >
-                <input
-                  type="radio"
-                  name="childAvatar"
-                  value={avatar.id}
-                  defaultChecked={index === 0}
-                  className="sr-only"
-                />
-                <span className="text-2xl" aria-hidden="true">
-                  {avatar.glyph}
-                </span>
-                <span className="text-xs text-ink-500">{avatar.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={() => setStep(0)}>
             Zpět
@@ -214,13 +224,15 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
       <fieldset hidden={step !== 2} className="m-0 flex flex-col gap-4 border-0 p-0">
         <legend className="sr-only">Souhlasy</legend>
 
-        {CONSENT_TEXTS.map((text) => {
+        {consents.map((text) => {
           const name =
             text.kind === "terms"
               ? "acceptTerms"
               : text.kind === "parental"
                 ? "parentalConsent"
-                : "marketingConsent";
+                : text.kind === "self"
+                  ? "selfConsent"
+                  : "marketingConsent";
 
           return (
             <Checkbox

@@ -1,5 +1,5 @@
 import type { ConsentKind, ConsentRow } from "@/lib/supabase/types";
-import { CONSENT_TEXTS, consentTextFor } from "./texts";
+import { CONSENT_TEXTS, consentTextFor, consentTextsForAge } from "./texts";
 
 /**
  * Čistá logika nad ledgerem souhlasů.
@@ -60,11 +60,20 @@ export function needsReconsent(entries: readonly ConsentEntry[], kind: ConsentKi
   return latest.version !== consentTextFor(kind).version;
 }
 
-/** Má účet všechny povinné souhlasy platné a k aktuálnímu znění? */
-export function hasAllRequiredConsents(entries: readonly ConsentEntry[]): boolean {
-  return CONSENT_TEXTS.filter((t) => t.required).every(
-    (t) => hasConsent(entries, t.kind) && !needsReconsent(entries, t.kind),
-  );
+/**
+ * Má účet všechny povinné souhlasy platné a k aktuálnímu znění?
+ *
+ * `isMinor` rozhoduje, který ze dvou souhlasů se zpracováním se vyžaduje:
+ * u dítěte do 15 let ten od zákonného zástupce, od 15 let vlastní.
+ * Bez toho by nešlo projít nikdy — oba naráz nikdo nedává.
+ */
+export function hasAllRequiredConsents(
+  entries: readonly ConsentEntry[],
+  isMinor: boolean,
+): boolean {
+  return consentTextsForAge(isMinor)
+    .filter((t) => t.required)
+    .every((t) => hasConsent(entries, t.kind) && !needsReconsent(entries, t.kind));
 }
 
 /** Přehled pro obrazovku Účet → Souhlasy. */
@@ -78,8 +87,22 @@ export interface ConsentStatus {
   outdated: boolean;
 }
 
-export function consentStatuses(entries: readonly ConsentEntry[]): ConsentStatus[] {
-  return CONSENT_TEXTS.map((text) => {
+/**
+ * Přehled pro obrazovku Účet → Souhlasy.
+ *
+ * Zobrazují se jen souhlasy, které pro daný věk dávají smysl, plus ty,
+ * které v ledgeru reálně jsou — kdyby se někdo mezitím překlopil přes
+ * patnáctku, starý souhlas zákonného zástupce má zůstat vidět.
+ */
+export function consentStatuses(
+  entries: readonly ConsentEntry[],
+  isMinor = true,
+): ConsentStatus[] {
+  const relevant = new Set(consentTextsForAge(isMinor).map((t) => t.kind));
+
+  return CONSENT_TEXTS.filter(
+    (t) => relevant.has(t.kind) || latestConsent(entries, t.kind) !== null,
+  ).map((text) => {
     const latest = latestConsent(entries, text.kind);
     return {
       kind: text.kind,

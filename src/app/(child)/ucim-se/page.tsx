@@ -8,7 +8,7 @@ import { Logo } from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVE_CHILD_COOKIE } from "@/features/children/constants";
 import { ProfileSwitcher } from "@/features/children/components/ProfileSwitcher";
-import { avatarGlyph } from "@/features/children/avatars";
+import { Avatar } from "@/features/children/avatars";
 import { getChildren } from "@/features/children/queries";
 
 export const metadata: Metadata = {
@@ -77,9 +77,7 @@ export default async function LearnPage() {
         <div className="section-container flex h-16 items-center justify-between gap-4">
           <Logo href="/ucim-se" />
           <div className="flex items-center gap-3">
-            <span className="text-2xl" aria-hidden="true">
-              {avatarGlyph(active.avatar)}
-            </span>
+            <Avatar id={active.avatar} className="block size-8 text-ink" />
             <span className="font-semibold text-ink">{active.nick}</span>
             <Link
               href="/ucim-se/prepnout"

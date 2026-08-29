@@ -7,7 +7,7 @@ import {
   latestConsent,
   needsReconsent,
 } from "../logic";
-import { MARKETING_TEXT, PARENTAL_TEXT, TERMS_TEXT } from "../texts";
+import { MARKETING_TEXT, PARENTAL_TEXT, SELF_TEXT, TERMS_TEXT, consentTextsForAge } from "../texts";
 
 function entry(
   kind: ConsentEntry["kind"],
@@ -119,12 +119,12 @@ describe("needsReconsent", () => {
 
 describe("hasAllRequiredConsents", () => {
   it("projde s oběma povinnými k aktuálnímu znění", () => {
-    expect(hasAllRequiredConsents(grantAllCurrent)).toBe(true);
+    expect(hasAllRequiredConsents(grantAllCurrent, true)).toBe(true);
   });
 
   it("neprojde bez souhlasu zákonného zástupce", () => {
     const entries = [entry("terms", true, "2026-08-01T10:00:00Z", TERMS_TEXT.version)];
-    expect(hasAllRequiredConsents(entries)).toBe(false);
+    expect(hasAllRequiredConsents(entries, true)).toBe(false);
   });
 
   it("neprojde po odvolání povinného souhlasu", () => {
@@ -132,7 +132,7 @@ describe("hasAllRequiredConsents", () => {
       ...grantAllCurrent,
       entry("parental", false, "2026-08-10T10:00:00Z", PARENTAL_TEXT.version, 3),
     ];
-    expect(hasAllRequiredConsents(entries)).toBe(false);
+    expect(hasAllRequiredConsents(entries, true)).toBe(false);
   });
 
   it("neprojde se zastaralou verzí povinného souhlasu", () => {
@@ -140,11 +140,11 @@ describe("hasAllRequiredConsents", () => {
       entry("terms", true, "2026-08-01T10:00:00Z", TERMS_TEXT.version),
       entry("parental", true, "2026-08-01T10:00:00Z", "parental-v0"),
     ];
-    expect(hasAllRequiredConsents(entries)).toBe(false);
+    expect(hasAllRequiredConsents(entries, true)).toBe(false);
   });
 
   it("chybějící obchodní sdělení nic neblokují", () => {
-    expect(hasAllRequiredConsents(grantAllCurrent)).toBe(true);
+    expect(hasAllRequiredConsents(grantAllCurrent, true)).toBe(true);
     expect(hasConsent(grantAllCurrent, "marketing")).toBe(false);
   });
 });
@@ -200,5 +200,76 @@ describe("znění souhlasů", () => {
   it("verze jsou napříč druhy jedinečné", () => {
     const versions = [TERMS_TEXT, PARENTAL_TEXT, MARKETING_TEXT].map((t) => t.version);
     expect(new Set(versions).size).toBe(versions.length);
+  });
+});
+
+describe("rozvětvení podle věku", () => {
+  it("dítě do 15 let dostane souhlas zákonného zástupce, ne vlastní", () => {
+    const kinds = consentTextsForAge(true).map((t) => t.kind);
+    expect(kinds).toContain("parental");
+    expect(kinds).not.toContain("self");
+  });
+
+  it("od 15 let dostane vlastní souhlas, ne rodičovský", () => {
+    // Nutit patnáctiletého prohlásit "jsem zákonný zástupce" by vyrobilo
+    // nepravdivý záznam — a ledger s nepravdou přestává být dokladem.
+    const kinds = consentTextsForAge(false).map((t) => t.kind);
+    expect(kinds).toContain("self");
+    expect(kinds).not.toContain("parental");
+  });
+
+  it("podmínky a marketing platí pro obě skupiny", () => {
+    for (const minor of [true, false]) {
+      const kinds = consentTextsForAge(minor).map((t) => t.kind);
+      expect(kinds).toContain("terms");
+      expect(kinds).toContain("marketing");
+    }
+  });
+
+  it("nikdy se neptá na oba souhlasy se zpracováním naráz", () => {
+    for (const minor of [true, false]) {
+      const kinds = consentTextsForAge(minor).map((t) => t.kind);
+      expect(kinds.filter((k) => k === "parental" || k === "self")).toHaveLength(1);
+    }
+  });
+
+  it("dospělejší účet neprojde s rodičovským souhlasem místo vlastního", () => {
+    const entries = [
+      entry("terms", true, "2026-08-01T10:00:00Z", TERMS_TEXT.version, 1),
+      entry("parental", true, "2026-08-01T10:00:00Z", PARENTAL_TEXT.version, 2),
+    ];
+    expect(hasAllRequiredConsents(entries, true)).toBe(true);
+    expect(hasAllRequiredConsents(entries, false)).toBe(false);
+  });
+
+  it("účet od 15 let projde s vlastním souhlasem", () => {
+    const entries = [
+      entry("terms", true, "2026-08-01T10:00:00Z", TERMS_TEXT.version, 1),
+      entry("self", true, "2026-08-01T10:00:00Z", SELF_TEXT.version, 2),
+    ];
+    expect(hasAllRequiredConsents(entries, false)).toBe(true);
+    expect(hasAllRequiredConsents(entries, true)).toBe(false);
+  });
+
+  it("starý rodičovský souhlas zůstane vidět i po překlopení přes 15", () => {
+    // Dítě, kterému mezitím bylo patnáct, nemá o historii přijít.
+    const entries = [entry("parental", true, "2026-01-01T10:00:00Z", PARENTAL_TEXT.version, 1)];
+    const kinds = consentStatuses(entries, false).map((s) => s.kind);
+    expect(kinds).toContain("parental");
+    expect(kinds).toContain("self");
+  });
+
+  it("vlastní souhlas nese odkaz na § 7 a na práva", () => {
+    expect(SELF_TEXT.full).toMatch(/§ 7/);
+    expect(SELF_TEXT.full).toMatch(/odvolat/i);
+    expect(SELF_TEXT.full).toMatch(/Úřadu pro ochranu osobních údajů/);
+    expect(SELF_TEXT.required).toBe(true);
+  });
+
+  it("vlastní souhlas říká, co i tak potřebuje rodiče", () => {
+    // Nezletilý nad 15 sice souhlasí sám, ale platit a jet na tábor bez
+    // zákonného zástupce nemůže. Musí to být napsané.
+    expect(SELF_TEXT.full).toMatch(/18/);
+    expect(SELF_TEXT.full).toMatch(/zákonný zástupce|zákonný zástupce/);
   });
 });
