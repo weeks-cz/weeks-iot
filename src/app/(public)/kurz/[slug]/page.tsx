@@ -2,32 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, MonoLabel } from "@/components/ui/Surface";
-import { createClient } from "@/lib/supabase/server";
 import { SITE } from "@/lib/site";
+import { firstPlayableLesson, getCourseOutline } from "@/features/courses/queries";
 
 interface Params {
   slug: string;
-}
-
-async function loadCourse(slug: string) {
-  const supabase = await createClient();
-
-  const { data: course } = await supabase
-    .from("courses")
-    .select("id, slug, title, summary")
-    .eq("slug", slug)
-    .eq("is_published", true)
-    .maybeSingle();
-
-  if (!course) return null;
-
-  const { data: lessons } = await supabase
-    .from("lessons")
-    .select("id, slug, title, summary, order_index, estimated_minutes, is_published")
-    .eq("course_id", course.id)
-    .order("order_index");
-
-  return { course, lessons: lessons ?? [] };
 }
 
 export async function generateMetadata({
@@ -36,13 +15,13 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const data = await loadCourse(slug);
+  const outline = await getCourseOutline(slug);
 
-  if (!data) return { title: "Kurz nenalezen", robots: { index: false } };
+  if (!outline) return { title: "Kurz nenalezen", robots: { index: false } };
 
   return {
-    title: data.course.title,
-    description: data.course.summary ?? undefined,
+    title: outline.title,
+    description: outline.summary ?? undefined,
     alternates: { canonical: `${SITE.url}/kurz/${slug}` },
     robots: { index: true, follow: true },
   };
@@ -50,22 +29,27 @@ export async function generateMetadata({
 
 export default async function CoursePage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const data = await loadCourse(slug);
-  if (!data) notFound();
 
-  const first = data.lessons.find((l) => l.is_published);
+  /* Celá osnova, včetně nepublikovaných lekcí — je to marketingový obsah.
+     Čte se serverově a jen s bezpečnými sloupci, takže rozepsané zadání
+     v `body` ven neuteče. Otevřít jde dál jen publikovaná lekce. */
+  const outline = await getCourseOutline(slug);
+  if (!outline) notFound();
+
+  const first = firstPlayableLesson(outline);
+  const remaining = outline.lessons.length - outline.publishedCount;
 
   return (
     <main>
       <section className="blueprint-grid border-b border-ink/15">
         <div className="section-container py-12 sm:py-16">
           <div className="max-w-3xl">
-            <MonoLabel className="mb-3">Kurz · {data.lessons.length} lekcí</MonoLabel>
-            <h1 className="heading-1 mb-4">{data.course.title}</h1>
+            <MonoLabel className="mb-3">Kurz · {outline.lessons.length} lekcí</MonoLabel>
+            <h1 className="heading-1 mb-4">{outline.title}</h1>
 
-            {data.course.summary && (
+            {outline.summary && (
               <p className="mb-8 max-w-prose text-lg leading-relaxed text-ink-500">
-                {data.course.summary}
+                {outline.summary}
               </p>
             )}
 
@@ -74,9 +58,7 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
                 <ButtonLink href={`/kurz/${slug}/${first.slug}`} size="lg">
                   Začít první lekcí
                 </ButtonLink>
-                <p className="font-mono text-xs text-ink-500">
-                  zdarma · bez registrace
-                </p>
+                <p className="font-mono text-xs text-ink-500">zdarma · bez registrace</p>
               </div>
             )}
           </div>
@@ -84,19 +66,27 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
       </section>
 
       <section className="section-container py-12">
-        <h2 className="heading-3 mb-6">Co tě čeká</h2>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <h2 className="heading-3">Co tě čeká</h2>
+          {remaining > 0 && (
+            <p className="font-mono text-xs text-ink-500">
+              hotovo {outline.publishedCount} z {outline.lessons.length} · zbytek průběžně
+              doplňujeme
+            </p>
+          )}
+        </div>
 
         <ol className="flex flex-col gap-3">
-          {data.lessons.map((lesson) => (
+          {outline.lessons.map((lesson) => (
             <li key={lesson.id}>
               <Card
-                interactive={lesson.is_published}
+                interactive={lesson.isPublished}
                 className={`flex flex-wrap items-center gap-4 p-4 ${
-                  lesson.is_published ? "" : "opacity-60"
+                  lesson.isPublished ? "" : "opacity-60"
                 }`}
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-ink/20 font-mono text-sm">
-                  {lesson.order_index}
+                  {lesson.orderIndex}
                 </span>
 
                 <div className="min-w-0 flex-1">
@@ -106,7 +96,13 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
                   )}
                 </div>
 
-                {lesson.is_published ? (
+                {lesson.estimatedMinutes && (
+                  <span className="font-mono text-xs text-ink-300">
+                    {lesson.estimatedMinutes} min
+                  </span>
+                )}
+
+                {lesson.isPublished ? (
                   <ButtonLink href={`/kurz/${slug}/${lesson.slug}`} size="sm" variant="outline">
                     Otevřít
                   </ButtonLink>

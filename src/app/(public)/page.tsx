@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { ButtonLink } from "@/components/ui/Button";
 import { Alert, Card, DarkSection, MonoLabel } from "@/components/ui/Surface";
-import { createClient } from "@/lib/supabase/server";
 import { SITE } from "@/lib/site";
+import { firstPlayableLesson, getCourseOutline } from "@/features/courses/queries";
 
 export const metadata: Metadata = {
   /* `absolute` schválně: kořenový layout má šablonu "%s | Weeks Učebna",
@@ -22,20 +22,12 @@ export default async function HomePage({
   searchParams: Promise<{ ucet?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
 
-  const { data: course } = await supabase
-    .from("courses")
-    .select("slug, title, summary")
-    .eq("slug", "iot")
-    .maybeSingle();
-
-  const { data: lessons } = await supabase
-    .from("lessons")
-    .select("id, slug, title, summary, order_index, estimated_minutes, is_published")
-    .order("order_index");
-
-  const firstLesson = lessons?.find((l) => l.is_published);
+  /* Osnova se čte serverově a jen s bezpečnými sloupci — RLS by jinak
+     nepublikované lekce skryla a kurz by vypadal jako jediná lekce. */
+  const outline = await getCourseOutline("iot");
+  const lessons = outline?.lessons ?? [];
+  const firstLesson = firstPlayableLesson(outline);
 
   return (
     <main>
@@ -83,21 +75,21 @@ export default async function HomePage({
       {/* ── Kurz ─────────────────────────────────────────────────────── */}
       <section className="section-container py-14 sm:py-20">
         <MonoLabel className="mb-3">Kurz 1</MonoLabel>
-        <h2 className="heading-2 mb-3">{course?.title ?? "Elektronika a IoT"}</h2>
+        <h2 className="heading-2 mb-3">{outline?.title ?? "Elektronika a IoT"}</h2>
         <p className="mb-8 max-w-prose text-lg leading-relaxed text-ink-500">
-          {course?.summary}
+          {outline?.summary}
         </p>
 
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(lessons ?? []).map((lesson) => (
+          {lessons.map((lesson) => (
             <li key={lesson.id}>
               <Card
-                interactive={lesson.is_published}
-                className={`h-full p-5 ${lesson.is_published ? "" : "opacity-60"}`}
+                interactive={lesson.isPublished}
+                className={`h-full p-5 ${lesson.isPublished ? "" : "opacity-60"}`}
               >
                 <div className="mb-2 flex items-center justify-between">
-                  <MonoLabel>Lekce {lesson.order_index}</MonoLabel>
-                  {!lesson.is_published && (
+                  <MonoLabel>Lekce {lesson.orderIndex}</MonoLabel>
+                  {!lesson.isPublished && (
                     <span className="font-mono text-xs text-ink-300">připravujeme</span>
                   )}
                 </div>
@@ -108,9 +100,9 @@ export default async function HomePage({
                 {lesson.summary && (
                   <p className="text-sm leading-relaxed text-ink-500">{lesson.summary}</p>
                 )}
-                {lesson.estimated_minutes && (
+                {lesson.estimatedMinutes && (
                   <p className="mt-3 font-mono text-xs text-ink-300">
-                    {lesson.estimated_minutes} min
+                    {lesson.estimatedMinutes} min
                   </p>
                 )}
               </Card>
