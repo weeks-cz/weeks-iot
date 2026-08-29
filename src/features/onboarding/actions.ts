@@ -62,7 +62,7 @@ export async function completeOnboardingAction(
   const parsed = onboardingSchema.safeParse({
     regionCode: formData.get("regionCode"),
     childNick: formData.get("childNick"),
-    childBirthYear: formData.get("childBirthYear"),
+    childBirthDate: formData.get("childBirthDate"),
     childAvatar: formData.get("childAvatar") ?? undefined,
     /* Checkbox posílá "on" nebo nic. Převod na boolean musí být explicitní:
        schéma schválně nepřijímá řetězec, protože "false" je v JS pravdivé. */
@@ -85,7 +85,7 @@ export async function completeOnboardingAction(
      základu. Opačně vznikne jen souhlas bez profilu, což je neškodné. */
   /* Věk se přepočítá na serveru z odeslaného ročníku — klient si nesmí
      vybrat, který souhlas mu stačí. */
-  const isMinor = needsParentalConsent(input.childBirthYear);
+  const isMinor = needsParentalConsent(input.childBirthDate);
 
   for (const text of consentTextsForAge(isMinor)) {
     const granted =
@@ -160,7 +160,7 @@ export async function completeOnboardingAction(
       .insert({
         parent_id: auth.user.id,
         nick: input.childNick,
-        birth_year: input.childBirthYear,
+        birth_date: input.childBirthDate,
         avatar: input.childAvatar ?? "robot",
       })
       .select("id")
@@ -194,7 +194,7 @@ export async function completeOnboardingAction(
       anon_id: anon?.anonId ?? null,
       props: {
         region: input.regionCode,
-        birth_year: input.childBirthYear,
+        birth_date: input.childBirthDate,
         marketing: input.marketingConsent,
         self_managed: !isMinor,
         had_anon_progress: Boolean(anon?.lessons.length),

@@ -64,6 +64,8 @@ export type ChildRow = {
   id: string;
   parent_id: string;
   nick: string;
+  birth_date: string;
+  /** Generovaný z birth_date. Jen ke čtení — zapisuje se birth_date. */
   birth_year: number;
   avatar: string;
   pin_hash: string | null;
@@ -170,7 +172,10 @@ export interface Database {
       consents: Table<ConsentRow>;
       children: Table<
         ChildRow,
-        Pick<ChildRow, "parent_id" | "nick" | "birth_year"> & { avatar?: string }
+        Pick<ChildRow, "parent_id" | "nick" | "birth_date"> & { avatar?: string },
+        /* birth_year chybí schválně: je generovaný a zápis do něj by
+           Postgres odmítl. Zbytek včetně PIN sloupců zapisuje servisní role. */
+        Partial<Omit<ChildRow, "id" | "birth_year" | "created_at" | "updated_at">>
       >;
       courses: Table<CourseRow>;
       lessons: Table<LessonRow>;

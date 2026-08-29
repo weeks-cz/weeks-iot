@@ -23,18 +23,43 @@ export function currentYear(now: Date = new Date()): number {
   return now.getUTCFullYear();
 }
 
-export function birthYearRange(now: Date = new Date()): { min: number; max: number } {
-  const year = currentYear(now);
-  return { min: year - MAX_AGE, max: year - MIN_AGE };
+/** Nejstarší a nejmladší přípustné datum narození. */
+export function birthDateRange(now: Date = new Date()): { min: string; max: string } {
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return { min: `${y - MAX_AGE}-${m}-${d}`, max: `${y - MIN_AGE}-${m}-${d}` };
 }
 
-/** Přibližný věk z roku narození. Přesnější to být nemá — datum neukládáme. */
-export function approximateAge(birthYear: number, now: Date = new Date()): number {
-  return currentYear(now) - birthYear;
+/**
+ * Přesný věk v celých letech.
+ *
+ * Počítá se z data, ne z ročníku. Rozdíl ročníků je totiž nespolehlivý:
+ * dítě narozené 20. 12. 2011 mělo 29. 8. 2026 teprve 14 let a 8 měsíců,
+ * ale 2026 − 2011 dá 15. Na tom závisí, kdo smí podepsat souhlas, takže
+ * to musí sedět na den.
+ *
+ * Vše v UTC — datum narození je prostý den bez času a míchání s místním
+ * pásmem by u lidí narozených kolem půlnoci posunulo věk o den.
+ */
+export function ageOn(birthDate: string, now: Date = new Date()): number {
+  const born = new Date(`${birthDate}T00:00:00Z`);
+  if (Number.isNaN(born.getTime())) return Number.NaN;
+
+  let age = now.getUTCFullYear() - born.getUTCFullYear();
+  const monthDiff = now.getUTCMonth() - born.getUTCMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && now.getUTCDate() < born.getUTCDate())) {
+    age -= 1;
+  }
+  return age;
 }
 
-export function needsParentalConsent(birthYear: number, now: Date = new Date()): boolean {
-  return approximateAge(birthYear, now) < DIGITAL_CONSENT_AGE;
+export function needsParentalConsent(birthDate: string, now: Date = new Date()): boolean {
+  const age = ageOn(birthDate, now);
+  /* Nečitelné datum ať radši spadne na přísnější variantu než na volnější. */
+  if (Number.isNaN(age)) return true;
+  return age < DIGITAL_CONSENT_AGE;
 }
 
 export const emailSchema = z
@@ -83,12 +108,19 @@ export const nickSchema = z
   .max(24, "Přezdívka může mít nejvýš 24 znaků")
   .refine((v) => !/^\s*$/.test(v), "Zadejte přezdívku");
 
-export const birthYearSchema = z.coerce
-  .number()
-  .int("Zadejte rok narození")
-  .refine((year) => {
-    const { min, max } = birthYearRange();
-    return year >= min && year <= max;
+export const birthDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Zadejte datum narození")
+  .refine((value) => {
+    /* Regex pustí i 2026-02-31. Zpětný převod odhalí, že takový den
+       neexistuje — Date by ho tiše posunul na 3. března. */
+    const d = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+  }, "Takové datum neexistuje")
+  .refine((value) => {
+    const age = ageOn(value);
+    return age >= MIN_AGE && age <= MAX_AGE;
   }, `Učebna je pro děti od ${MIN_AGE} do ${MAX_AGE} let`);
 
 export const avatarSchema = z
@@ -109,7 +141,7 @@ export const onboardingSchema = z
   .object({
     regionCode: regionSchema,
     childNick: nickSchema,
-    childBirthYear: birthYearSchema,
+    childBirthDate: birthDateSchema,
     childAvatar: avatarSchema.optional(),
 
     acceptTerms: z.literal(true, {
@@ -123,7 +155,7 @@ export const onboardingSchema = z
     marketingConsent: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    if (needsParentalConsent(data.childBirthYear)) {
+    if (needsParentalConsent(data.childBirthDate)) {
       if (!data.parentalConsent) {
         ctx.addIssue({
           code: "custom",
@@ -171,7 +203,7 @@ export const newPasswordSchema = z
 
 export const childSchema = z.object({
   nick: nickSchema,
-  birthYear: birthYearSchema,
+  birthDate: birthDateSchema,
   avatar: avatarSchema.optional(),
 });
 

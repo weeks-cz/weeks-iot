@@ -9,7 +9,7 @@ import { AVATARS, Avatar } from "@/features/children/avatars";
 import { consentTextsForAge } from "@/features/consent/texts";
 import type { ActionState } from "@/features/actions";
 import { completeOnboardingAction } from "../actions";
-import { birthYearRange, needsParentalConsent } from "../schema";
+import { birthDateRange, needsParentalConsent } from "../schema";
 
 const STEPS = ["Kdo se učí", "Kraj", "Souhlasy"] as const;
 const EMPTY: ActionState = {};
@@ -23,7 +23,7 @@ interface RegionOption {
 /** Ke kterému kroku patří chyba ze serveru. null = k žádnému. */
 function stepForErrors(errors: Record<string, string> | undefined): number | null {
   if (!errors) return null;
-  if (errors.childNick || errors.childBirthYear) return 0;
+  if (errors.childNick || errors.childBirthDate) return 0;
   if (errors.regionCode) return 1;
   if (errors.acceptTerms || errors.parentalConsent || errors.selfConsent) return 2;
   return null;
@@ -42,7 +42,7 @@ function stepForErrors(errors: Record<string, string> | undefined): number | nul
  */
 export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
   const [step, setStep] = useState(0);
-  const [birthYear, setBirthYear] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [state, submit, pending] = useActionState(completeOnboardingAction, EMPTY);
 
   const anonSession = useAnonSessionRaw();
@@ -66,15 +66,14 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
     if (target !== null) setStep(target);
   }
 
-  const { min, max } = birthYearRange();
-  const years = Array.from({ length: max - min + 1 }, (_, i) => max - i);
+  const { min: minDate, max: maxDate } = birthDateRange();
 
   const catchment = regions.filter((r) => r.isCatchment);
   const rest = regions.filter((r) => !r.isCatchment);
 
-  /* Dokud rok není vybraný, počítáme s nezletilým — přísnější varianta
+  /* Dokud datum není vyplněné, počítáme s nezletilým — přísnější varianta
      je ta bezpečná. */
-  const isMinor = birthYear === "" || needsParentalConsent(Number(birthYear));
+  const isMinor = birthDate === "" || needsParentalConsent(birthDate);
   const consents = consentTextsForAge(isMinor);
 
   return (
@@ -99,27 +98,21 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
       <fieldset hidden={step !== 0} className="m-0 flex flex-col gap-4 border-0 p-0">
         <legend className="sr-only">Profil učícího se</legend>
 
-        <SelectField
-          label="Rok narození"
-          name="childBirthYear"
+        <TextField
+          label="Datum narození"
+          name="childBirthDate"
+          type="date"
           required
           mono
-          value={birthYear}
-          onChange={(e) => setBirthYear(e.target.value)}
-          hint="Ukládáme jen rok, ne přesné datum. Podle něj poznáme, kdo musí podepsat souhlas."
-          error={state.fieldErrors?.childBirthYear}
-        >
-          <option value="" disabled>
-            Vyberte rok
-          </option>
-          {years.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </SelectField>
+          min={minDate}
+          max={maxDate}
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+          hint="Podle data poznáme, kdo musí podepsat souhlas. Hranice je 15 let a ze samotného ročníku ji spolehlivě určit nejde."
+          error={state.fieldErrors?.childBirthDate}
+        />
 
-        {birthYear !== "" && (
+        {birthDate !== "" && (
           <Alert tone={isMinor ? "info" : "success"}>
             {isMinor
               ? "Účet spravuje rodič a v posledním kroku potvrdí souhlas zákonného zástupce. U dětí do 15 let to vyžaduje zákon."

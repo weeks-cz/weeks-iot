@@ -52,7 +52,7 @@ export async function createChildAction(
 
   const parsed = childSchema.safeParse({
     nick: formData.get("nick"),
-    birthYear: formData.get("birthYear"),
+    birthDate: formData.get("birthDate"),
     avatar: formData.get("avatar") ?? undefined,
   });
 
@@ -65,7 +65,7 @@ export async function createChildAction(
     .insert({
       parent_id: userId,
       nick: parsed.data.nick,
-      birth_year: parsed.data.birthYear,
+      birth_date: parsed.data.birthDate,
       avatar: parsed.data.avatar ?? "robot",
     })
     .select("id")
@@ -100,7 +100,7 @@ export async function updateChildAction(
   const parsed = updateChildSchema.safeParse({
     childId: formData.get("childId"),
     nick: formData.get("nick"),
-    birthYear: formData.get("birthYear"),
+    birthDate: formData.get("birthDate"),
     avatar: formData.get("avatar") ?? undefined,
   });
 
@@ -115,7 +115,7 @@ export async function updateChildAction(
     .from("children")
     .update({
       nick: parsed.data.nick,
-      birth_year: parsed.data.birthYear,
+      birth_date: parsed.data.birthDate,
       avatar: parsed.data.avatar ?? "robot",
     })
     .eq("id", parsed.data.childId);

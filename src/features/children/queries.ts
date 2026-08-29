@@ -21,7 +21,7 @@ export async function getChildren(parentId: string): Promise<ChildSummary[]> {
      nedostal (chybí grant), ale výčet drží veřejný tvar viditelný v kódu. */
   const { data: children } = await supabase
     .from("children")
-    .select("id, parent_id, nick, birth_year, avatar, archived_at, created_at, updated_at")
+    .select("id, parent_id, nick, birth_date, birth_year, avatar, archived_at, created_at, updated_at")
     .eq("parent_id", parentId)
     .is("archived_at", null)
     .order("created_at");

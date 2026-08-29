@@ -2,10 +2,10 @@
 
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { SelectField, TextField } from "@/components/ui/Field";
+import { TextField } from "@/components/ui/Field";
 import { Alert, Badge, Card, MonoLabel } from "@/components/ui/Surface";
 import type { ActionState } from "@/features/actions";
-import { birthYearRange } from "@/features/onboarding/schema";
+import { birthDateRange } from "@/features/onboarding/schema";
 import {
   archiveChildAction,
   createChildAction,
@@ -17,28 +17,26 @@ import type { ChildSummary } from "../queries";
 
 const EMPTY: ActionState = {};
 
-function YearSelect({ defaultValue, error }: { defaultValue?: number; error?: string }) {
-  const { min, max } = birthYearRange();
-  const years = Array.from({ length: max - min + 1 }, (_, i) => max - i);
+function formatBirthDate(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("cs-CZ", { timeZone: "UTC" });
+}
+
+function BirthDateField({ defaultValue, error }: { defaultValue?: string; error?: string }) {
+  const { min, max } = birthDateRange();
 
   return (
-    <SelectField
-      label="Rok narození"
-      name="birthYear"
+    <TextField
+      label="Datum narození"
+      name="birthDate"
+      type="date"
       required
       mono
+      min={min}
+      max={max}
       defaultValue={defaultValue ?? ""}
+      hint="Podle data poznáme, kdo musí podepsat souhlas. Hranice je 15 let."
       error={error}
-    >
-      <option value="" disabled>
-        Vyberte rok
-      </option>
-      {years.map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </SelectField>
+    />
   );
 }
 
@@ -81,7 +79,7 @@ function AddChildForm() {
           error={state.fieldErrors?.nick}
         />
 
-        <YearSelect error={state.fieldErrors?.birthYear} />
+        <BirthDateField error={state.fieldErrors?.birthDate} />
 
         <div>
           <MonoLabel className="mb-2">Avatar</MonoLabel>
@@ -243,7 +241,7 @@ export function ChildManager({ profiles }: { profiles: ChildSummary[] }) {
               <div>
                 <h2 className="heading-3 text-ink">{child.nick}</h2>
                 <p className="font-mono text-xs text-ink-500">
-                  ročník {child.birth_year} · dokončeno {child.lessonsCompleted} lekcí
+                  nar. {formatBirthDate(child.birth_date)} · dokončeno {child.lessonsCompleted} lekcí
                 </p>
               </div>
             </div>

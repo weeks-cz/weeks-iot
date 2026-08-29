@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  DIGITAL_CONSENT_AGE,
   MAX_AGE,
   MIN_AGE,
   MIN_PASSWORD_LENGTH,
-  approximateAge,
-  birthYearRange,
+  ageOn,
+  birthDateRange,
   emailSchema,
   needsParentalConsent,
   newPasswordSchema,
@@ -22,7 +21,7 @@ function validOnboarding(over: Record<string, unknown> = {}) {
   return {
     regionCode: "CZ-PR",
     childNick: "Kuba",
-    childBirthYear: 2014,
+    childBirthDate: "2014-06-15",
     acceptTerms: true,
     parentalConsent: true,
     marketingConsent: false,
@@ -101,40 +100,91 @@ describe("newPasswordSchema", () => {
   });
 });
 
-describe("věk a rok narození", () => {
-  it("rozsah odpovídá cílové skupině", () => {
-    const { min, max } = birthYearRange(NOW);
-    expect(max - min).toBe(MAX_AGE - MIN_AGE);
-    expect(2026 - max).toBe(MIN_AGE);
-    expect(2026 - min).toBe(MAX_AGE);
+describe("ageOn — přesný věk", () => {
+  it("počítá věk z celého data, ne z ročníku", () => {
+    expect(ageOn("2011-01-05", NOW)).toBe(15);
+    expect(ageOn("2014-06-15", NOW)).toBe(12);
   });
 
-  it("spočítá přibližný věk", () => {
-    expect(approximateAge(2014, NOW)).toBe(12);
-    expect(approximateAge(2011, NOW)).toBe(15);
+  it("před narozeninami je o rok míň", () => {
+    // Tohle je ta chyba, kvůli které se přešlo z ročníku na datum:
+    // 2026 − 2011 = 15, ale 20. 12. 2011 → 29. 8. 2026 je teprve 14.
+    expect(ageOn("2011-12-20", NOW)).toBe(14);
+    expect(ageOn("2011-09-01", NOW)).toBe(14);
   });
 
+  it("v den narozenin už věk platí", () => {
+    expect(ageOn("2011-08-29", NOW)).toBe(15);
+  });
+
+  it("den po narozeninách taky", () => {
+    expect(ageOn("2011-08-28", NOW)).toBe(15);
+  });
+
+  it("den před narozeninami ještě ne", () => {
+    expect(ageOn("2011-08-30", NOW)).toBe(14);
+  });
+
+  it("zvládne přestupný 29. únor", () => {
+    expect(ageOn("2012-02-29", NOW)).toBe(14);
+  });
+
+  it("nečitelné datum vrátí NaN", () => {
+    expect(Number.isNaN(ageOn("nesmysl", NOW))).toBe(true);
+  });
+});
+
+describe("needsParentalConsent", () => {
   it("dítě pod 15 potřebuje souhlas zákonného zástupce", () => {
     // § 7 zák. 110/2019: věk digitálního souhlasu je v ČR 15 let.
-    expect(needsParentalConsent(2014, NOW)).toBe(true);
-    expect(approximateAge(2012, NOW)).toBeLessThan(DIGITAL_CONSENT_AGE);
-    expect(needsParentalConsent(2012, NOW)).toBe(true);
+    expect(needsParentalConsent("2014-06-15", NOW)).toBe(true);
+    expect(needsParentalConsent("2011-12-20", NOW)).toBe(true);
   });
 
   it("od 15 let už souhlas zákonného zástupce nutný není", () => {
-    expect(needsParentalConsent(2011, NOW)).toBe(false);
+    expect(needsParentalConsent("2011-08-29", NOW)).toBe(false);
+    expect(needsParentalConsent("2010-01-01", NOW)).toBe(false);
   });
 
-  it("odmítne nesmyslný ročník", () => {
-    expect(onboardingSchema.safeParse(validOnboarding({ childBirthYear: 1900 })).success).toBe(false);
-    expect(onboardingSchema.safeParse(validOnboarding({ childBirthYear: 2050 })).success).toBe(false);
-    expect(onboardingSchema.safeParse(validOnboarding({ childBirthYear: 0 })).success).toBe(false);
+  it("hranice sedí na den", () => {
+    expect(needsParentalConsent("2011-08-30", NOW)).toBe(true);
+    expect(needsParentalConsent("2011-08-29", NOW)).toBe(false);
   });
 
-  it("přijme rok jako řetězec ze select boxu", () => {
-    const result = onboardingSchema.safeParse(validOnboarding({ childBirthYear: "2014" }));
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data.childBirthYear).toBe(2014);
+  it("nečitelné datum padne na přísnější variantu", () => {
+    // Když nevíme, musí rozhodnout rodič. Opačná volba by vyrobila
+    // neplatný souhlas.
+    expect(needsParentalConsent("", NOW)).toBe(true);
+    expect(needsParentalConsent("nesmysl", NOW)).toBe(true);
+  });
+});
+
+describe("birthDateSchema", () => {
+  it("přijme platné datum v rozsahu", () => {
+    expect(onboardingSchema.safeParse(validOnboarding()).success).toBe(true);
+  });
+
+  it("odmítne neexistující datum", () => {
+    // Regex pustí 2014-02-31; zpětný převod odhalí, že takový den není.
+    const r = onboardingSchema.safeParse(validOnboarding({ childBirthDate: "2014-02-31" }));
+    expect(r.success).toBe(false);
+  });
+
+  it("odmítne špatný formát", () => {
+    for (const bad of ["15.6.2014", "2014/06/15", "2014-6-15", "", "včera"]) {
+      expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: bad })).success, bad).toBe(false);
+    }
+  });
+
+  it("odmítne příliš staré i příliš mladé", () => {
+    expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: "1990-01-01" })).success).toBe(false);
+    expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: "2025-01-01" })).success).toBe(false);
+  });
+
+  it("rozsah pro pole odpovídá povolenému věku", () => {
+    const { min, max } = birthDateRange(NOW);
+    expect(ageOn(min, NOW)).toBe(MAX_AGE);
+    expect(ageOn(max, NOW)).toBe(MIN_AGE);
   });
 });
 
@@ -185,6 +235,27 @@ describe("onboardingSchema — souhlasy", () => {
     if (!result.success) {
       expect(result.error.issues[0]?.message).toMatch(/zákonného zástupce/i);
     }
+  });
+
+  it("u dítěte nestačí vlastní souhlas místo rodičovského", () => {
+    const r = onboardingSchema.safeParse(
+      validOnboarding({ parentalConsent: false, selfConsent: true }),
+    );
+    expect(r.success).toBe(false);
+  });
+
+  it("od 15 let stačí vlastní souhlas", () => {
+    const r = onboardingSchema.safeParse(
+      validOnboarding({ childBirthDate: "2010-01-01", parentalConsent: false, selfConsent: true }),
+    );
+    expect(r.success).toBe(true);
+  });
+
+  it("od 15 let nestačí rodičovský místo vlastního", () => {
+    const r = onboardingSchema.safeParse(
+      validOnboarding({ childBirthDate: "2010-01-01", parentalConsent: true, selfConsent: false }),
+    );
+    expect(r.success).toBe(false);
   });
 
   it("projde bez obchodních sdělení", () => {
