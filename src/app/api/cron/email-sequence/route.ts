@@ -28,15 +28,26 @@ export const maxDuration = 60;
 /** Kolik e-mailů nejvýš za jeden běh. Chrání limit Resendu i dobu běhu. */
 const BATCH = 100;
 
+/** `rodic@example.com` → `ro***@example.com`. Účet se pozná, adresa neunikne. */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at < 1) return "***";
+  return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`;
+}
+
 export async function GET(request: Request) {
-  /* Vercel podepisuje cron požadavky hlavičkou s CRON_SECRET. Bez kontroly
-     by endpoint mohl spustit kdokoli a rozeslat sekvenci mimo pořadí. */
+  /* Vercel podepisuje cron požadavky hlavičkou s CRON_SECRET.
+     Chybějící tajemství znamená ODMÍTNOUT, ne pustit. Dřív tu bylo
+     `if (secret) { ... }`, což je fail-open: v prostředí, kde se proměnná
+     zapomene nastavit, byl endpoint otevřený — a rozeslání sekvence
+     i výpis adres jsou obojí věci, které nesmí spustit kdokoli. */
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Neautorizováno" }, { status: 401 });
-    }
+  if (!secret) {
+    console.error("[cron/email-sequence] Chybí CRON_SECRET — požadavek odmítnut");
+    return NextResponse.json({ error: "Neautorizováno" }, { status: 401 });
+  }
+  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Neautorizováno" }, { status: 401 });
   }
 
   /* ── Nácvik nasucho ──────────────────────────────────────────────────
@@ -50,6 +61,9 @@ export async function GET(request: Request) {
 
   const service = createServiceClient();
   const results = { sent: 0, skipped: 0, failed: 0 };
+  /* Do výpisu jde maskovaná adresa, ne skutečná. Na kontrolu „komu by to
+     šlo" stačí poznat účet; celý seznam e-mailů registrovaných rodičů je
+     osobní údaj a nemá důvod opouštět databázi kvůli diagnostice. */
   const plan: Array<{ email: string; step: string }> = [];
 
   const { data: parents } = await service
@@ -135,7 +149,7 @@ export async function GET(request: Request) {
          grantu a cron při každém běhu posílal totéž znovu. Odeslaný
          e-mail se nedá vzít zpět, zápis do logu ano. */
       if (dryRun) {
-        plan.push({ email: parent.email, step: step.id });
+        plan.push({ email: maskEmail(parent.email), step: step.id });
         results.sent += 1;
         continue;
       }
