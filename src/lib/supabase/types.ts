@@ -52,17 +52,33 @@ export type ConsentRow = {
   created_at: string;
 }
 
-/** Bez PIN sloupců — klient je nemá v grantu a nikdy je nedostane. */
+/**
+ * Řádek tabulky `children` tak, jak vypadá v databázi — včetně PIN sloupců.
+ *
+ * Typ popisuje schéma, ne oprávnění. Bezpečnostní hranicí je sloupcový grant
+ * v migraci 002: `pin_hash`, `pin_failed_attempts` a `pin_locked_until` roli
+ * `authenticated` chybí, takže se k nim dostane výhradně servisní klient.
+ * Kód, který má vidět jen veřejnou část, používá `ChildPublic`.
+ */
 export type ChildRow = {
   id: string;
   parent_id: string;
   nick: string;
   birth_year: number;
   avatar: string;
+  pin_hash: string | null;
+  pin_failed_attempts: number;
+  pin_locked_until: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** Co smí opustit server. Nikdy neobsahuje hash ani stav zámku. */
+export type ChildPublic = Omit<
+  ChildRow,
+  "pin_hash" | "pin_failed_attempts" | "pin_locked_until"
+>;
 
 export type CourseRow = {
   id: string;

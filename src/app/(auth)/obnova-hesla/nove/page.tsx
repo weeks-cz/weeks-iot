@@ -5,7 +5,8 @@ import { AuthShell } from "@/components/ui/AuthShell";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Surface";
-import { setNewPasswordAction, type ActionState } from "@/features/auth/actions";
+import type { ActionState } from "@/features/actions";
+import { setNewPasswordAction } from "@/features/auth/actions";
 import { MIN_PASSWORD_LENGTH } from "@/features/onboarding/schema";
 
 const EMPTY: ActionState = {};

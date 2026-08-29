@@ -5,7 +5,8 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Surface";
-import { magicLinkAction, signInAction, type ActionState } from "../actions";
+import type { ActionState } from "@/features/actions";
+import { magicLinkAction, signInAction } from "../actions";
 
 const EMPTY: ActionState = {};
 

@@ -202,7 +202,9 @@ Odvolání musí být stejně snadné jako udělení — jedno tlačítko v `/uc
 
 Odvolání **souhlasu zákonného zástupce** má důsledek: bez něj nemá zpracování údajů dítěte právní základ. Tlačítko proto říká pravdu — „odvolání znamená smazání profilů dětí" — a spustí stejnou cestu jako smazání účtu, s potvrzením a sedmidenní lhůtou na rozmyšlenou. Odvolání **obchodních sdělení** je nezávislé a nemá žádný jiný následek.
 
-Smazání účtu maže rodiče, děti, postup a projekty. Ledger souhlasů a účetní doklady zůstávají — je to zákonná povinnost a zároveň jediný důkaz, že smazání proběhlo na žádost.
+Smazání účtu maže kaskádou rodiče, děti, postup, projekty **i ledger souhlasů**. Ledger tedy smazání nepřežije, a je to tak správně: držet záznamy o souhlasu navázané na člověka, jehož ostatní údaje jsme na žádost smazali, by znamenalo uchovávat osobní údaje bez právního základu. Prokazovat souhlas ke zpracování, které už neexistuje, po správci nikdo chtít nemůže.
+
+Zůstává jediná stopa — řádek v `learning_events` s typem `account_deleted`. Ten má na `parent_id` vazbu `on delete set null`, takže po smazání nese jen informaci „někdy toho dne byl na žádost smazán účet", bez vazby na osobu.
 
 ## 6. Souhlas zákonného zástupce
 

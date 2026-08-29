@@ -9,7 +9,7 @@ import { EVENT } from "@/features/analytics/events";
 import { CONSENT_TEXTS, consentTextFor } from "@/features/consent/texts";
 import { adoptSession, lessonKey, mergeWithExisting } from "@/features/anon-session/adopt";
 import { anonSessionSchema, type AnonSession } from "@/features/anon-session/schema";
-import type { ActionState } from "@/features/auth/actions";
+import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { onboardingSchema } from "./schema";
 
 /**
@@ -23,15 +23,6 @@ import { onboardingSchema } from "./schema";
  * Řádek v `parents` už existuje: zakládá ho trigger `handle_new_user`
  * při vzniku uživatele. Tady se jen doplňuje.
  */
-
-function fieldErrorsFrom(issues: { path: PropertyKey[]; message: string }[]) {
-  const out: Record<string, string> = {};
-  for (const issue of issues) {
-    const key = String(issue.path[0] ?? "form");
-    out[key] ??= issue.message;
-  }
-  return out;
-}
 
 /** Anonymní relace přichází jako JSON z localStorage. Nedůvěryhodný vstup. */
 function parseAnonSession(raw: FormDataEntryValue | null): AnonSession | null {

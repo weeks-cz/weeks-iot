@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Surface";
 import { MIN_PASSWORD_LENGTH } from "@/features/onboarding/schema";
-import { signUpAction, type ActionState } from "../actions";
+import type { ActionState } from "@/features/actions";
+import { signUpAction } from "../actions";
 
 const EMPTY: ActionState = {};
 

@@ -12,6 +12,7 @@ import {
   signInSchema,
   signUpSchema,
 } from "@/features/onboarding/schema";
+import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { isSafeNextPath } from "./safe-path";
 
 /**
@@ -23,21 +24,6 @@ import { isSafeNextPath } from "./safe-path";
  * ověřit, jestli konkrétní rodič službu používá. U služby pro děti to není
  * teoretický problém.
  */
-
-export interface ActionState {
-  error?: string;
-  fieldErrors?: Record<string, string>;
-  success?: string;
-}
-
-function fieldErrorsFrom(issues: { path: PropertyKey[]; message: string }[]) {
-  const out: Record<string, string> = {};
-  for (const issue of issues) {
-    const key = String(issue.path[0] ?? "form");
-    out[key] ??= issue.message;
-  }
-  return out;
-}
 
 function callbackUrl(next: string): string {
   const safe = isSafeNextPath(next) ? next : "/ucet";

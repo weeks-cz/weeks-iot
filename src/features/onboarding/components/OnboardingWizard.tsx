@@ -6,7 +6,8 @@ import { Checkbox, SelectField, TextField } from "@/components/ui/Field";
 import { Alert, MonoLabel, Stepper } from "@/components/ui/Surface";
 import { readAnonSession } from "@/features/anon-session/storage";
 import { CONSENT_TEXTS } from "@/features/consent/texts";
-import type { ActionState } from "@/features/auth/actions";
+import type { ActionState } from "@/features/actions";
+import { AVATARS } from "@/features/children/avatars";
 import { completeOnboardingAction } from "../actions";
 import { birthYearRange } from "../schema";
 
@@ -18,15 +19,6 @@ interface RegionOption {
   name: string;
   isCatchment: boolean;
 }
-
-const AVATARS = [
-  { id: "robot", label: "Robot", glyph: "🤖" },
-  { id: "raketa", label: "Raketa", glyph: "🚀" },
-  { id: "blesk", label: "Blesk", glyph: "⚡" },
-  { id: "zarovka", label: "Žárovka", glyph: "💡" },
-  { id: "ozubene-kolo", label: "Ozubené kolo", glyph: "⚙️" },
-  { id: "mikroskop", label: "Mikroskop", glyph: "🔬" },
-] as const;
 
 /**
  * Onboarding rodiče.

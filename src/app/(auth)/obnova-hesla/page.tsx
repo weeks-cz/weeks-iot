@@ -6,7 +6,8 @@ import { AuthShell } from "@/components/ui/AuthShell";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Surface";
-import { requestPasswordResetAction, type ActionState } from "@/features/auth/actions";
+import type { ActionState } from "@/features/actions";
+import { requestPasswordResetAction } from "@/features/auth/actions";
 
 const EMPTY: ActionState = {};
 
