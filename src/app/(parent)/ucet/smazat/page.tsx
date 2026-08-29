@@ -4,6 +4,7 @@ import { MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
 import { getChildren } from "@/features/children/queries";
 import { DeleteAccountForm } from "@/features/consent/components/DeleteAccountForm";
+import { voiceFor } from "@/features/account/voice";
 
 export const metadata: Metadata = { title: "Zrušení účtu" };
 
@@ -26,7 +27,14 @@ export default async function DeleteAccountPage({
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/prihlaseni");
 
+  const { data: parent } = await supabase
+    .from("parents")
+    .select("account_type")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
   const children = await getChildren(auth.user.id);
+  const voice = voiceFor(parent?.account_type);
   const reason = params.duvod ? REASONS[params.duvod] : undefined;
 
   return (
@@ -37,6 +45,7 @@ export default async function DeleteAccountPage({
       <DeleteAccountForm
         reason={reason}
         childNames={children.map((c) => c.nick)}
+        isSelfManaged={!voice.canAddProfiles}
         email={auth.user.email ?? ""}
       />
     </div>

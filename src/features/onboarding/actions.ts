@@ -126,6 +126,9 @@ export async function completeOnboardingAction(
     .update({
       region_code: input.regionCode,
       onboarding_completed_at: new Date().toISOString(),
+      /* Musí odpovídat druhu souhlasu zapsanému výše — z toho se pak
+         řídí, jestli aplikace mluví k rodiči nebo k učícímu se. */
+      account_type: isMinor ? "guardian" : "self",
       ...(attribution.utmSource ? { utm_source: attribution.utmSource } : {}),
       ...(attribution.utmMedium ? { utm_medium: attribution.utmMedium } : {}),
       ...(attribution.utmCampaign ? { utm_campaign: attribution.utmCampaign } : {}),

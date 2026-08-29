@@ -12,6 +12,7 @@ export type ConsentKind = "terms" | "parental" | "self" | "marketing";
 export type ProgressStatus = "started" | "completed";
 export type ProjectKind = "circuit" | "model" | "code";
 export type Plan = "free" | "premium";
+export type AccountType = "guardian" | "self";
 
 export type RegionRow = {
   code: string;
@@ -25,6 +26,7 @@ export type ParentRow = {
   email: string;
   region_code: string | null;
   onboarding_completed_at: string | null;
+  account_type: AccountType;
   plan: Plan;
   plan_expires_at: string | null;
   premium_activated_at: string | null;
@@ -224,6 +226,7 @@ export interface Database {
     Enums: {
       consent_kind: ConsentKind;
       progress_status: ProgressStatus;
+      account_type: AccountType;
     };
     CompositeTypes: Record<string, never>;
   };

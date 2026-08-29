@@ -26,10 +26,18 @@ export default async function LearnPage() {
 
   const cookieStore = await cookies();
   const activeId = cookieStore.get(ACTIVE_CHILD_COOKIE)?.value;
-  const active = children.find((c) => c.id === activeId);
 
   /* Cookie je jen volba, ne oprávnění — proto se profil vždycky dohledává
-     v seznamu dětí TOHOTO rodiče. Podvržené id tak nikam nevede. */
+     v seznamu profilů TOHOTO účtu. Podvržené id tak nikam nevede. */
+  let active = children.find((c) => c.id === activeId);
+
+  /* Jediný profil bez PINu vybírat nemá co. Obrazovka „Kdo se dneska učí?"
+     dává smysl u rodiny se dvěma dětmi, ne u někoho, kdo se učí sám —
+     ten by jen klikal navíc při každém příchodu. */
+  if (!active && children.length === 1 && !children[0]!.hasPin) {
+    active = children[0];
+  }
+
   if (!active) {
     return (
       <main className="min-h-dvh bg-paper blueprint-grid">

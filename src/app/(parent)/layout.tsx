@@ -4,16 +4,11 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "@/features/auth/actions";
+import { voiceFor } from "@/features/account/voice";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
-
-const NAV = [
-  { href: "/ucet", label: "Přehled" },
-  { href: "/ucet/deti", label: "Profily dětí" },
-  { href: "/ucet/souhlasy", label: "Souhlasy" },
-] as const;
 
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -26,11 +21,18 @@ export default async function ParentLayout({ children }: { children: React.React
 
   const { data: parent } = await supabase
     .from("parents")
-    .select("onboarding_completed_at, email")
+    .select("onboarding_completed_at, email, account_type")
     .eq("id", auth.user.id)
     .maybeSingle();
 
   if (!parent?.onboarding_completed_at) redirect("/registrace/onboarding");
+
+  const voice = voiceFor(parent.account_type);
+  const nav = [
+    { href: "/ucet", label: voice.nav.overview },
+    { href: "/ucet/deti", label: voice.nav.profiles },
+    { href: "/ucet/souhlasy", label: voice.nav.consents },
+  ];
 
   return (
     <div className="min-h-dvh bg-paper">
@@ -53,7 +55,7 @@ export default async function ParentLayout({ children }: { children: React.React
               položky do řádku nevejdou a zalomená navigace by odsunula
               obsah pod ohyb. */}
           <ul className="-mb-px flex gap-1 overflow-x-auto">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}

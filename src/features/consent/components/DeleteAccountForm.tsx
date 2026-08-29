@@ -23,10 +23,13 @@ export function DeleteAccountForm({
   reason,
   childNames,
   email,
+  isSelfManaged,
 }: {
   reason?: string;
   childNames: string[];
   email: string;
+  /** U samostatného účtu se nemluví o „profilech dětí". */
+  isSelfManaged?: boolean;
 }) {
   const [state, submit, pending] = useActionState(deleteAccountAction, EMPTY);
 
@@ -42,14 +45,19 @@ export function DeleteAccountForm({
           <li className="flex gap-2">
             <span aria-hidden="true">·</span>
             <span>
-              Účet rodiče <span className="font-mono">{email}</span>
+              {isSelfManaged ? "Účet" : "Účet rodiče"}{" "}
+              <span className="font-mono">{email}</span>
             </span>
           </li>
           {childNames.length > 0 && (
             <li className="flex gap-2">
               <span aria-hidden="true">·</span>
               <span>
-                {childNames.length === 1 ? "Profil " : "Profily "}
+                {isSelfManaged
+                  ? "Tvůj profil "
+                  : childNames.length === 1
+                    ? "Profil "
+                    : "Profily "}
                 <strong className="text-ink">{childNames.join(", ")}</strong> včetně postupu
                 v lekcích
               </span>
@@ -62,8 +70,8 @@ export function DeleteAccountForm({
         </ul>
 
         <p className="text-sm leading-relaxed text-ink-500">
-          Smazání je okamžité a nevratné. Projekty si před ním můžete stáhnout v profilu
-          dítěte.
+          Smazání je okamžité a nevratné. Projekty si před ním{" "}
+          {isSelfManaged ? "můžeš stáhnout ve svém profilu" : "můžete stáhnout v profilu dítěte"}.
         </p>
       </Card>
 

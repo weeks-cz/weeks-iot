@@ -230,7 +230,13 @@ function ArchiveForm({ child }: { child: ChildSummary }) {
 
 /* ── Přehled ───────────────────────────────────────────────────────────── */
 
-export function ChildManager({ profiles }: { profiles: ChildSummary[] }) {
+export function ChildManager({
+  profiles,
+  canAdd,
+}: {
+  profiles: ChildSummary[];
+  canAdd: boolean;
+}) {
   return (
     <div className="flex flex-col gap-5">
       {profiles.map((child) => (
@@ -257,7 +263,7 @@ export function ChildManager({ profiles }: { profiles: ChildSummary[] }) {
         </Card>
       ))}
 
-      <AddChildForm />
+      {canAdd && <AddChildForm />}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { getChildren } from "@/features/children/queries";
 import { getCampCatchment } from "@/features/onboarding/queries";
 import { consentStatuses } from "@/features/consent/logic";
 import { CampCta } from "@/features/onboarding/components/CampCta";
+import { voiceFor } from "@/features/account/voice";
 
 export const metadata: Metadata = { title: "Přehled" };
 
@@ -26,7 +27,7 @@ export default async function AccountPage({
   const [{ data: parent }, children, catchment, { data: consents }] = await Promise.all([
     supabase
       .from("parents")
-      .select("region_code, plan, created_at")
+      .select("region_code, plan, created_at, account_type")
       .eq("id", auth.user.id)
       .maybeSingle(),
     getChildren(auth.user.id),
@@ -41,7 +42,11 @@ export default async function AccountPage({
     (parent?.region_code ?? null) as never,
     catchment,
   );
-  const outdated = consentStatuses(consents ?? []).filter((s) => s.outdated);
+  const voice = voiceFor(parent?.account_type);
+  const outdated = consentStatuses(
+    consents ?? [],
+    parent?.account_type !== "self",
+  ).filter((s) => s.outdated);
 
   return (
     <div className="flex flex-col gap-8">
@@ -66,18 +71,20 @@ export default async function AccountPage({
       <section>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <MonoLabel className="mb-2">Profily dětí</MonoLabel>
-            <h1 className="heading-2">Kdo se dneska učí?</h1>
+            <MonoLabel className="mb-2">{voice.nav.profiles}</MonoLabel>
+            <h1 className="heading-2">{voice.overviewHeading}</h1>
           </div>
           <ButtonLink href="/ucet/deti" variant="outline" size="sm">
-            Spravovat profily
+            {voice.canAddProfiles ? "Spravovat profily" : "Upravit profil"}
           </ButtonLink>
         </div>
 
         {children.length === 0 ? (
           <Card className="p-6">
-            <p className="mb-4 text-ink-500">Zatím tu není žádný profil dítěte.</p>
-            <ButtonLink href="/ucet/deti">Přidat dítě</ButtonLink>
+            <p className="mb-4 text-ink-500">Zatím tu není žádný profil.</p>
+            <ButtonLink href="/ucet/deti">
+              {voice.canAddProfiles ? "Přidat dítě" : "Vytvořit profil"}
+            </ButtonLink>
           </Card>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
