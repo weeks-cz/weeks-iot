@@ -83,10 +83,26 @@ export interface PathResult {
 }
 
 export interface PathQuery {
-  /** Součástky, přes které cesta smí vést. Prázdné = jen drát. */
+  /**
+   * Součástky, přes které cesta smí vést. Prázdné = jen drát.
+   *
+   * POZOR: je to seznam POVOLENÝCH typů, ne vyžadovaných. „Vede tam cesta
+   * a je na ní rezistor?" se ptá tak, že se k tomu doptáš na výsledek:
+   * `result.found && result.through.includes("resistor-220")`. Samotné
+   * `through` jen zužuje, kudy se smí jít.
+   */
   through?: ComponentType[];
   /** Nejvíc součástek na cestě. Brání „projde to oklikou přes půl obvodu". */
   maxHops?: number;
+  /**
+   * Hotový rozklad do sítí, když ho volající už má.
+   *
+   * Bez něj si ho `findPath` spočítá sám — jenže u obvodu s breadboardem
+   * je to devět set pinů a kontrola zapojení volá `findPath` pro každý
+   * spoj v každé permutaci rolí. Předání ušetří řádově víc práce, než
+   * kolik zabere samo hledání.
+   */
+  nets?: NetMap;
 }
 
 /**
@@ -102,7 +118,7 @@ export function findPath(
   to: PinKey,
   query: PathQuery = {},
 ): PathResult {
-  const nets = resolveNets(circuit);
+  const nets = query.nets ?? resolveNets(circuit);
   const maxHops = query.maxHops ?? 3;
 
   const startNet = nets.netOf(from);

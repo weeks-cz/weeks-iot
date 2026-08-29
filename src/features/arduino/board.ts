@@ -66,8 +66,13 @@ export function emptyBoardState(): BoardState {
  * skutečně, blikání se sekundovou pauzou by v prohlížeči zamrzlo, a hlavně
  * by nešlo spočítat, co se stane za deset sekund, aniž bys deset sekund
  * čekal.
+ *
+ * `onTimePasses` se ozve pokaždé, když se virtuální čas pohne. Tam si
+ * simulace bere snímek obvodu — protože „být vidět" znamená „chvíli
+ * trvat". Bez toho by celý přechod jasu proběhl mezi dvěma snímky a
+ * nikdo by ho nezahlédl.
  */
-export function createBoard(state: BoardState): Board {
+export function createBoard(state: BoardState, onTimePasses?: () => void): Board {
   const readPin = (pin: number): number => {
     const mode = state.modes.get(pin) ?? "unset";
     const external = state.inputs.get(pin);
@@ -105,6 +110,7 @@ export function createBoard(state: BoardState): Board {
 
     delay(ms) {
       state.elapsedMs += Math.max(0, ms);
+      onTimePasses?.();
     },
 
     millis() {

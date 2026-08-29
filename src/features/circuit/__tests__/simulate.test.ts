@@ -31,6 +31,15 @@ function correctCircuit(): Circuit {
   };
 }
 
+/** Totéž zapojení, ale na pin 9 — jen ten umí plynulý jas. */
+function pwmWires(): Wire[] {
+  return [
+    w(["uno", "D9"], ["r", "a"]),
+    w(["r", "b"], ["led", "anode"]),
+    w(["led", "cathode"], ["uno", "GND-1"]),
+  ];
+}
+
 const BLINK = `
   void setup() { pinMode(8, OUTPUT); }
   void loop() {
@@ -77,6 +86,55 @@ describe("LED svítí, protože jí teče proud", () => {
     expect(r.frames[0]!.leds[0]!.brightness).toBe(0);
   });
 
+  it("LED bez rezistoru → nesvítí", () => {
+    /* Přímo na pin je nejčastější začátečnická chyba a jediná, po které
+       LED opravdu odejde. Dřív tady simulace svítila: ptala se přes
+       findPath s `through`, jenže to je seznam POVOLENÝCH typů, ne
+       vyžadovaných, takže prošla i cesta vedoucí rovnou přes LED. */
+    const bezOdporu: Circuit = {
+      comps: [UNO, LED],
+      wires: [w(["uno", "D8"], ["led", "anode"]), w(["led", "cathode"], ["uno", "GND-1"])],
+    };
+    const r = runProgram(
+      "void setup() { pinMode(8, OUTPUT); digitalWrite(8, HIGH); }",
+      bezOdporu,
+      { iterations: 0 },
+    );
+    expect(r.frames[0]!.leds[0]!.brightness).toBe(0);
+  });
+
+  it("rezistor jen položený na desce se nepočítá", () => {
+    /* „Mám ho" není totéž co „použil jsem ho". */
+    const nezapojeny: Circuit = {
+      comps: [UNO, LED, RES],
+      wires: [w(["uno", "D8"], ["led", "anode"]), w(["led", "cathode"], ["uno", "GND-1"])],
+    };
+    const r = runProgram(
+      "void setup() { pinMode(8, OUTPUT); digitalWrite(8, HIGH); }",
+      nezapojeny,
+      { iterations: 0 },
+    );
+    expect(r.frames[0]!.leds[0]!.brightness).toBe(0);
+  });
+
+  it("rezistor na straně katody chrání stejně dobře", () => {
+    /* Elektricky je jedno, na které noze je — smyčka je jedna. */
+    const naKatode: Circuit = {
+      comps: [UNO, LED, RES],
+      wires: [
+        w(["uno", "D8"], ["led", "anode"]),
+        w(["led", "cathode"], ["r", "a"]),
+        w(["r", "b"], ["uno", "GND-1"]),
+      ],
+    };
+    const r = runProgram(
+      "void setup() { pinMode(8, OUTPUT); digitalWrite(8, HIGH); }",
+      naKatode,
+      { iterations: 0 },
+    );
+    expect(r.frames[0]!.leds[0]!.brightness).toBeGreaterThan(0);
+  });
+
   it("LED zapojená na jiný pin, než program řídí → nesvítí", () => {
     const jinyPin: Circuit = {
       comps: [UNO, LED, RES],
@@ -117,10 +175,37 @@ describe("blikání se pozná ze snímků", () => {
   it("LED se ve snímcích střídavě rozsvěcí a zhasíná", () => {
     const r = runProgram(BLINK, correctCircuit(), { iterations: 4 });
     const values = r.frames.map((f) => (f.leds[0]!.brightness > 0 ? 1 : 0));
-    /* Po každém průchodu končí LOW, ale mezi snímky se stav mění — z toho
-       se dá poskládat animace, ne jen koncový stav. */
-    expect(r.frames.length).toBe(5);
-    expect(values.some((v) => v === 0)).toBe(true);
+    /* Rozsvícení je uvnitř jednoho průchodu smyčky. Kdyby se snímalo až
+       na jejím konci, viděly by se samé nuly a blikání by z běhu nešlo
+       poznat — proto se snímá vždycky, když uplyne čas. */
+    expect(values).toContain(1);
+    expect(values).toContain(0);
+  });
+
+  it("bez delay není co vidět — stav se nestihne projevit", () => {
+    /* Fyzikálně pravdivé a je to obsah lekce 2: co netrvá, to není vidět.
+       Rozsvícení a zhasnutí bez pauzy proběhne v mikrosekundách. */
+    const r = runProgram(
+      `void setup() { pinMode(8, OUTPUT); }
+       void loop() { digitalWrite(8, HIGH); digitalWrite(8, LOW); }`,
+      correctCircuit(),
+      { iterations: 4 },
+    );
+    expect(r.frames.every((f) => f.leds[0]!.brightness === 0)).toBe(true);
+  });
+
+  it("přechod jasu projde víc než dvěma úrovněmi", () => {
+    const r = runProgram(
+      `void setup() { pinMode(9, OUTPUT); }
+       void loop() {
+         for (int jas = 0; jas <= 255; jas++) { analogWrite(9, jas); delay(5); }
+       }`,
+      { ...correctCircuit(), wires: pwmWires() },
+      { iterations: 1 },
+    );
+    const levels = new Set(r.frames.map((f) => f.leds[0]!.brightness));
+    levels.delete(0);
+    expect(levels.size).toBeGreaterThan(2);
   });
 
   it("virtuální čas roste podle delay", () => {

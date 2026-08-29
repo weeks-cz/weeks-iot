@@ -1,4 +1,4 @@
-import { pinKey } from "./nets";
+import { pinKey, resolveNets, type NetMap } from "./nets";
 import { findPath } from "./paths";
 import type { Circuit, ComponentType } from "./types";
 
@@ -102,6 +102,7 @@ function checkAssignment(
   circuit: Circuit,
   spec: WiringSpec,
   roles: Map<string, string>,
+  nets: NetMap,
 ): WiringIssue[] {
   const issues: WiringIssue[] = [];
 
@@ -114,7 +115,7 @@ function checkAssignment(
       circuit,
       pinKey(fromId, conn.from.pin),
       pinKey(toId, conn.to.pin),
-      { through: conn.through, maxHops: (conn.through?.length ?? 0) + 1 },
+      { through: conn.through, maxHops: (conn.through?.length ?? 0) + 1, nets },
     );
 
     if (!result.found) {
@@ -187,9 +188,13 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
 
   /* Vybírá se to přiřazení rolí, které dopadlo nejlíp. Dítě má dostat
      hlášku k tomu, co mu opravdu chybí, ne k náhodné permutaci. */
+  /* Sítě se spočítají jednou pro všechny permutace. Rozklad na obvodu
+     nezávisí na tom, které součástce zrovna říkáme „ta výstupní". */
+  const nets = resolveNets(circuit);
+
   let best: WiringIssue[] | null = null;
   for (const roles of assignments) {
-    const issues = checkAssignment(circuit, spec, roles);
+    const issues = checkAssignment(circuit, spec, roles, nets);
     if (issues.length === 0) return { ok: true, issues: [], satisfied: total, total };
     if (best === null || issues.length < best.length) best = issues;
   }

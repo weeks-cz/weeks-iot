@@ -2,7 +2,6 @@ import { createBoard, emptyBoardState, type BoardState } from "@/features/arduin
 import { Interpreter, RuntimeError, compile } from "@/features/arduino/interpreter";
 import { getComponentSpec } from "./components";
 import { pinKey, resolveNets, type NetMap } from "./nets";
-import { findPath } from "./paths";
 import type { Circuit, CircuitComponent } from "./types";
 
 /**
@@ -69,9 +68,54 @@ function arduinoPinNumber(pinName: string): number | null {
   return null;
 }
 
+/**
+ * Které dvojice pinů uvnitř součástky vedou proud.
+ *
+ * Záměrně po dvojicích, ne „všechny piny součástky se srovnají": u
+ * fotorezistorového modulu by vyrovnání znamenalo, že se 5 V z jeho VCC
+ * rozlije až do země. Modul má vlastní elektroniku a jeho výstup se čte
+ * přes analogRead — obvodem nic nevede, proto tu není vůbec.
+ *
+ * Tlačítko má dvě poloviny spojené už z výroby (1a–1b, 2a–2b). Teprve
+ * stisk spojí obě poloviny mezi sebou, a to je celý jeho smysl.
+ */
+function conductivePairs(
+  comp: CircuitComponent,
+  isPressed: boolean,
+): ReadonlyArray<readonly [string, string]> {
+  switch (comp.type) {
+    case "resistor-220":
+      return [["a", "b"]];
+
+    case "potentiometer":
+      /* Běžec dělí dráhu na dvě části; proud teče oběma i celou dráhou. */
+      return [
+        ["terminal-a", "signal"],
+        ["signal", "terminal-b"],
+        ["terminal-a", "terminal-b"],
+      ];
+
+    case "pushbutton":
+      return isPressed
+        ? [
+            ["1a", "1b"],
+            ["2a", "2b"],
+            ["1a", "2a"],
+          ]
+        : [
+            ["1a", "1b"],
+            ["2a", "2b"],
+          ];
+
+    default:
+      return [];
+  }
+}
+
 /** Napětí sítě: co do ní tlačí Arduino, tlačítka nebo napájecí piny. */
 class NetVoltage {
   private levels = new Map<string, number>();
+  private grounded: Set<string> | null = null;
 
   constructor(
     private readonly nets: NetMap,
@@ -91,16 +135,66 @@ class NetVoltage {
     return this.levels.get(this.nets.netOf(pinKey(compId, pinName))) ?? 0;
   }
 
-  /** Je pin spojený se zemí? */
+  /**
+   * Je pin spojený se zemí?
+   *
+   * Nejen drátem. Rezistor patří do smyčky stejně dobře na straně katody
+   * jako na straně anody a spousta návodů ho kreslí právě dolů — kdyby se
+   * zem hledala jen po drátech, tohle úplně správné zapojení by nesvítilo.
+   *
+   * Přes LED se ale nechodí: zpáteční cesta vede pasivními součástkami,
+   * ne druhou diodou.
+   */
   isGround(compId: string, pinName: string): boolean {
-    const uno = this.circuit.comps.find((c) => c.type === "arduino-uno");
-    if (!uno) return false;
+    return this.groundNets().has(this.nets.netOf(pinKey(compId, pinName)));
+  }
 
-    return GROUND_PINS.some((g) => {
-      const spec = getComponentSpec("arduino-uno");
-      if (!spec.pins.some((p) => p.name === g)) return false;
-      return this.nets.connected(pinKey(compId, pinName), pinKey(uno.id, g));
-    });
+  /** Sítě, ze kterých se dá dostat na zem. Počítá se jednou za snímek. */
+  private groundNets(): Set<string> {
+    if (this.grounded) return this.grounded;
+
+    const found = new Set<string>();
+    this.grounded = found;
+
+    const uno = this.circuit.comps.find((c) => c.type === "arduino-uno");
+    if (!uno) return found;
+
+    const spec = getComponentSpec("arduino-uno");
+    const queue: string[] = [];
+    for (const g of GROUND_PINS) {
+      if (!spec.pins.some((p) => p.name === g)) continue;
+      const net = this.nets.netOf(pinKey(uno.id, g));
+      if (found.has(net)) continue;
+      found.add(net);
+      queue.push(net);
+    }
+
+    /* Zem se šíří pasivními součástkami — rezistorem, sepnutým tlačítkem,
+       dráhou potenciometru. Stisk se tu záměrně neřeší: tlačítko v cestě
+       k zemi je pro tuhle otázku vodič, protože jinak by se obvod dítěte
+       tvářil rozpojeně, dokud ho někdo nedrží. */
+    const passive = new Set(["resistor-220", "pushbutton", "potentiometer"]);
+
+    while (queue.length > 0) {
+      const net = queue.shift()!;
+
+      for (const comp of this.circuit.comps) {
+        if (!passive.has(comp.type)) continue;
+
+        const pins = getComponentSpec(comp.type).pins;
+        const touches = pins.some((p) => this.nets.netOf(pinKey(comp.id, p.name)) === net);
+        if (!touches) continue;
+
+        for (const p of pins) {
+          const other = this.nets.netOf(pinKey(comp.id, p.name));
+          if (found.has(other)) continue;
+          found.add(other);
+          queue.push(other);
+        }
+      }
+    }
+
+    return found;
   }
 }
 
@@ -114,8 +208,12 @@ export function readFrame(
   circuit: Circuit,
   board: BoardState,
   inputs: SimulationInputs = {},
+  precomputed?: NetMap,
 ): SimulationFrame {
-  const nets = resolveNets(circuit);
+  /* Rozklad do sítí závisí jen na obvodu, a ten se během běhu nemění.
+     U přechodu jasu se snímků pořizují stovky — počítat sítě u každého
+     zvlášť je ta nejdražší věc, kterou by simulace mohla dělat. */
+  const nets = precomputed ?? resolveNets(circuit);
   const voltage = new NetVoltage(nets, circuit);
 
   const uno = circuit.comps.find((c) => c.type === "arduino-uno");
@@ -148,23 +246,15 @@ export function readFrame(
     let changed = false;
 
     for (const comp of circuit.comps) {
-      const conducts =
-        comp.type === "resistor-220" ||
-        comp.type === "potentiometer" ||
-        comp.type === "photoresistor" ||
-        (comp.type === "pushbutton" && pressed.has(comp.id));
+      for (const [a, b] of conductivePairs(comp, pressed.has(comp.id))) {
+        const best = Math.max(voltage.level(comp.id, a), voltage.level(comp.id, b));
+        if (best <= 0) continue;
 
-      if (!conducts) continue;
-
-      const pins = getComponentSpec(comp.type).pins;
-      let best = 0;
-      for (const pin of pins) best = Math.max(best, voltage.level(comp.id, pin.name));
-      if (best <= 0) continue;
-
-      for (const pin of pins) {
-        if (voltage.level(comp.id, pin.name) < best) {
-          voltage.drive(comp.id, pin.name, best);
-          changed = true;
+        for (const pin of [a, b]) {
+          if (voltage.level(comp.id, pin) < best) {
+            voltage.drive(comp.id, pin, best);
+            changed = true;
+          }
         }
       }
     }
@@ -178,7 +268,7 @@ export function readFrame(
 
   for (const comp of circuit.comps) {
     if (comp.type.startsWith("led-")) {
-      leds.push({ compId: comp.id, brightness: ledBrightness(circuit, comp, voltage) });
+      leds.push({ compId: comp.id, brightness: ledBrightness(circuit, comp, voltage, nets) });
       continue;
     }
 
@@ -196,13 +286,50 @@ export function readFrame(
 }
 
 /**
+ * Má LED v sérii rezistor?
+ *
+ * Fyzikálně je otázka „je rezistor v proudové smyčce", a ta se dá položit
+ * mnohem levněji než hledáním cesty: rezistor je v sérii, když jednou
+ * nožičkou sedí ve stejné síti jako anoda nebo katoda LED. Buď je mezi
+ * pinem a anodou, nebo mezi katodou a zemí — obojí LED ochrání.
+ *
+ * Rezistor, který si dítě jen položilo na desku a nezapojilo, je ve
+ * vlastní síti a nezapočítá se. To je záměr: kontrola má poznat rozdíl
+ * mezi „mám ho" a „použil jsem ho".
+ */
+function hasSeriesResistor(
+  circuit: Circuit,
+  led: CircuitComponent,
+  anodePin: string,
+  nets: NetMap,
+): boolean {
+  const anodeNet = nets.netOf(pinKey(led.id, anodePin));
+  const cathodeNet = nets.netOf(pinKey(led.id, "cathode"));
+
+  for (const comp of circuit.comps) {
+    if (comp.type !== "resistor-220") continue;
+    for (const pin of getComponentSpec(comp.type).pins) {
+      const net = nets.netOf(pinKey(comp.id, pin.name));
+      if (net === anodeNet || net === cathodeNet) return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Jas LED.
  *
- * Svítí, jen když je na anodě napětí, katoda je na zemi a v cestě je
+ * Svítí, jen když je na anodě napětí, katoda je na zemi a v sérii je
  * rezistor. Obrácená polarita nesvítí, protože LED je dioda — a to je
  * lekce sama o sobě.
  */
-function ledBrightness(circuit: Circuit, led: CircuitComponent, voltage: NetVoltage): number {
+function ledBrightness(
+  circuit: Circuit,
+  led: CircuitComponent,
+  voltage: NetVoltage,
+  nets: NetMap,
+): number {
   const anodePin = led.type === "led-rgb" ? "r" : "anode";
   const cathodePin = "cathode";
 
@@ -211,23 +338,15 @@ function ledBrightness(circuit: Circuit, led: CircuitComponent, voltage: NetVolt
 
   if (!voltage.isGround(led.id, cathodePin)) return 0;
 
-  /* Bez rezistoru v cestě LED „svítí" jen chvíli a pak je po ní. Místo
+  /* Bez rezistoru LED „svítí" jen chvíli a pak je po ní. Místo
      předstírání, že to jde, ji necháme zhasnutou — krok s kontrolou
-     zapojení na to dítě upozorní konkrétně. */
-  const uno = circuit.comps.find((c) => c.type === "arduino-uno");
-  if (uno) {
-    const path = findPath(circuit, pinKey(led.id, anodePin), pinKey(uno.id, "GND-1"), {
-      maxHops: 3,
-    });
-    if (path.found && !path.through.includes("resistor-220")) {
-      /* Cesta na zem existuje, ale bez rezistoru — nesvítí. */
-      const withResistor = findPath(circuit, pinKey(led.id, anodePin), pinKey(uno.id, "GND-1"), {
-        through: ["resistor-220", led.type],
-        maxHops: 3,
-      });
-      if (!withResistor.found) return 0;
-    }
-  }
+     zapojení na to dítě upozorní konkrétně.
+
+     Dřív se tu ptalo přes findPath s `through: ["resistor-220", led.type]`.
+     Jenže `through` je seznam POVOLENÝCH typů, ne vyžadovaných, takže
+     cesta vedoucí rovnou přes samotnou LED prošla — a LED bez rezistoru
+     svítila. Přesně ta chyba, kvůli které rezistor v lekci 1 vysvětlujeme. */
+  if (!hasSeriesResistor(circuit, led, anodePin, nets)) return 0;
 
   return level;
 }
@@ -259,6 +378,27 @@ function buzzerFrequency(
 }
 
 /* ── Celý běh ───────────────────────────────────────────────────────────── */
+
+/**
+ * Strop na počet snímků.
+ *
+ * Přechod jasu 0→255→0 s delay(5) jich vyrobí přes pět set za jediný
+ * průchod. To je v pořádku a chceme to — animace je pak plynulá. Strop
+ * je tu proti programu, který by jich chtěl statisíce.
+ */
+const MAX_FRAMES = 2000;
+
+/**
+ * Otisk snímku pro porovnání se sousedem.
+ *
+ * Čas do něj schválně nepatří: dva snímky se stejným obvodem a jiným
+ * časem jsou pro diváka tentýž obrázek.
+ */
+function frameSignature(frame: SimulationFrame): string {
+  const leds = frame.leds.map((l) => `${l.compId}:${l.brightness}`).join(",");
+  const buzzers = frame.buzzers.map((b) => `${b.compId}:${b.frequency}`).join(",");
+  return `${leds}|${buzzers}|${frame.serial.length}`;
+}
 
 export interface RunResult {
   ok: boolean;
@@ -293,18 +433,38 @@ export function runProgram(
   const state = emptyBoardState();
   for (const [pin, value] of config.pinInputs ?? []) state.inputs.set(pin, value);
 
-  const board = createBoard(state);
-  const interp = new Interpreter(compiled.program!, board);
+  const nets = resolveNets(circuit);
   const frames: SimulationFrame[] = [];
+  let lastSignature: string | null = null;
+
+  /* Snímek se pořídí, kdykoli uplyne čas — a ještě po každém průchodu
+     smyčky, aby nezmizel program, který žádný delay nemá.
+
+     Dva po sobě jdoucí stejné snímky se zahodí: konec smyčky, která končí
+     delayem, by jinak pokaždé přidal kopii. Přechody se tím neztratí,
+     protože zahazujeme jen to, co se ničím neliší. */
+  const snapshot = (): void => {
+    if (frames.length >= MAX_FRAMES) return;
+
+    const frame = readFrame(circuit, state, config.inputs, nets);
+    const signature = frameSignature(frame);
+    if (signature === lastSignature) return;
+
+    lastSignature = signature;
+    frames.push(frame);
+  };
+
+  const board = createBoard(state, snapshot);
+  const interp = new Interpreter(compiled.program!, board);
 
   try {
     interp.runSetup();
-    frames.push(readFrame(circuit, state, config.inputs));
+    snapshot();
 
     const iterations = config.iterations ?? 20;
     for (let i = 0; i < iterations; i++) {
       if (!interp.runLoopOnce()) break;
-      frames.push(readFrame(circuit, state, config.inputs));
+      snapshot();
     }
   } catch (e) {
     if (e instanceof RuntimeError) {
