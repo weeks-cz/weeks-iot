@@ -212,7 +212,8 @@ export function Plane({ state, dispatch, live, flagged, readOnly }: Props) {
             dispatch={dispatch}
             wireFrom={state.wireFrom}
             onPinAction={onPinAction}
-            live={live.get(comp.id)}
+            brightness={live.get(comp.id)?.brightness}
+            sounding={live.get(comp.id)?.sounding}
             flagged={flagged.has(comp.id)}
             readOnly={readOnly}
             zoom={state.zoom}

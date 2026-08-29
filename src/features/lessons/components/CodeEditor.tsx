@@ -95,8 +95,12 @@ export function CodeEditor({ value, onChange, errorLine, disabled, rows = 14 }: 
           spellCheck={false}
           autoCapitalize="off"
           autoCorrect="off"
+          wrap="off"
           aria-label="Kód programu"
-          className="w-full resize-y bg-transparent px-3 py-3 font-mono text-sm leading-6 text-paper outline-none placeholder:text-paper/30 disabled:opacity-60"
+          /* Bez zalamování schválně: jeden řádek kódu = jeden řádek na
+             obrazovce, jinak by čísla vlevo ukazovala na něco jiného než
+             text vedle nich. Dlouhý řádek se odroluje do strany. */
+          className="w-full resize-y overflow-x-auto whitespace-pre bg-transparent px-3 py-3 font-mono text-sm leading-6 text-paper outline-none placeholder:text-paper/30 disabled:opacity-60"
         />
       </div>
     </div>

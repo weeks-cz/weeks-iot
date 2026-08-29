@@ -84,7 +84,15 @@ export function LessonRunner({
     if (completed) wallRef.current?.focus();
   }, [completed]);
 
-  function handleComplete() {
+  /**
+   * Lekce je vyřešená.
+   *
+   * Zapíše se postup a událost, ale obrazovka se NEPŘEPÍNÁ. Dítě má
+   * nejdřív vidět svou LED svítit — to je celá odměna za těch dvacet
+   * minut. Zeď s registrací přijde teprve tehdy, když samo řekne, že
+   * chce dál. Zeď má stát za doručenou hodnotou, ne místo ní.
+   */
+  function handleSolved() {
     const session = markLessonCompleted(courseSlug, lessonSlug);
 
     void track(EVENT.LESSON_COMPLETE, {
@@ -93,7 +101,6 @@ export function LessonRunner({
       order: lessonOrder,
       anonymous: !isAuthenticated,
     });
-    setCompleted(true);
 
     /* Dokončení kurzu = dokončená poslední publikovaná lekce, ale jen když
        jsou hotové i všechny předchozí. Odvozovat ho z „nemám kam dál" by
@@ -113,6 +120,12 @@ export function LessonRunner({
         anonymous: !isAuthenticated,
       });
     }
+
+  }
+
+  /** Dítě dokoukalo výsledek a chce dál. Teprve tady se ukáže zeď. */
+  function handleContinue() {
+    setCompleted(true);
 
     if (!isAuthenticated) {
       void track(EVENT.SIGNUP_PROMPT_VIEW, { after_lesson: lessonSlug, order: lessonOrder });
@@ -206,7 +219,8 @@ export function LessonRunner({
   return (
     <LessonWorkbench
       lesson={lesson}
-      onSolved={handleComplete}
+      onSolved={handleSolved}
+      onContinue={handleContinue}
       onHint={(kind, index) => {
         void track(EVENT.LESSON_HINT, {
           course: courseSlug,

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Palette } from "./Palette";
 import { Plane } from "./Plane";
 import { useBuilderReducer } from "./state";
+import { fitCircuit } from "./fit";
 import { registerBreadboardHalf } from "../register-breadboard";
-import { DEFAULT_PAN, SAVE_DEBOUNCE_MS, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
+import { SAVE_DEBOUNCE_MS, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
 import type { Circuit, ComponentType } from "../types";
 import type { SimulationFrame } from "../simulate";
 
@@ -48,6 +49,20 @@ export function CircuitBuilder({
   const [state, dispatch] = useBuilderReducer(initialCircuit);
   const [ready, setReady] = useState(false);
   const lastSent = useRef<Circuit>(initialCircuit);
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  /** Doostří výřez tak, aby byl vidět celý obvod. */
+  const fit = useCallback((circuit: Circuit) => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const next = fitCircuit(circuit, { width: rect.width, height: rect.height });
+    if (!next) return;
+
+    dispatch({ type: "SET_ZOOM", zoom: next.zoom });
+    dispatch({ type: "SET_PAN", pan: next.pan });
+  }, [dispatch]);
 
   /* Wokwi prvky se načítají až v prohlížeči. Jsou to custom elements —
      na serveru není `customElements` a import by build shodil. */
@@ -61,6 +76,14 @@ export function CircuitBuilder({
       alive = false;
     };
   }, []);
+
+  /* Náhled se sám nastaví tak, aby bylo vidět všechno. V editovatelném
+     builderu se to nedělá: dítě si výřez posunulo samo a přeskočit mu ho
+     pod rukama je horší než kus obvodu za okrajem. */
+  useEffect(() => {
+    if (!ready || !readOnly) return;
+    fit(initialCircuit);
+  }, [ready, readOnly, initialCircuit, fit]);
 
   /* Změny se posílají ven se zpožděním. Během tahu součástkou se stav mění
      desetkrát za vteřinu a nadřazená lekce po každé změně přepočítává
@@ -98,14 +121,22 @@ export function CircuitBuilder({
   return (
     <div className="overflow-hidden rounded-lg border border-ink/15 bg-paper">
       <div className="flex flex-col sm:flex-row" style={{ height }}>
-        <Palette
-          palette={palette}
-          armed={state.armed}
-          dispatch={dispatch}
-          disabled={readOnly || !ready}
-        />
+        {/* Jen ke koukání paletu nepotřebuje — a v úzkém sloupci by z ní
+            ubrala místo tomu jedinému, na co se dítě dívá. */}
+        {!readOnly && (
+          <Palette
+            palette={palette}
+            armed={state.armed}
+            dispatch={dispatch}
+            ready={ready}
+            disabled={!ready}
+          />
+        )}
 
-        <div className="relative flex-1 overflow-hidden border-t border-ink/10 sm:border-t-0">
+        <div
+          ref={viewportRef}
+          className="relative flex-1 overflow-hidden border-t border-ink/10 sm:border-t-0"
+        >
           {ready ? (
             <Plane
               state={state}
@@ -168,14 +199,13 @@ export function CircuitBuilder({
               >
                 <Minus className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
+              {/* Ne „zpět na sto procent", ale „ukaž mi všechno". Kdo se
+                  ztratil posouváním plochy, potřebuje tohle. */}
               <button
                 type="button"
-                onClick={() => {
-                  dispatch({ type: "SET_ZOOM", zoom: ZOOM_DEFAULT });
-                  dispatch({ type: "SET_PAN", pan: DEFAULT_PAN });
-                }}
+                onClick={() => fit(state.circuit)}
                 className="px-1.5 py-1 font-mono text-[0.7rem] tabular-nums text-ink-500 hover:text-ink"
-                aria-label="Vrátit původní zvětšení"
+                aria-label="Ukázat celý obvod"
               >
                 {Math.round(state.zoom * 100)} %
               </button>
@@ -192,10 +222,12 @@ export function CircuitBuilder({
         </div>
       </div>
 
-      <p className="border-t border-ink/10 bg-paper-soft px-3 py-2 text-[0.7rem] leading-snug text-ink-300">
-        Součástku vyber vlevo a klepni do plochy. Drátek natáhneš klepnutím na
-        jednu nožičku a pak na druhou. Tahem po prázdné ploše se rozhlédneš.
-      </p>
+      {!readOnly && (
+        <p className="border-t border-ink/10 bg-paper-soft px-3 py-2 text-[0.7rem] leading-snug text-ink-300">
+          Součástku vyber vlevo a klepni do plochy. Drátek natáhneš klepnutím na
+          jednu nožičku a pak na druhou. Tahem po prázdné ploše se rozhlédneš.
+        </p>
+      )}
     </div>
   );
 }

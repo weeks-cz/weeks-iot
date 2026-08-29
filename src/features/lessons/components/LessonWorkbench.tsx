@@ -9,7 +9,7 @@ import { checkWiring } from "@/features/circuit/wiring-check";
 import type { Circuit } from "@/features/circuit/types";
 import { CodeEditor } from "./CodeEditor";
 import { useBuzzerSound } from "./useBuzzerSound";
-import { useFramePlayer } from "./useFramePlayer";
+import { NO_FRAMES, useFramePlayer } from "./useFramePlayer";
 import { clearDraft, loadDraft, saveDraft } from "../draft";
 import { runLessonChecks, type LessonRunResult } from "../run-check";
 import { lessonSeedCircuit } from "../seed-circuit";
@@ -19,8 +19,10 @@ const STEPS = ["Zadání", "Zapojení", "Program"] as const;
 
 interface Props {
   lesson: Lesson;
-  /** Zavolá se, až dítě projde všemi kontrolami. */
+  /** Zavolá se, až dítě projde všemi kontrolami. Zapíše postup. */
   onSolved: () => void;
+  /** Zavolá se, až si dítě výsledek prohlédne a chce jít dál. */
+  onContinue: () => void;
   /** Nahlásí vyžádanou nápovědu — z toho se pozná, kde lekce drhne. */
   onHint?: (kind: "wiring" | "code", index: number) => void;
 }
@@ -39,7 +41,7 @@ interface Props {
  * pojmenovanou přesně `svetlo`; kdo napsal `hodnota`, dostal chybu za
  * funkční program.
  */
-export function LessonWorkbench({ lesson, onSolved, onHint }: Props) {
+export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props) {
   const seed = useMemo(() => lessonSeedCircuit(lesson), [lesson]);
 
   const [step, setStep] = useState(0);
@@ -87,7 +89,7 @@ export function LessonWorkbench({ lesson, onSolved, onHint }: Props) {
 
   const wiring = useMemo(() => checkWiring(circuit, lesson.wiring), [circuit, lesson.wiring]);
 
-  const player = useFramePlayer(run?.preview ?? []);
+  const player = useFramePlayer(run?.preview ?? NO_FRAMES);
   const buzzer = player.frame?.buzzers.find((b) => b.frequency > 0);
   useBuzzerSound(buzzer?.frequency ?? 0, player.playing);
 
@@ -105,9 +107,11 @@ export function LessonWorkbench({ lesson, onSolved, onHint }: Props) {
   }
 
   function handleRun() {
+    /* Přehrávání spustí sám přehrávač, jakmile dostane nové snímky.
+       Volat to odsud by znamenalo sáhnout na stav, který se v tomhle
+       renderu ještě nezměnil. */
     const result = runLessonChecks(lesson, circuit, code);
     setRun(result);
-    player.play();
 
     if (result.passed && !solved) {
       setSolved(true);
@@ -117,8 +121,19 @@ export function LessonWorkbench({ lesson, onSolved, onHint }: Props) {
   }
 
   /* Součástky, o kterých mluví první nesplněný bod zapojení. Builder je
-     orámuje, aby dítě nehledalo „tu LED" mezi pěti. */
+     orámuje, aby dítě nehledalo „tu LED" mezi pěti.
+
+     Arduino a breadboard se nezvýrazňují: jsou na ploše vždycky a rámeček
+     kolem celé desky neřekne nic. Zajímavá je ta součástka, která do
+     spoje patří a chybí. */
+  const workspaceRoles = new Set(
+    lesson.wiring.parts
+      .filter((p) => p.type === "arduino-uno" || p.type === "breadboard-half")
+      .map((p) => p.role),
+  );
+
   const flagged = (wiring.issues[0]?.roles ?? [])
+    .filter((role) => !workspaceRoles.has(role))
     .map((role) => wiring.roles?.[role])
     .filter((id): id is string => Boolean(id));
 
@@ -130,8 +145,10 @@ export function LessonWorkbench({ lesson, onSolved, onHint }: Props) {
 
       {step === 0 && (
         <section className="flex flex-col gap-5">
+          {/* Cíl lekce je v hlavičce stránky; opakovat ho tady by z něj
+              udělalo dvojitý nadpis nad sebou. */}
           <h2 ref={stepHeading} tabIndex={-1} className="heading-3 outline-none">
-            {lesson.goal}
+            Co tě čeká
           </h2>
 
           <div className="flex flex-col gap-3">
@@ -287,11 +304,15 @@ export function LessonWorkbench({ lesson, onSolved, onHint }: Props) {
             </div>
 
             <div className="flex flex-col gap-3">
+              {/* Tady se obvod už jen ukazuje. Kdo potřebuje zapojení
+                  změnit, vrátí se o krok zpátky — jinak by se dalo
+                  nedopatřením přetáhnout drátek při sledování běhu. */}
               <CircuitBuilder
                 palette={lesson.palette}
                 initialCircuit={circuit}
                 onChange={onCircuitChange}
                 frame={player.frame}
+                readOnly
                 height={300}
               />
 
@@ -338,9 +359,18 @@ export function LessonWorkbench({ lesson, onSolved, onHint }: Props) {
               )}
 
               {run?.passed && (
-                <Alert tone="success" title="Funguje to!">
-                  Program dělá přesně to, co měl. Lekce je hotová.
-                </Alert>
+                <>
+                  <Alert tone="success" title="Funguje to!">
+                    Program dělá přesně to, co měl. Podívej se, jak obvod běží —
+                    a až se vynadíváš, pojď dál.
+                  </Alert>
+
+                  <div>
+                    <Button size="lg" onClick={onContinue}>
+                      Mám hotovo →
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           </div>

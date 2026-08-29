@@ -19,23 +19,21 @@ import type { CircuitComponent, PinRef } from "../types";
  * vůbec nic. Pointer events pokrývají myš, dotyk i pero jedním kódem.
  */
 
-interface LiveState {
-  /** 0–255 u LED. */
-  brightness?: number;
-  /** Zní na bzučáku tón? */
-  sounding?: boolean;
-  /** Drží se tlačítko? */
-  pressed?: boolean;
-}
-
 interface Props {
   comp: CircuitComponent;
   selected: boolean;
   dispatch: React.Dispatch<BuilderAction>;
   wireFrom: PinRef | null;
   onPinAction: (pin: PinRef) => void;
-  /** Co součástka právě dělá podle simulace. */
-  live?: LiveState;
+  /* Živý stav ze simulace, po jedné hodnotě. Objektem by to bylo hezčí,
+     jenže ten má při každém renderu novou referenci a efekt níž by se
+     spouštěl pořád dokola. */
+  /** Jas LED, 0–255. */
+  brightness?: number;
+  /** Zní na bzučáku tón? */
+  sounding?: boolean;
+  /** Drží se tlačítko? */
+  pressed?: boolean;
   /** Zvýraznit, protože se jí týká nesplněný bod zapojení. */
   flagged?: boolean;
   readOnly?: boolean;
@@ -48,7 +46,9 @@ export function PlacedComponent({
   dispatch,
   wireFrom,
   onPinAction,
-  live,
+  brightness,
+  sounding,
+  pressed,
   flagged,
   readOnly,
   zoom,
@@ -62,15 +62,15 @@ export function PlacedComponent({
      dorazil řetězec „false", což je pravdivá hodnota. */
   useEffect(() => {
     const el = elementRef.current as (HTMLElement & Record<string, unknown>) | null;
-    if (!el || !live) return;
+    if (!el) return;
 
-    if (live.brightness !== undefined) {
-      el.value = live.brightness > 0;
-      el.brightness = Math.min(1, live.brightness / 255);
+    if (brightness !== undefined) {
+      el.value = brightness > 0;
+      el.brightness = Math.min(1, brightness / 255);
     }
-    if (live.sounding !== undefined) el.hasSignal = live.sounding;
-    if (live.pressed !== undefined) el.pressed = live.pressed;
-  }, [live]);
+    if (sounding !== undefined) el.hasSignal = sounding;
+    if (pressed !== undefined) el.pressed = pressed;
+  }, [brightness, sounding, pressed]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -172,11 +172,15 @@ export function PlacedComponent({
                 opacity: pinsVisible ? 1 : undefined,
                 cursor: wireFrom ? "crosshair" : "pointer",
               }}
+              /* Název součástky patří do popisku vždycky. „Dotáhnout
+                 drátek na pin a" je pro čtečku k ničemu — pinů se stejným
+                 jménem je na desce několik a slyšet se musí, na které
+                 součástce ten pin je. */
               aria-label={
                 isStart
-                  ? `Zrušit drátek z pinu ${pin.name}`
+                  ? `Zrušit drátek z pinu ${pin.name} na ${spec.label}`
                   : wireFrom
-                    ? `Dotáhnout drátek na pin ${pin.name}`
+                    ? `Dotáhnout drátek na pin ${pin.name} na ${spec.label}`
                     : `Začít drátek z pinu ${pin.name} na ${spec.label}`
               }
             >
