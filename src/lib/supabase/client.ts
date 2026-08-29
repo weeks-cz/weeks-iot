@@ -1,18 +1,24 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
+import type { Database } from "./types";
 
-// Module-level singleton so every createClient() call shares one instance.
-// Without this, AuthProvider and EmailLoginTab get separate clients and
-// onAuthStateChange subscriptions never fire across them.
-let _client: ReturnType<typeof createBrowserClient> | null = null;
+/**
+ * Klient pro prohlížeč.
+ *
+ * Modulový singleton schválně: bez něj dostane každé volání createClient()
+ * vlastní instanci a `onAuthStateChange` se mezi nimi nikdy nepropíše —
+ * přihlášení pak v části stromu tiše nezareaguje. Převzato z legacy, kde
+ * to bylo ověřené v praxi.
+ */
+let client: ReturnType<typeof createBrowserClient<Database>> | null = null;
 
 export function createClient() {
-  if (!_client) {
-    _client = createBrowserClient(
+  if (!client) {
+    client = createBrowserClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
   }
-  return _client;
+  return client;
 }

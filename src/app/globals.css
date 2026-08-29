@@ -1,291 +1,253 @@
 @import "tailwindcss";
+@import "./legacy-themes.css";
 
-@theme inline {
-  --font-sans: var(--font-outfit), system-ui, sans-serif;
+/* ══════════════════════════════════════════════════════════════════════════
+   Maker lab — design systém učebny
+
+   Portováno z weeks_web@design/maker-lab. Tam běží Tailwind v3 s
+   tailwind.config.ts; tady v4, kde konfigurace žije inline pod @theme.
+   Tokeny jsou proto přepsané, ne zkopírované.
+
+   Slovník: technický výkres, ne dětská grafika. Tvrdé stíny místo měkkých,
+   rounded-md místo rounded-2xl, mono na čísla a technická metadata,
+   blueprint mřížka, rohové registrační značky na kartách.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Písma ─────────────────────────────────────────────────────────────
+     Bricolage na nadpisy (má charakter), Instrument Sans na text (čitelné
+     v malých velikostech), IBM Plex Mono na čísla, data a kódy.          */
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-instrument), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+
+  /* ── Neutrály ─────────────────────────────────────────────────────────── */
+  --color-paper: #fafaf7;
+  --color-paper-soft: #f4f4ee;
+  --color-ink: #0c0e1a;
+  --color-ink-700: #232741;
+  --color-ink-500: #4a4f6a;
+  --color-ink-300: #9da2bc;
+
+  /* ── Primární (indigo) — technika, struktura ──────────────────────────── */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+
+  /* ── Akcent (cyan) — energie, dětská zóna ─────────────────────────────── */
+  --color-accent-50: #ecfeff;
+  --color-accent-100: #cffafe;
+  --color-accent-200: #a5f3fc;
+  --color-accent-300: #67e8f9;
+  --color-accent-400: #22d3ee;
+  --color-accent-500: #06b6d4;
+  --color-accent-600: #0891b2;
+  --color-accent-700: #0e7490;
+  --color-accent-800: #155e75;
+  --color-accent-900: #164e63;
+
+  /* ── Důvěra (emerald) — hotovo, bezpečí, souhlas ──────────────────────── */
+  --color-trust-50: #ecfdf5;
+  --color-trust-100: #d1fae5;
+  --color-trust-200: #a7f3d0;
+  --color-trust-300: #6ee7b7;
+  --color-trust-400: #34d399;
+  --color-trust-500: #10b981;
+  --color-trust-600: #059669;
+  --color-trust-700: #047857;
+  --color-trust-800: #065f46;
+  --color-trust-900: #064e3b;
+
+  /* ── CTA (amber) — jediná barva, která znamená „klikni sem" ───────────── */
+  --color-cta-50: #fffbeb;
+  --color-cta-100: #fef3c7;
+  --color-cta-200: #fde68a;
+  --color-cta-300: #fcd34d;
+  --color-cta-400: #fbbf24;
+  --color-cta-500: #f59e0b;
+  --color-cta-600: #d97706;
+  --color-cta-700: #b45309;
+  --color-cta-800: #92400e;
+  --color-cta-900: #78350f;
+
+  /* ── Chyba ────────────────────────────────────────────────────────────── */
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-300: #fca5a5;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
+  /* ── Tvrdé stíny — podpis maker labu ──────────────────────────────────── */
+  --shadow-hard: 4px 4px 0 0 #0c0e1a;
+  --shadow-hard-sm: 2px 2px 0 0 #0c0e1a;
+  --shadow-hard-amber: 4px 4px 0 0 #d97706;
 }
 
-:root,
-[data-theme="classic"] {
-  --theme-bg: #0d1427;
-  --theme-panel: rgba(31, 40, 63, 0.6);
-  --theme-panel-rgb: 31, 40, 63;
-  --theme-accent: #71b0ff;
-  --theme-accent-soft: rgba(113, 176, 255, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Kotvy nesmí schovat cíl pod lepivou hlavičku. */
+    scroll-padding-top: 5rem;
+  }
 
-  --page-top: rgba(7, 13, 26, 0.92);
-  --page-mid: rgba(10, 17, 31, 0.9);
-  --page-bottom: rgba(13, 20, 39, 0.96);
-  --page-base-top: #0b1220;
-  --page-base-mid: #0d1427;
-  --page-base-bottom: #10192c;
-  --page-radial-left: rgba(38, 53, 92, 0.55);
-  --page-radial-right: rgba(29, 52, 112, 0.24);
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background-color: var(--color-cta-300);
+    color: var(--color-ink);
+  }
+
+  /* Jednotný focus ring. Nikdy nemazat bez náhrady — je to jediná
+     zpětná vazba pro toho, kdo ovládá aplikaci klávesnicí. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-[data-theme="sunrise"] {
-  --theme-bg: #2a1811;
-  --theme-panel: rgba(60, 36, 24, 0.6);
-  --theme-panel-rgb: 60, 36, 24;
-  --theme-accent: #ffaa66;
-  --theme-accent-soft: rgba(255, 170, 102, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+@layer components {
+  /* ── Typografie ─────────────────────────────────────────────────────── */
+  .heading-1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 0.95;
+    font-size: clamp(2.25rem, 6vw, 4.5rem);
+  }
 
-  --page-top: rgba(36, 18, 12, 0.9);
-  --page-mid: rgba(49, 26, 17, 0.88);
-  --page-bottom: rgba(67, 36, 21, 0.94);
-  --page-base-top: #1d120d;
-  --page-base-mid: #2a1811;
-  --page-base-bottom: #3b2216;
-  --page-radial-left: rgba(255, 160, 102, 0.26);
-  --page-radial-right: rgba(255, 211, 111, 0.18);
-}
+  .heading-2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    font-size: clamp(1.75rem, 4vw, 3rem);
+  }
 
-[data-theme="forest"] {
-  --theme-bg: #11241a;
-  --theme-panel: rgba(28, 56, 40, 0.6);
-  --theme-panel-rgb: 28, 56, 40;
-  --theme-accent: #4ea478;
-  --theme-accent-soft: rgba(78, 164, 120, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  .heading-3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    font-size: clamp(1.375rem, 2.5vw, 1.875rem);
+  }
 
-  --page-top: rgba(10, 24, 18, 0.92);
-  --page-mid: rgba(13, 33, 24, 0.9);
-  --page-bottom: rgba(17, 47, 33, 0.95);
-  --page-base-top: #0c1912;
-  --page-base-mid: #11241a;
-  --page-base-bottom: #183326;
-  --page-radial-left: rgba(78, 164, 120, 0.24);
-  --page-radial-right: rgba(133, 207, 120, 0.16);
-}
+  /* Technický popisek nad nadpisem — „REGISTRACE / KROK 2 ZE 4". */
+  .mono-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  }
 
-[data-theme="ice"] {
-  --theme-bg: #0d2131;
-  --theme-panel: rgba(28, 56, 80, 0.6);
-  --theme-panel-rgb: 28, 56, 80;
-  --theme-accent: #6dc1ff;
-  --theme-accent-soft: rgba(109, 193, 255, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  .mono-label-dark {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: color-mix(in srgb, var(--color-paper) 60%, transparent);
+  }
 
-  --page-top: rgba(7, 19, 30, 0.92);
-  --page-mid: rgba(10, 29, 43, 0.9);
-  --page-bottom: rgba(13, 40, 58, 0.95);
-  --page-base-top: #091521;
-  --page-base-mid: #0d2131;
-  --page-base-bottom: #123042;
-  --page-radial-left: rgba(109, 193, 255, 0.24);
-  --page-radial-right: rgba(135, 228, 255, 0.18);
-}
+  /* ── Rozvržení ──────────────────────────────────────────────────────── */
+  .section-container {
+    margin-inline: auto;
+    max-width: 80rem;
+    padding-inline: 1rem;
+  }
 
-[data-theme="ember"] {
-  --theme-bg: #2a1111;
-  --theme-panel: rgba(64, 28, 28, 0.6);
-  --theme-panel-rgb: 64, 28, 28;
-  --theme-accent: #ff6b50;
-  --theme-accent-soft: rgba(255, 107, 80, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  @media (min-width: 640px) {
+    .section-container {
+      padding-inline: 1.5rem;
+    }
+  }
 
-  --page-top: rgba(30, 10, 10, 0.92);
-  --page-mid: rgba(47, 16, 14, 0.9);
-  --page-bottom: rgba(71, 24, 18, 0.95);
-  --page-base-top: #1a0c0d;
-  --page-base-mid: #2a1111;
-  --page-base-bottom: #3d1714;
-  --page-radial-left: rgba(255, 107, 80, 0.24);
-  --page-radial-right: rgba(255, 176, 97, 0.16);
-}
+  @media (min-width: 1024px) {
+    .section-container {
+      padding-inline: 2rem;
+    }
+  }
 
-[data-theme="lagoon"] {
-  --theme-bg: #0d2328;
-  --theme-panel: rgba(28, 60, 66, 0.6);
-  --theme-panel-rgb: 28, 60, 66;
-  --theme-accent: #4ccdbd;
-  --theme-accent-soft: rgba(76, 205, 189, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  /* ── Karta ──────────────────────────────────────────────────────────── */
+  .card-maker {
+    position: relative;
+    background-color: #fff;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 15%, transparent);
+    border-radius: 0.375rem;
+    transition:
+      box-shadow 0.2s,
+      transform 0.2s,
+      border-color 0.2s;
+  }
 
-  --page-top: rgba(8, 24, 28, 0.92);
-  --page-mid: rgba(10, 35, 40, 0.9);
-  --page-bottom: rgba(12, 50, 55, 0.95);
-  --page-base-top: #0a171b;
-  --page-base-mid: #0d2328;
-  --page-base-bottom: #11343a;
-  --page-radial-left: rgba(76, 205, 189, 0.24);
-  --page-radial-right: rgba(105, 173, 255, 0.16);
-}
+  .card-maker-hover:hover {
+    box-shadow: var(--shadow-hard);
+    transform: translate(-2px, -2px);
+    border-color: var(--color-ink);
+  }
 
-[data-theme="sand"] {
-  --theme-bg: #241b11;
-  --theme-panel: rgba(58, 44, 28, 0.6);
-  --theme-panel-rgb: 58, 44, 28;
-  --theme-accent: #ddb76a;
-  --theme-accent-soft: rgba(221, 183, 106, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  /* Rohové registrační značky z technického výkresu. Objeví se na hover. */
+  .card-maker-hover::after {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    background-image:
+      linear-gradient(#0c0e1a, #0c0e1a), linear-gradient(#0c0e1a, #0c0e1a),
+      linear-gradient(#0c0e1a, #0c0e1a), linear-gradient(#0c0e1a, #0c0e1a),
+      linear-gradient(#0c0e1a, #0c0e1a), linear-gradient(#0c0e1a, #0c0e1a),
+      linear-gradient(#0c0e1a, #0c0e1a), linear-gradient(#0c0e1a, #0c0e1a);
+    background-repeat: no-repeat;
+    background-size:
+      10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px,
+      10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px;
+    background-position:
+      top left, top left, top right, top right,
+      bottom left, bottom left, bottom right, bottom right;
+  }
 
-  --page-top: rgba(29, 22, 13, 0.92);
-  --page-mid: rgba(40, 29, 16, 0.9);
-  --page-bottom: rgba(55, 39, 20, 0.95);
-  --page-base-top: #19130d;
-  --page-base-mid: #241b11;
-  --page-base-bottom: #322517;
-  --page-radial-left: rgba(221, 183, 106, 0.2);
-  --page-radial-right: rgba(255, 218, 154, 0.14);
-}
+  .card-maker-hover:hover::after {
+    opacity: 1;
+  }
 
-[data-theme="midnight"] {
-  --theme-bg: #0a1020;
-  --theme-panel: rgba(26, 32, 56, 0.6);
-  --theme-panel-rgb: 26, 32, 56;
-  --theme-accent: #9ea3ff;
-  --theme-accent-soft: rgba(158, 163, 255, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  /* ── Blueprint mřížka ───────────────────────────────────────────────── */
+  .blueprint-grid {
+    background-image:
+      linear-gradient(to right, rgba(79, 70, 229, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(79, 70, 229, 0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
 
-  --page-top: rgba(6, 10, 23, 0.94);
-  --page-mid: rgba(8, 14, 31, 0.92);
-  --page-bottom: rgba(10, 18, 41, 0.97);
-  --page-base-top: #070b18;
-  --page-base-mid: #0a1020;
-  --page-base-bottom: #0d1730;
-  --page-radial-left: rgba(78, 102, 181, 0.22);
-  --page-radial-right: rgba(111, 132, 255, 0.14);
-}
-
-[data-theme="volt"] {
-  --theme-bg: #0d1a0d;
-  --theme-panel: rgba(28, 52, 24, 0.6);
-  --theme-panel-rgb: 28, 52, 24;
-  --theme-accent: #a3e635;
-  --theme-accent-soft: rgba(163, 230, 53, 0.18);
-  --theme-text: #f8fafc;
-  --theme-muted: #a6b2c8;
-  --theme-star: #ffbc5b;
-  --theme-success: #2dd4a6;
-  --theme-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
-
-  --page-top: rgba(8, 20, 8, 0.92);
-  --page-mid: rgba(10, 28, 10, 0.9);
-  --page-bottom: rgba(13, 38, 12, 0.95);
-  --page-base-top: #0a160a;
-  --page-base-mid: #0d1a0d;
-  --page-base-bottom: #132614;
-  --page-radial-left: rgba(163, 230, 53, 0.2);
-  --page-radial-right: rgba(190, 255, 90, 0.14);
-}
-
-html,
-body {
-  min-height: 100vh;
-}
-
-body {
-  color: var(--theme-text);
-  background:
-    linear-gradient(180deg, var(--page-top) 0%, var(--page-mid) 34%, var(--page-bottom) 100%),
-    url("https://weeks.cz/_next/image?q=75&url=%2Fimages%2Fhwlab%2Fhwlab-7976.webp&w=3840"),
-    radial-gradient(circle at top left, var(--page-radial-left), transparent 34%),
-    radial-gradient(circle at top right, var(--page-radial-right), transparent 26%),
-    linear-gradient(180deg, var(--page-base-top) 0%, var(--page-base-mid) 46%, var(--page-base-bottom) 100%);
-  background-size: cover, cover, auto, auto, auto;
-  background-position: center top, center top, left top, right top, center;
-  background-attachment: fixed, fixed, scroll, scroll, scroll;
-}
-
-#root,
-#__next {
-  min-height: 100vh;
-  background: transparent;
-}
-
-.panel-glass {
-  background: var(--theme-panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  box-shadow: var(--theme-shadow);
-}
-
-/* ── Bento stat cell ── */
-.bento-cell {
-  background: var(--theme-accent-soft);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 1rem 1.25rem;
-}
-
-/* ── Task list row ── */
-.task-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 1.1rem;
-  min-height: 64px;
-  border-radius: 0.75rem;
-  background: rgba(var(--theme-panel-rgb), 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-.task-row:hover {
-  background: var(--theme-accent-soft);
-  border-color: rgba(255, 255, 255, 0.14);
-  transform: translateX(3px);
-}
-.task-row.task-done {
-  background: var(--theme-accent-soft);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-.task-row.task-locked {
-  opacity: 0.35;
-  cursor: default;
-  pointer-events: none;
-}
-
-/* ── Task status dots ── */
-.task-dot-done {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--theme-accent);
-  box-shadow: 0 0 8px var(--theme-accent);
-}
-.task-dot-open {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: transparent;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  .blueprint-grid-dark {
+    background-image:
+      linear-gradient(to right, rgba(165, 180, 252, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(165, 180, 252, 0.07) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
 }

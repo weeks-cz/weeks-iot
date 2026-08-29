@@ -21,7 +21,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@legacy/*": ["./src/legacy/*"]
     }
   },
   "include": [

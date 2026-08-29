@@ -1,0 +1,103 @@
+"use client";
+import { forwardRef } from "react";
+import { PlacedComponent } from "./PlacedComponent";
+import { WireLayer } from "./WireLayer";
+import { usePanZoom } from "./hooks/usePanZoom";
+import { usePlaneDropTarget } from "./hooks/useDragDrop";
+import { useWiring } from "./hooks/useWiring";
+import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH } from "@legacy/lib/cad/constants";
+import type { CADAction, CADState } from "./hooks/useCADReducer";
+
+interface Props {
+  state: CADState;
+  dispatch: React.Dispatch<CADAction>;
+  readOnly?: boolean;
+}
+
+export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
+  { state, dispatch, readOnly },
+  ref,
+) {
+  const containerRef = (ref as React.RefObject<HTMLDivElement>) ?? null;
+  const panZoom = usePanZoom(containerRef, state, dispatch);
+  const innerRef = ref as React.RefObject<HTMLDivElement>;
+  const dropProps = usePlaneDropTarget(innerRef, dispatch, readOnly, state.zoom);
+  const wiring = useWiring(dispatch);
+
+  const transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+
+  return (
+    <div
+      className="absolute inset-0 overflow-hidden bg-neutral-950 cursor-default"
+      onMouseDown={panZoom.onMouseDown}
+      onMouseMove={(e) => {
+        panZoom.onMouseMove(e);
+        if (state.wireInProgress) {
+          const plane = innerRef.current;
+          if (plane) {
+            const rect = plane.getBoundingClientRect();
+            dispatch({
+              type: "SET_CURSOR",
+              // rect is the visual bounding rect of the workspace-plane (after CSS transform).
+              // Dividing by zoom converts from scaled screen-delta to workspace coordinates.
+              pos: {
+                x: (e.clientX - rect.left) / state.zoom,
+                y: (e.clientY - rect.top)  / state.zoom,
+              },
+            });
+          }
+        }
+      }}
+      onMouseUp={panZoom.onMouseUp}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          if (state.wireInProgress) dispatch({ type: "CANCEL_WIRE" });
+          else dispatch({ type: "SELECT", target: null });
+        }
+      }}
+      onContextMenu={(e) => {
+        if (state.wireInProgress) {
+          e.preventDefault();
+          dispatch({ type: "CANCEL_WIRE" });
+        }
+      }}
+    >
+      <div
+        ref={ref}
+        id="workspace-plane"
+        className="absolute"
+        onDragOver={dropProps.onDragOver}
+        onDrop={dropProps.onDrop}
+        onContextMenu={(e) => {
+          if (state.wireInProgress) {
+            e.preventDefault();
+            dispatch({ type: "CANCEL_WIRE" });
+          }
+        }}
+        style={{
+          width: 4000, height: 4000,
+          left: 2000, top: 2000,
+          transform,
+          transformOrigin: "0 0",
+          backgroundImage: `radial-gradient(circle, rgba(255,255,255,${GRID_DOT_OPACITY}) ${GRID_DOT_SIZE}px, transparent ${GRID_DOT_SIZE}px)`,
+          backgroundSize: `${PITCH}px ${PITCH}px`,
+        }}
+      >
+        {/* WireLayer lives inside the workspace-plane so SVG coordinates are in workspace space */}
+        <WireLayer state={state} dispatch={dispatch} />
+        {state.circuit.comps.map(comp => (
+          <PlacedComponent
+            key={comp.id}
+            comp={comp}
+            selected={state.selection?.kind === "component" && state.selection.id === comp.id}
+            dispatch={dispatch}
+            wireInProgress={state.wireInProgress}
+            onPinAction={(pin) => wiring.onPinClick(pin, state.wireInProgress)}
+            readOnly={readOnly}
+            zoom={state.zoom}
+          />
+        ))}
+      </div>
+    </div>
+  );
+});
