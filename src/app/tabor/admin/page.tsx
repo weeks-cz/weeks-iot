@@ -171,7 +171,7 @@ export default function AdminPage() {
             </li>
             {defaultPinsInUse.includes("denní") && (
               <li>
-                Denní PIN můžeš taky přepsat dole v sekci „Nastavení" (uložením
+                Denní PIN můžeš taky přepsat dole v sekci &bdquo;Nastavení&ldquo; (uložením
                 resetuje studenty, vydrží jen do redeployu).
               </li>
             )}

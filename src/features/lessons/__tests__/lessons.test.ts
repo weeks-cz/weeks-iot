@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { getComponentSpec } from "@/features/circuit/components";
-import { runProgram } from "@/features/circuit/simulate";
 import { checkWiring } from "@/features/circuit/wiring-check";
 import { compile } from "@/features/arduino/interpreter";
+import { findTask } from "@/legacy/lib/tasks";
 import { COURSE_LESSONS } from "../content";
 import { referenceCircuit } from "../reference-circuit";
+import { runLessonChecks } from "../run-check";
 import type { Lesson } from "../types";
 
 /**
@@ -33,6 +34,16 @@ describe("osnova kurzu", () => {
 
   it("finále je noční světlo — projekt, který jde ukázat", () => {
     expect(COURSE_LESSONS.at(-1)?.slug).toBe("nocni-svetlo");
+  });
+
+  it("každá lekce odkazuje na úlohu, která ve staré aplikaci opravdu je", () => {
+    /* Brána 0, bod 4: staré úlohy jsou pro nové lekce DATA, ne kód.
+       Odkaz na neexistující id by tu vazbu tiše přeťal. Že tři lekce míří
+       na „beginner-led", je v pořádku — ta úloha dělala tři věci najednou
+       a právě proto se rozpadla. */
+    for (const lesson of COURSE_LESSONS) {
+      expect(findTask(lesson.legacyTaskId), lesson.legacyTaskId).toBeDefined();
+    }
   });
 });
 
@@ -92,18 +103,21 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))(
     });
 
     it("vzorové řešení projde všemi kontrolami lekce", () => {
-      for (const check of lesson.checks) {
-        const run = runProgram(lesson.solution, circuit, {
-          iterations: check.iterations,
-          pinInputs: new Map(
-            Object.entries(check.pinInputs ?? {}).map(([pin, v]) => [Number(pin), v]),
-          ),
-          inputs: { pressed: new Set(check.pressed ?? []) },
-        });
+      const result = runLessonChecks(lesson, circuit, lesson.solution);
 
-        expect(run.error?.message, `„${check.label}" — chyba běhu`).toBeUndefined();
-        expect(check.verify(run.frames), `„${check.label}" neprošla`).toBe(true);
-      }
+      expect(result.error?.message).toBeUndefined();
+      expect(
+        result.outcomes.filter((o) => !o.passed).map((o) => o.label),
+        "neprošlé body",
+      ).toEqual([]);
+      expect(result.passed).toBe(true);
+    });
+
+    it("prázdný obvod kontrolami neprojde", () => {
+      /* Pojistka proti kontrole, která se dá splnit i bez zapojení —
+         taková by lekci degradovala na „klikni na hotovo". */
+      const result = runLessonChecks(lesson, { comps: [], wires: [] }, lesson.solution);
+      expect(result.passed).toBe(false);
     });
   },
 );

@@ -20,6 +20,19 @@ import type { WiringSpec } from "@/features/circuit/wiring-check";
  * se dítě zasekne. Verdikt dávají chování.
  */
 
+/**
+ * Kdo je kdo v obvodu, který dítě postavilo.
+ *
+ * Bez tohohle by se kontrola musela ptát podle pořadí — a pořadí součástek
+ * v obvodu je pořadí, v jakém je dítě položilo. Kdo u semaforu položí
+ * nejdřív zelenou, měl by červenou na indexu dva a kontrola by ho poslala
+ * opravovat funkční obvod.
+ */
+export interface CheckContext {
+  /** Id součástky, která hraje danou roli ze zadání. */
+  comp: (role: string) => string | null;
+}
+
 export interface LessonCheck {
   /** Co se zkouší. Dítě to uvidí jako řádek v seznamu. */
   label: string;
@@ -35,7 +48,7 @@ export interface LessonCheck {
    * Dostane všechny snímky běhu, ne jen poslední — u blikání je otázka
    * „změnilo se to někdy?", ne „jak to skončilo?".
    */
-  verify: (frames: SimulationFrame[]) => boolean;
+  verify: (frames: SimulationFrame[], ctx: CheckContext) => boolean;
   /** Co dítě uvidí, když tenhle bod neprojde. */
   hint: string;
 }
@@ -78,25 +91,38 @@ export interface Lesson {
 
 /* ── Pomocníci pro psaní kontrol ────────────────────────────────────────── */
 
-/** Svítila LED s danou rolí aspoň v jednom snímku? */
-export function ledEverOn(frames: SimulationFrame[], index = 0): boolean {
-  return frames.some((f) => (f.leds[index]?.brightness ?? 0) > 0);
+/**
+ * Jasy jedné LED napříč snímky.
+ *
+ * `comp` je id součástky z `ctx.comp(role)`. Když se vynechá, bere se
+ * první LED v obvodu — to stačí lekcím, které mají jedinou.
+ */
+function brightnesses(frames: SimulationFrame[], comp?: string | null): number[] {
+  return frames.map((f) => {
+    const led = comp ? f.leds.find((l) => l.compId === comp) : f.leds[0];
+    return led?.brightness ?? 0;
+  });
+}
+
+/** Svítila LED aspoň v jednom snímku? */
+export function ledEverOn(frames: SimulationFrame[], comp?: string | null): boolean {
+  return brightnesses(frames, comp).some((b) => b > 0);
 }
 
 /** Zůstala LED zhasnutá po celou dobu? */
-export function ledNeverOn(frames: SimulationFrame[], index = 0): boolean {
-  return frames.every((f) => (f.leds[index]?.brightness ?? 0) === 0);
+export function ledNeverOn(frames: SimulationFrame[], comp?: string | null): boolean {
+  return brightnesses(frames, comp).every((b) => b === 0);
 }
 
 /** Změnil se stav LED v průběhu — tedy bliká? */
-export function ledBlinked(frames: SimulationFrame[], index = 0): boolean {
-  const states = frames.map((f) => (f.leds[index]?.brightness ?? 0) > 0);
-  return states.some((s) => s) && states.some((s) => !s);
+export function ledBlinked(frames: SimulationFrame[], comp?: string | null): boolean {
+  const states = brightnesses(frames, comp).map((b) => b > 0);
+  return states.some(Boolean) && states.some((s) => !s);
 }
 
 /** Nabyl jas víc než dvou různých hodnot? Poznávací znamení PWM. */
-export function ledFaded(frames: SimulationFrame[], index = 0): boolean {
-  const levels = new Set(frames.map((f) => f.leds[index]?.brightness ?? 0));
+export function ledFaded(frames: SimulationFrame[], comp?: string | null): boolean {
+  const levels = new Set(brightnesses(frames, comp));
   levels.delete(0);
   return levels.size >= 3;
 }

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel } from "@/components/ui/Surface";
 import {
   markLessonCompleted,
   markLessonStarted,
 } from "@/features/anon-session/storage";
 import { EVENT, track, trackOnce } from "@/features/analytics/track";
+import { LessonWorkbench } from "@/features/lessons/components/LessonWorkbench";
+import { lessonBySlug } from "@/features/lessons/content";
 
 /**
  * Průchod lekcí.
@@ -16,9 +18,15 @@ import { EVENT, track, trackOnce } from "@/features/analytics/track";
  * zůstane v prohlížeči; zeď přijde AŽ po dokončení, tedy po doručené
  * hodnotě, ne před ní.
  *
- * Obsah lekce je zatím zástupný. Tenhle soubor drží mechaniku — události,
- * uložení stavu a zeď — a je připravený na to, že do něj v bloku 1.3
- * přibude zadání, video a circuit builder.
+ * Tenhle soubor drží mechaniku — události, uložení stavu a zeď. Vlastní
+ * lekci (zadání, skládání obvodu, editor) obstarává `LessonWorkbench`.
+ *
+ * ── Odkud se bere obsah ────────────────────────────────────────────────────
+ * Z kódu, ne z databáze. Lekce obsahuje funkce (`verify` u každé kontroly)
+ * a ty se přes hranici server → klient přenést nedají. Databáze proto drží
+ * osnovu — pořadí, publikaci, cizí klíč pro postup — a obsah je vedle ní
+ * v `features/lessons/content`. Že se ty dvě věci nerozejdou, hlídá test
+ * nad migrací 010.
  */
 
 interface Props {
@@ -179,24 +187,34 @@ export function LessonRunner({
     );
   }
 
-  return (
-    <div className="flex flex-col gap-6">
+  const lesson = lessonBySlug(lessonSlug);
+
+  /* Lekce v databázi, ke které ještě není obsah. Nemělo by nastat — test
+     nad migrací to hlídá — ale spadnout kvůli tomu dítěti pod rukama by
+     bylo horší než tahle věta. */
+  if (!lesson) {
+    return (
       <Card className="p-6">
         <MonoLabel className="mb-3">Zadání</MonoLabel>
-
-        {/* Zástupný obsah. Blok 1.3 sem doplní zadání, video z HWLabu
-            a circuit builder; mechanika kolem už stojí. */}
         <Alert tone="info" title="Obsah lekce se připravuje">
-          Zadání, video a skládání obvodu doplňujeme. Mechanika postupu už funguje —
-          tlačítkem níž si můžeš vyzkoušet, jak vypadá dokončení lekce.
+          Tuhle lekci ještě dopisujeme. Zkus zatím některou z předchozích.
         </Alert>
       </Card>
+    );
+  }
 
-      <div>
-        <Button onClick={handleComplete} size="lg">
-          Označit lekci za hotovou
-        </Button>
-      </div>
-    </div>
+  return (
+    <LessonWorkbench
+      lesson={lesson}
+      onSolved={handleComplete}
+      onHint={(kind, index) => {
+        void track(EVENT.LESSON_HINT, {
+          course: courseSlug,
+          lesson: lessonSlug,
+          kind,
+          index,
+        });
+      }}
+    />
   );
 }

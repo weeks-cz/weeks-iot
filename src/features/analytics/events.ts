@@ -21,6 +21,18 @@ export const EVENT = {
   /** Čitatel téže metriky. */
   LESSON_COMPLETE: "lesson_complete",
 
+  /**
+   * Spuštění programu v lekci. Nese, jestli prošel, a kolikátý to byl pokus.
+   *
+   * Tohle je náhrada za „lekci vyzkoušet na reálném dítěti" do doby, než
+   * na to dojde: lekce, u které je průměrně deset pokusů, je špatně
+   * napsaná, ne těžká. Bez toho se pozná jen to, že ji nikdo nedokončil,
+   * ale ne PROČ.
+   */
+  LESSON_RUN: "lesson_run",
+  /** Vyžádaná nápověda. Kde a kolikátá — mapa míst, kde lekce drhne. */
+  LESSON_HINT: "lesson_hint",
+
   COURSE_START: "course_start",
   COURSE_COMPLETE: "course_complete",
 

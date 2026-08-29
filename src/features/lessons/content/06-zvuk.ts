@@ -29,7 +29,7 @@ export const lesson6: Lesson = {
       "Kdybys použil digitalWrite, ozvalo by se jen cvaknutí.",
   },
 
-  palette: ["piezo-buzzer", "pushbutton"],
+  palette: ["breadboard-half", "piezo-buzzer", "pushbutton"],
 
   wiring: {
     parts: [

@@ -33,7 +33,7 @@ export const lesson4: Lesson = {
       "spojíš ji jednou s GND a všechny LED se na ni napojí. Jeden drát místo tří.",
   },
 
-  palette: ["led-red", "led-yellow", "led-green", "resistor-220"],
+  palette: ["breadboard-half", "led-red", "led-yellow", "led-green", "resistor-220"],
 
   wiring: {
     parts: [
@@ -140,19 +140,19 @@ void loop() {
     {
       label: "Červená se rozsvěcí a zhasíná",
       iterations: 4,
-      verify: (frames) => ledBlinked(frames, 0),
+      verify: (frames, ctx) => ledBlinked(frames, ctx.comp("cervena")),
       hint: "Červená LED se nestřídá. Zkontroluj, že ji v loop() rozsvěcíš i zhasínáš.",
     },
     {
       label: "Žlutá se rozsvěcí a zhasíná",
       iterations: 4,
-      verify: (frames) => ledBlinked(frames, 1),
+      verify: (frames, ctx) => ledBlinked(frames, ctx.comp("oranzova")),
       hint: "Žlutá LED se nestřídá. Má svůj pin 3 a vlastní dvojici rozsviť–zhasni.",
     },
     {
       label: "Zelená se rozsvěcí a zhasíná",
       iterations: 4,
-      verify: (frames) => ledBlinked(frames, 2),
+      verify: (frames, ctx) => ledBlinked(frames, ctx.comp("zelena")),
       hint: "Zelená LED se nestřídá. Má svůj pin 4 a vlastní dvojici rozsviť–zhasni.",
     },
     {

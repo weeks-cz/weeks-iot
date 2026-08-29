@@ -110,15 +110,18 @@ export function Alert({
 export function Stepper({
   steps,
   current,
+  label = "Postup registrace",
   className,
 }: {
   steps: readonly string[];
   /** Index od nuly. */
   current: number;
+  /** Co ten postup je — čtečka ho ohlásí místo obecného „navigace". */
+  label?: string;
   className?: string;
 }) {
   return (
-    <nav aria-label="Postup registrace" className={cn("w-full", className)}>
+    <nav aria-label={label} className={cn("w-full", className)}>
       <p className="mono-label mb-2">
         Krok {current + 1} ze {steps.length} — {steps[current]}
       </p>

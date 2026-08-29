@@ -37,7 +37,7 @@ export const lesson7: Lesson = {
       "Vypiš si hodnotu do sériového monitoru a podívej se, co ti chodí.",
   },
 
-  palette: ["photoresistor", "led-red", "resistor-220"],
+  palette: ["breadboard-half", "photoresistor", "led-red", "resistor-220"],
 
   wiring: {
     parts: [

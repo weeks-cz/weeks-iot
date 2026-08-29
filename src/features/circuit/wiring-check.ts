@@ -56,6 +56,15 @@ export interface WiringResult {
   /** Kolik spojů ze zadání sedí. Pro ukazatel postupu v kroku. */
   satisfied: number;
   total: number;
+  /**
+   * Která součástka v obvodu hraje kterou roli — z toho přiřazení, které
+   * dopadlo nejlíp.
+   *
+   * Potřebují to kontroly chování. „Bliká červená?" se nedá ptát podle
+   * pořadí LED v obvodu: to je pořadí, v jakém je dítě položilo. Musí se
+   * ptát na tu LED, která hraje roli „cervena", a to ví jedině tohle.
+   */
+  roles: Record<string, string> | null;
 }
 
 /**
@@ -167,7 +176,7 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
         kind: "missing-part",
       });
     }
-    return { ok: false, issues, satisfied: 0, total };
+    return { ok: false, issues, satisfied: 0, total, roles: null };
   }
 
   const assignments = assignRoles(circuit, spec.parts);
@@ -183,6 +192,7 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
       ],
       satisfied: 0,
       total,
+      roles: null,
     };
   }
 
@@ -192,13 +202,33 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
      nezávisí na tom, které součástce zrovna říkáme „ta výstupní". */
   const nets = resolveNets(circuit);
 
-  let best: WiringIssue[] | null = null;
+  let best: { issues: WiringIssue[]; roles: Map<string, string> } | null = null;
+
   for (const roles of assignments) {
     const issues = checkAssignment(circuit, spec, roles, nets);
-    if (issues.length === 0) return { ok: true, issues: [], satisfied: total, total };
-    if (best === null || issues.length < best.length) best = issues;
+
+    if (issues.length === 0) {
+      return {
+        ok: true,
+        issues: [],
+        satisfied: total,
+        total,
+        roles: Object.fromEntries(roles),
+      };
+    }
+
+    if (best === null || issues.length < best.issues.length) best = { issues, roles };
   }
 
-  const issues = best ?? [];
-  return { ok: false, issues, satisfied: total - issues.length, total };
+  const issues = best?.issues ?? [];
+  return {
+    ok: false,
+    issues,
+    satisfied: total - issues.length,
+    total,
+    /* I nedokončené zapojení má nejlepší odhad, kdo je kdo. Kontrole
+       chování to stačí — a dítě díky tomu vidí zvýrazněnou tu součástku,
+       o které je řeč. */
+    roles: best ? Object.fromEntries(best.roles) : null,
+  };
 }
