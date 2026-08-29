@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ButtonLink } from "@/components/ui/Button";
-import { Alert, Card, DarkSection, MonoLabel } from "@/components/ui/Surface";
+import { Alert, DarkSection, MonoLabel } from "@/components/ui/Surface";
 import { SITE } from "@/lib/site";
 import { firstPlayableLesson, getCourseOutline } from "@/features/courses/queries";
 
@@ -80,13 +81,13 @@ export default async function HomePage({
           {outline?.summary}
         </p>
 
+        {/* Publikovaná lekce je celá odkaz. Karta s hover efektem, na kterou
+            se nedá kliknout, působí rozbitě — a tenhle design systém dává
+            kartám tvrdý stín a rohové značky právě jako signál „klikni sem". */}
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {lessons.map((lesson) => (
-            <li key={lesson.id}>
-              <Card
-                interactive={lesson.isPublished}
-                className={`h-full p-5 ${lesson.isPublished ? "" : "opacity-60"}`}
-              >
+          {lessons.map((lesson) => {
+            const body = (
+              <>
                 <div className="mb-2 flex items-center justify-between">
                   <MonoLabel>Lekce {lesson.orderIndex}</MonoLabel>
                   {!lesson.isPublished && (
@@ -105,9 +106,26 @@ export default async function HomePage({
                     {lesson.estimatedMinutes} min
                   </p>
                 )}
-              </Card>
-            </li>
-          ))}
+              </>
+            );
+
+            return (
+              <li key={lesson.id}>
+                {lesson.isPublished ? (
+                  <Link
+                    href={`/kurz/iot/${lesson.slug}`}
+                    className="card-maker card-maker-hover block h-full p-5
+                               focus-visible:outline-2 focus-visible:outline-offset-2
+                               focus-visible:outline-ink"
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <div className="card-maker block h-full p-5 opacity-60">{body}</div>
+                )}
+              </li>
+            );
+          })}
         </ol>
       </section>
 
@@ -129,16 +147,18 @@ export default async function HomePage({
           <div className="grid gap-6 sm:grid-cols-3">
             {[
               {
-                title: "Účet zakládá rodič",
-                body: "Dítě má pod ním svůj profil. Je to podmínka zákona i způsob, jak vidíte, co dítě dokázalo.",
+                title: "Do 15 let zakládá účet rodič",
+                body:
+                  "Vyžaduje to zákon a je to i způsob, jak vidíte, co dítě dokázalo. " +
+                  "Od 15 let si účet spravuje samo.",
               },
               {
                 title: "Obsah je zdarma",
                 body: "Všechny lekce, circuit builder i 3D studio. Platební zeď mezi dítětem a obsahem nestojí.",
               },
               {
-                title: "Nesbíráme údaje dětí",
-                body: "Přezdívka a rok narození. Žádné jméno, adresa ani fotografie.",
+                title: "Sbíráme minimum údajů",
+                body: "Přezdívka a datum narození. Žádné jméno, adresa ani fotografie.",
               },
             ].map((item) => (
               <div key={item.title}>

@@ -6,6 +6,7 @@ import { Alert, Badge, Card, MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
 import { segmentForRegion } from "@/lib/regions";
 import { Avatar } from "@/features/children/avatars";
+import { ContinueButton } from "@/features/children/components/ContinueButton";
 import { getChildren } from "@/features/children/queries";
 import { getCampCatchment } from "@/features/onboarding/queries";
 import { consentStatuses } from "@/features/consent/logic";
@@ -106,9 +107,11 @@ export default async function AccountPage({
                   </p>
 
                   <div className="mt-4">
-                    <ButtonLink href={`/ucim-se/prepnout?dite=${child.id}`} size="sm" fullWidth>
-                      Pokračovat
-                    </ButtonLink>
+                    <ContinueButton
+                      childId={child.id}
+                      hasPin={child.hasPin}
+                      isLocked={child.isLocked}
+                    />
                   </div>
                 </Card>
               </li>

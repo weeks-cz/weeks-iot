@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
-import { Card, MonoLabel } from "@/components/ui/Surface";
+import { MonoLabel } from "@/components/ui/Surface";
 import { SITE } from "@/lib/site";
 import { firstPlayableLesson, getCourseOutline } from "@/features/courses/queries";
 
@@ -76,15 +77,12 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
           )}
         </div>
 
+        {/* Celý řádek je odkaz, ne jen tlačítko vpravo — cíl kliknutí má
+            odpovídat tomu, co vypadá klikatelně. */}
         <ol className="flex flex-col gap-3">
-          {outline.lessons.map((lesson) => (
-            <li key={lesson.id}>
-              <Card
-                interactive={lesson.isPublished}
-                className={`flex flex-wrap items-center gap-4 p-4 ${
-                  lesson.isPublished ? "" : "opacity-60"
-                }`}
-              >
+          {outline.lessons.map((lesson) => {
+            const body = (
+              <>
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-ink/20 font-mono text-sm">
                   {lesson.orderIndex}
                 </span>
@@ -102,16 +100,37 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
                   </span>
                 )}
 
+                <span
+                  className={
+                    lesson.isPublished
+                      ? "rounded-md border border-ink px-4 py-2 text-sm font-semibold text-ink"
+                      : "font-mono text-xs text-ink-300"
+                  }
+                >
+                  {lesson.isPublished ? "Otevřít" : "připravujeme"}
+                </span>
+              </>
+            );
+
+            return (
+              <li key={lesson.id}>
                 {lesson.isPublished ? (
-                  <ButtonLink href={`/kurz/${slug}/${lesson.slug}`} size="sm" variant="outline">
-                    Otevřít
-                  </ButtonLink>
+                  <Link
+                    href={`/kurz/${slug}/${lesson.slug}`}
+                    className="card-maker card-maker-hover flex flex-wrap items-center gap-4 p-4
+                               focus-visible:outline-2 focus-visible:outline-offset-2
+                               focus-visible:outline-ink"
+                  >
+                    {body}
+                  </Link>
                 ) : (
-                  <span className="font-mono text-xs text-ink-300">připravujeme</span>
+                  <div className="card-maker flex flex-wrap items-center gap-4 p-4 opacity-60">
+                    {body}
+                  </div>
                 )}
-              </Card>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ol>
       </section>
     </main>

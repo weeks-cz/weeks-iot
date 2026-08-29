@@ -18,9 +18,21 @@ const EMPTY: ActionState = {};
  * vzdušné rozestupy. Bez PINu je to jeden klik — PIN se ptá až tehdy,
  * když ho profil má.
  */
-export function ProfileSwitcher({ profiles }: { profiles: ChildSummary[] }) {
+export function ProfileSwitcher({
+  profiles,
+  preselectedId = null,
+}: {
+  profiles: ChildSummary[];
+  /** Z `?dite=` v odkazu z účtu. Předvýběr, ne oprávnění. */
+  preselectedId?: string | null;
+}) {
   const [state, submit, pending] = useActionState(switchChildAction, EMPTY);
-  const [selected, setSelected] = useState<ChildSummary | null>(null);
+
+  /* Předvybraný profil s PINem otevře rovnou pole na PIN — jinak by se
+     uživatel proklikával seznamem, ve kterém už jednou vybral. */
+  const [selected, setSelected] = useState<ChildSummary | null>(
+    () => profiles.find((p) => p.id === preselectedId && p.hasPin) ?? null,
+  );
 
   /* Profil s PINem otevře dialog s polem. Bez PINu se odesílá rovnou —
      mezikrok „potvrďte výběr" by u dítěte nedával smysl. */
