@@ -5,15 +5,47 @@ import { Plane } from "./Plane";
 import { Palette } from "./Palette";
 import { TopBar } from "./TopBar";
 import { ZoomControls } from "./ZoomControls";
-import { WireLayer } from "./WireLayer";
 import { SAVE_DEBOUNCE_MS } from "@/lib/cad/constants";
 import type { Circuit, ComponentType } from "@/types/cad";
+
+interface HintsPanelProps {
+  hints: { code?: string; wiring?: string };
+}
+
+function HintsPanel({ hints }: HintsPanelProps) {
+  if (!hints.code && !hints.wiring) return null;
+  return (
+    <aside className="w-56 flex-shrink-0 overflow-y-auto border-l border-white/10 bg-black/60 p-3">
+      {hints.wiring && (
+        <section className="mb-4">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
+            Zapojení
+          </h4>
+          <p className="whitespace-pre-line text-xs leading-relaxed text-white/70">
+            {hints.wiring}
+          </p>
+        </section>
+      )}
+      {hints.code && (
+        <section>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-green-300">
+            Kód
+          </h4>
+          <p className="whitespace-pre-line text-xs leading-relaxed text-white/70">
+            {hints.code}
+          </p>
+        </section>
+      )}
+    </aside>
+  );
+}
 
 interface Props {
   taskId: string;
   taskTitle: string;
   initialCircuit: Circuit;
   palette: ComponentType[];
+  hints?: { code?: string; wiring?: string };
   onSave: (c: Circuit) => void;
   onClose: () => void;
   onReset: () => void;
@@ -21,7 +53,7 @@ interface Props {
 }
 
 export function CADWorkspace({
-  taskId, taskTitle, initialCircuit, palette, onSave, onClose, onReset, readOnly,
+  taskId, taskTitle, initialCircuit, palette, hints, onSave, onClose, onReset, readOnly,
 }: Props) {
   const [state, dispatch] = useCADReducer(initialCircuit);
   const planeRef = useRef<HTMLDivElement>(null);
@@ -64,9 +96,9 @@ export function CADWorkspace({
         <Palette palette={palette} disabled={readOnly} />
         <div className="relative flex-1 overflow-hidden">
           <Plane ref={planeRef} state={state} dispatch={dispatch} readOnly={readOnly} />
-          <WireLayer planeRef={planeRef} state={state} dispatch={dispatch} />
           <ZoomControls zoom={state.zoom} dispatch={dispatch} />
         </div>
+        {hints && <HintsPanel hints={hints} />}
       </div>
     </div>
   );

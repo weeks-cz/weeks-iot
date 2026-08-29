@@ -49,3 +49,7 @@ yarn-error.log*
 
 # vitest
 .vitest-cache/
+.vercel
+
+# supabase local temp
+supabase/.temp/

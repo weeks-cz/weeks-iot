@@ -42,6 +42,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["led-red", "resistor-220", "pushbutton"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
   {
@@ -65,6 +69,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["piezo-buzzer", "pushbutton"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
   {
@@ -89,6 +97,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["potentiometer", "led-red", "resistor-220"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
   {
@@ -112,6 +124,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["led-red", "resistor-220"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
   {
@@ -136,6 +152,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["led-red", "led-yellow", "led-green", "resistor-220"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
   {
@@ -159,6 +179,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["photoresistor", "led-red", "resistor-220"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
   {
@@ -183,6 +207,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["led-red", "resistor-220", "pushbutton"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
   {
@@ -206,6 +234,10 @@ const beginnerTasks: Task[] = [
     },
     cad: {
       palette: ["led-rgb", "resistor-220", "pushbutton"],
+      seed: [
+        { id: "seed-arduino", type: "arduino-uno", x: 32, y: 304, rotation: 0 },
+        { id: "seed-breadboard", type: "breadboard-half", x: 32, y: 32, rotation: 0 },
+      ],
     },
   },
 ];

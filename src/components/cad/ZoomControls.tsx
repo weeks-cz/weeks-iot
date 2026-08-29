@@ -1,6 +1,6 @@
 "use client";
 import { Minus, Plus, Maximize2 } from "lucide-react";
-import { ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "@/lib/cad/constants";
+import { DEFAULT_PAN, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "@/lib/cad/constants";
 import type { CADAction } from "./hooks/useCADReducer";
 
 interface Props {
@@ -25,7 +25,7 @@ export function ZoomControls({ zoom, dispatch }: Props) {
       <button
         onClick={() => {
           dispatch({ type: "SET_ZOOM", zoom: ZOOM_DEFAULT });
-          dispatch({ type: "SET_PAN", pan: { x: 0, y: 0 } });
+          dispatch({ type: "SET_PAN", pan: DEFAULT_PAN });
         }}
         className="rounded p-1 hover:bg-white/10"
         aria-label="Reset zoom"

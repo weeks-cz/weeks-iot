@@ -1,6 +1,7 @@
 "use client";
 import { forwardRef } from "react";
 import { PlacedComponent } from "./PlacedComponent";
+import { WireLayer } from "./WireLayer";
 import { usePanZoom } from "./hooks/usePanZoom";
 import { usePlaneDropTarget } from "./hooks/useDragDrop";
 import { useWiring } from "./hooks/useWiring";
@@ -20,7 +21,7 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
   const containerRef = (ref as React.RefObject<HTMLDivElement>) ?? null;
   const panZoom = usePanZoom(containerRef, state, dispatch);
   const innerRef = ref as React.RefObject<HTMLDivElement>;
-  const dropProps = usePlaneDropTarget(innerRef, dispatch, readOnly);
+  const dropProps = usePlaneDropTarget(innerRef, dispatch, readOnly, state.zoom);
   const wiring = useWiring(dispatch);
 
   const transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
@@ -37,7 +38,12 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
             const rect = plane.getBoundingClientRect();
             dispatch({
               type: "SET_CURSOR",
-              pos: { x: e.clientX - rect.left, y: e.clientY - rect.top },
+              // rect is the visual bounding rect of the workspace-plane (after CSS transform).
+              // Dividing by zoom converts from scaled screen-delta to workspace coordinates.
+              pos: {
+                x: (e.clientX - rect.left) / state.zoom,
+                y: (e.clientY - rect.top)  / state.zoom,
+              },
             });
           }
         }
@@ -45,7 +51,14 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
       onMouseUp={panZoom.onMouseUp}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          dispatch({ type: "SELECT", target: null });
+          if (state.wireInProgress) dispatch({ type: "CANCEL_WIRE" });
+          else dispatch({ type: "SELECT", target: null });
+        }
+      }}
+      onContextMenu={(e) => {
+        if (state.wireInProgress) {
+          e.preventDefault();
+          dispatch({ type: "CANCEL_WIRE" });
         }
       }}
     >
@@ -55,6 +68,12 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
         className="absolute"
         onDragOver={dropProps.onDragOver}
         onDrop={dropProps.onDrop}
+        onContextMenu={(e) => {
+          if (state.wireInProgress) {
+            e.preventDefault();
+            dispatch({ type: "CANCEL_WIRE" });
+          }
+        }}
         style={{
           width: 4000, height: 4000,
           left: 2000, top: 2000,
@@ -64,6 +83,8 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
           backgroundSize: `${PITCH}px ${PITCH}px`,
         }}
       >
+        {/* WireLayer lives inside the workspace-plane so SVG coordinates are in workspace space */}
+        <WireLayer state={state} dispatch={dispatch} />
         {state.circuit.comps.map(comp => (
           <PlacedComponent
             key={comp.id}
@@ -73,6 +94,7 @@ export const Plane = forwardRef<HTMLDivElement, Props>(function Plane(
             wireInProgress={state.wireInProgress}
             onPinAction={(pin) => wiring.onPinClick(pin, state.wireInProgress)}
             readOnly={readOnly}
+            zoom={state.zoom}
           />
         ))}
       </div>

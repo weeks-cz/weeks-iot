@@ -1,5 +1,6 @@
 import { useReducer } from "react";
 import type { Circuit, CircuitComponent, PinRef, Wire } from "@/types/cad";
+import { DEFAULT_PAN } from "@/lib/cad/constants";
 
 export type Selection =
   | { kind: "component"; id: string }
@@ -30,7 +31,7 @@ export type CADAction =
   | { type: "RESET_CIRCUIT"; circuit: Circuit };
 
 export function initCADState(circuit: Circuit): CADState {
-  return { circuit, selection: null, wireInProgress: null, cursorPlane: null, zoom: 1, pan: { x: 0, y: 0 } };
+  return { circuit, selection: null, wireInProgress: null, cursorPlane: null, zoom: 1, pan: DEFAULT_PAN };
 }
 
 export function cadReducer(state: CADState, action: CADAction): CADState {

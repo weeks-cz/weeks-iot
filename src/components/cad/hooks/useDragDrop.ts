@@ -27,6 +27,7 @@ export function usePlaneDropTarget(
   planeRef: React.RefObject<HTMLDivElement>,
   dispatch: React.Dispatch<CADAction>,
   readOnly?: boolean,
+  zoom = 1,
 ) {
   const onDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(DRAG_MIME)) {
@@ -44,13 +45,13 @@ export function usePlaneDropTarget(
     const plane = planeRef.current;
     if (!plane) return;
     const rect = plane.getBoundingClientRect();
-    const x = snapToGrid(e.clientX - rect.left);
-    const y = snapToGrid(e.clientY - rect.top);
+    const x = snapToGrid((e.clientX - rect.left) / zoom);
+    const y = snapToGrid((e.clientY - rect.top)  / zoom);
     dispatch({
       type: "PLACE_COMPONENT",
       comp: { id: crypto.randomUUID(), type, x, y, rotation: 0 },
     });
-  }, [planeRef, dispatch, readOnly]);
+  }, [planeRef, dispatch, readOnly, zoom]);
 
   return { onDragOver, onDrop };
 }

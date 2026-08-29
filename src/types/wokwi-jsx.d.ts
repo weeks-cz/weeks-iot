@@ -6,7 +6,7 @@ declare global {
   namespace JSX {
     interface IntrinsicElements {
       "wokwi-led":              WokwiCommon & { color?: string; brightness?: string | number; value?: string };
-      "wokwi-led-rgb":          WokwiCommon;
+      "wokwi-rgb-led":          WokwiCommon;
       "wokwi-resistor":         WokwiCommon & { value?: string };
       "wokwi-pushbutton":       WokwiCommon & { color?: string };
       "wokwi-buzzer":           WokwiCommon;

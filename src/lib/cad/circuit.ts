@@ -8,8 +8,8 @@ function uid(): string {
 export function createDefaultCircuit(): Circuit {
   return {
     comps: [
-      { id: uid(), type: "arduino-uno",     x: 0,          y: 0, rotation: 0 },
-      { id: uid(), type: "breadboard-half", x: 18 * PITCH, y: 0, rotation: 0 },
+      { id: uid(), type: "breadboard-half", x: 2 * PITCH, y:  2 * PITCH, rotation: 0 },
+      { id: uid(), type: "arduino-uno",     x: 2 * PITCH, y: 19 * PITCH, rotation: 0 },
     ],
     wires: [],
   };
