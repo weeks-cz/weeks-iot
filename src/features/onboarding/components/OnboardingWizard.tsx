@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, SelectField, TextField } from "@/components/ui/Field";
 import { Alert, MonoLabel, Stepper } from "@/components/ui/Surface";
-import { readAnonSession } from "@/features/anon-session/storage";
+import { useAnonSessionRaw } from "@/features/anon-session/useAnonSession";
 import { CONSENT_TEXTS } from "@/features/consent/texts";
 import type { ActionState } from "@/features/actions";
 import { AVATARS } from "@/features/children/avatars";
@@ -13,6 +13,15 @@ import { birthYearRange } from "../schema";
 
 const STEPS = ["Kraj", "Dítě", "Souhlasy"] as const;
 const EMPTY: ActionState = {};
+
+/** Ke kterému kroku patří chyba ze serveru. null = k žádnému. */
+function stepForErrors(errors: Record<string, string> | undefined): number | null {
+  if (!errors) return null;
+  if (errors.regionCode) return 0;
+  if (errors.childNick || errors.childBirthYear) return 1;
+  if (errors.acceptTerms || errors.parentalConsent) return 2;
+  return null;
+}
 
 interface RegionOption {
   code: string;
@@ -32,16 +41,14 @@ interface RegionOption {
 export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
   const [step, setStep] = useState(0);
   const [state, submit, pending] = useActionState(completeOnboardingAction, EMPTY);
-  const [anonSession, setAnonSession] = useState("");
+
+  /* Relace se čte přes useSyncExternalStore, ne přes useState v efektu:
+     nespustí to kaskádu překreslení a nevznikne rozdíl mezi serverovým
+     a klientským výstupem. */
+  const anonSession = useAnonSessionRaw();
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
-
-  /* Relace se načítá až po připojení — localStorage na serveru není. */
-  useEffect(() => {
-    const session = readAnonSession();
-    if (session) setAnonSession(JSON.stringify(session));
-  }, []);
 
   /* Po přechodu na další krok se fokus přesune na jeho nadpis. Bez toho
      zůstane u tlačítka „Pokračovat", čtečka nic neoznámí a uživatel
@@ -55,15 +62,17 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
   }, [step]);
 
   /* Chyba z validace na serveru může patřit ke kroku, který není vidět.
-     Bez tohohle by odeslání „nic neudělalo" a nikdo by nevěděl proč. */
-  useEffect(() => {
-    const errors = state.fieldErrors;
-    if (!errors) return;
+     Bez přepnutí by odeslání „nic neudělalo" a nikdo by nevěděl proč.
 
-    if (errors.regionCode) setStep(0);
-    else if (errors.childNick || errors.childBirthYear) setStep(1);
-    else if (errors.acceptTerms || errors.parentalConsent) setStep(2);
-  }, [state.fieldErrors]);
+     Úprava stavu během renderu, ne v efektu — je to postup, který React
+     pro odvození stavu z props doporučuje. Efekt by komponentu překreslil
+     dvakrát a formulář by na okamžik blikl na špatném kroku. */
+  const [seenErrors, setSeenErrors] = useState(state.fieldErrors);
+  if (state.fieldErrors !== seenErrors) {
+    setSeenErrors(state.fieldErrors);
+    const target = stepForErrors(state.fieldErrors);
+    if (target !== null) setStep(target);
+  }
 
   const { min, max } = birthYearRange();
   const years = Array.from({ length: max - min + 1 }, (_, i) => max - i);

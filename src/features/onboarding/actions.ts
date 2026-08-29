@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { EVENT } from "@/features/analytics/events";
-import { CONSENT_TEXTS, consentTextFor } from "@/features/consent/texts";
+import { CONSENT_TEXTS } from "@/features/consent/texts";
 import { adoptSession, lessonKey, mergeWithExisting } from "@/features/anon-session/adopt";
 import { anonSessionSchema, type AnonSession } from "@/features/anon-session/schema";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";

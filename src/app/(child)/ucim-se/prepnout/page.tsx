@@ -37,7 +37,7 @@ export default async function SwitchProfilePage() {
         <Logo className="mb-8" />
         <MonoLabel className="mb-2">Výběr profilu</MonoLabel>
         <h1 className="heading-2 mb-6">Kdo se dneska učí?</h1>
-        <ProfileSwitcher children={children} />
+        <ProfileSwitcher profiles={children} />
       </div>
     </main>
   );

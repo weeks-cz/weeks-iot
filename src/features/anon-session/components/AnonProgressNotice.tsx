@@ -1,29 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Alert } from "@/components/ui/Surface";
-import { readAnonSession } from "../storage";
+import { useAnonCompletedCount } from "../useAnonSession";
 
 /**
- * Ujištění, že rozdělaná práce nepřijde vaniveč.
+ * Ujištění, že rozdělaná práce nepřijde vniveč.
  *
- * Zeď přichází až po dokončené lekci, takže dítě v tu chvíli něco má
- * — a nejčastější důvod, proč registraci nedokončí, je obava, že o to
- * přijde. Tahle hláška na ni odpovídá dřív, než ji někdo vysloví.
- *
- * Vykresluje se až po připojení: relace žije v localStorage, který na
- * serveru neexistuje, a rozdíl mezi serverovým a klientským výstupem by
- * způsobil hydratační chybu.
+ * Zeď přichází až po dokončené lekci, takže dítě v tu chvíli něco má —
+ * a nejčastější důvod, proč registraci nedokončí, je obava, že o to přijde.
+ * Tahle hláška na ni odpovídá dřív, než ji někdo vysloví.
  */
 export function AnonProgressNotice() {
-  const [completed, setCompleted] = useState<number | null>(null);
+  const completed = useAnonCompletedCount();
 
-  useEffect(() => {
-    const session = readAnonSession();
-    setCompleted(session?.lessons.filter((l) => l.completedAt).length ?? 0);
-  }, []);
-
-  if (completed === null || completed === 0) return null;
+  if (completed === 0) return null;
 
   return (
     <Alert tone="success" title="Vaše práce je uložená">

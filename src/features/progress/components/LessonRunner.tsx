@@ -80,7 +80,7 @@ export function LessonRunner({
       <div ref={wallRef} tabIndex={-1} className="outline-none">
         <Card className="mb-6 border-trust-600 bg-trust-50 p-6">
           <MonoLabel className="mb-2">Hotovo</MonoLabel>
-          <h2 className="heading-3 mb-2">Lekce „{lessonTitle}" je hotová</h2>
+          <h2 className="heading-3 mb-2">Lekce &bdquo;{lessonTitle}&ldquo; je hotová</h2>
           <p className="text-ink-500">Zvládl jsi to. Pojď na další.</p>
         </Card>
 

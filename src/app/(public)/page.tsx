@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `${SITE.name} — ${SITE.tagline}`,
+  /* `absolute` schválně: kořenový layout má šablonu "%s | Weeks Učebna",
+     která by z tohohle udělala "Weeks Učebna — … | Weeks Učebna". */
+  title: { absolute: `${SITE.name} — ${SITE.tagline}` },
   description: SITE.description,
   alternates: { canonical: SITE.url },
 };

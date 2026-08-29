@@ -25,7 +25,7 @@ export default async function ChildrenPage() {
         </p>
       </header>
 
-      <ChildManager children={children} />
+      <ChildManager profiles={children} />
     </div>
   );
 }

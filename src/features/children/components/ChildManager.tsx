@@ -234,10 +234,10 @@ function ArchiveForm({ child }: { child: ChildSummary }) {
 
 /* ── Přehled ───────────────────────────────────────────────────────────── */
 
-export function ChildManager({ children }: { children: ChildSummary[] }) {
+export function ChildManager({ profiles }: { profiles: ChildSummary[] }) {
   return (
     <div className="flex flex-col gap-5">
-      {children.map((child) => (
+      {profiles.map((child) => (
         <Card key={child.id} className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">

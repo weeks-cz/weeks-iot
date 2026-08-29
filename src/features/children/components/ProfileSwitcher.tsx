@@ -18,7 +18,7 @@ const EMPTY: ActionState = {};
  * vzdušné rozestupy. Bez PINu je to jeden klik — PIN se ptá až tehdy,
  * když ho profil má.
  */
-export function ProfileSwitcher({ children }: { children: ChildSummary[] }) {
+export function ProfileSwitcher({ profiles }: { profiles: ChildSummary[] }) {
   const [state, submit, pending] = useActionState(switchChildAction, EMPTY);
   const [selected, setSelected] = useState<ChildSummary | null>(null);
 
@@ -76,7 +76,7 @@ export function ProfileSwitcher({ children }: { children: ChildSummary[] }) {
       )}
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {children.map((child) => (
+        {profiles.map((child) => (
           <li key={child.id}>
             {child.hasPin ? (
               <button
