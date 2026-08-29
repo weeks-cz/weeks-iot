@@ -114,6 +114,32 @@ export async function GET(request: Request) {
         }
       }
 
+      /* ── Nárok na krok PŘED odesláním ────────────────────────────────
+         Řádek se zapisuje první a teprve pak se posílá e-mail. Unikátní
+         dvojice (parent_id, step) tím z insertu dělá atomický nárok:
+         když selže, znamená to, že krok už někdo obsloužil, a neposílá se.
+
+         Opačné pořadí — poslat a pak zapsat — je přesně ta chyba, která
+         se tu už jednou stala: zápis tiše selhával kvůli chybějícímu
+         grantu a cron při každém běhu posílal totéž znovu. Odeslaný
+         e-mail se nedá vzít zpět, zápis do logu ano. */
+      const { error: claimError } = await service.from("email_log").insert({
+        parent_id: parent.id,
+        step: step.id,
+        ok: false,
+        error: "odesílá se",
+      });
+
+      if (claimError) {
+        /* Duplicita = krok už běží nebo proběhl. Cokoli jiného je chyba
+           databáze a e-mail se neposílá, dokud se nevyřeší. */
+        if (claimError.code !== "23505") {
+          console.error("[cron/email-sequence] Nárok selhal:", claimError.message);
+          results.failed += 1;
+        }
+        continue;
+      }
+
       const ctx: SequenceContext = {
         nick: child.nick,
         formal: parent.account_type !== "self",
@@ -123,12 +149,11 @@ export async function GET(request: Request) {
 
       const result = await sendTemplate(parent.email, buildStep(step.id, ctx));
 
-      await service.from("email_log").insert({
-        parent_id: parent.id,
-        step: step.id,
-        ok: result.ok,
-        error: result.error ?? null,
-      });
+      await service
+        .from("email_log")
+        .update({ ok: result.ok, error: result.error ?? null, sent_at: new Date().toISOString() })
+        .eq("parent_id", parent.id)
+        .eq("step", step.id);
 
       if (result.ok) results.sent += 1;
       else results.failed += 1;
