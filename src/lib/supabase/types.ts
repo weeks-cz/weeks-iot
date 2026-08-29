@@ -145,6 +145,15 @@ export type LearningEventRow = {
   created_at: string;
 }
 
+export type EmailLogRow = {
+  id: number;
+  parent_id: string;
+  step: string;
+  sent_at: string;
+  ok: boolean;
+  error: string | null;
+}
+
 export type CityWaitlistRow = {
   id: number;
   parent_id: string | null;
@@ -191,6 +200,10 @@ export interface Database {
         Pick<LearningEventRow, "type"> & Partial<LearningEventRow>
       >;
       city_waitlist: Table<CityWaitlistRow, Pick<CityWaitlistRow, "city"> & Partial<CityWaitlistRow>>;
+      email_log: Table<
+        EmailLogRow,
+        Pick<EmailLogRow, "parent_id" | "step"> & Partial<EmailLogRow>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
