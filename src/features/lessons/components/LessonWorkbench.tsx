@@ -65,11 +65,13 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   const [wiringChecked, setWiringChecked] = useState(false);
   const [hints, setHints] = useState({ wiring: 0, code: 0 });
   const [run, setRun] = useState<LessonRunResult | null>(null);
+  const [running, setRunning] = useState(false);
   const [solved, setSolved] = useState(false);
   const partsReady = useWokwiElements();
 
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const restored = useRef(false);
+  const firstStep = useRef(true);
 
   /* Rozpracovaná lekce z minula.
      Načíst se dá jedině tady: localStorage na serveru není, takže obnovit
@@ -98,9 +100,19 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   }, [lesson.slug, lesson.starterCode, code, circuit, seed]);
 
   /* Po přepnutí kroku se fokus přesune na jeho nadpis. Bez toho zůstane
-     na tlačítku, které zmizelo, a kdo jede klávesnicí, se ztratí. */
+     na tlačítku, které zmizelo, a kdo jede klávesnicí, se ztratí.
+
+     A rovnou se na ten nadpis odroluje: hlavička lekce je vysoká skoro
+     čtyři sta pixelů, takže po přepnutí na zapojování by dítě koukalo na
+     titulek a plocha, na které má pracovat, by byla mimo obrazovku. */
   useEffect(() => {
-    stepHeading.current?.focus();
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
+
+    stepHeading.current?.focus({ preventScroll: true });
+    stepHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [step]);
 
   const wiring = useMemo(() => checkWiring(circuit, lesson.wiring), [circuit, lesson.wiring]);
@@ -128,17 +140,26 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   }
 
   function handleRun() {
-    /* Přehrávání spustí sám přehrávač, jakmile dostane nové snímky.
-       Volat to odsud by znamenalo sáhnout na stav, který se v tomhle
-       renderu ještě nezměnil. */
-    const result = runLessonChecks(lesson, circuit, code);
-    setRun(result);
+    /* Kontrola je synchronní a u jednoduchého programu doběhne dřív, než
+       stihne prohlížeč překreslit — kliknutí by pak vypadalo, že se nic
+       nestalo. Krátká prodleva dá tlačítku čas ukázat, že se něco děje. */
+    setRunning(true);
+    setRun(null);
 
-    if (result.passed && !solved) {
-      setSolved(true);
-      clearDraft(lesson.slug);
-      onSolved(hints.wiring + hints.code);
-    }
+    window.setTimeout(() => {
+      /* Přehrávání spustí sám přehrávač, jakmile dostane nové snímky.
+         Volat to odsud by znamenalo sáhnout na stav, který se v tomhle
+         renderu ještě nezměnil. */
+      const result = runLessonChecks(lesson, circuit, code);
+      setRun(result);
+      setRunning(false);
+
+      if (result.passed && !solved) {
+        setSolved(true);
+        clearDraft(lesson.slug);
+        onSolved(hints.wiring + hints.code);
+      }
+    }, 160);
   }
 
   /* Součástky, o kterých mluví první nesplněný bod zapojení. Builder je
@@ -334,9 +355,9 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
               />
 
               <div className="flex flex-wrap items-center gap-3">
-                <Button onClick={handleRun}>
-                  <Play className="h-4 w-4" aria-hidden="true" />
-                  Spustit
+                <Button onClick={handleRun} loading={running} disabled={running}>
+                  {!running && <Play className="h-4 w-4" aria-hidden="true" />}
+                  {running ? "Spouštím…" : "Spustit"}
                 </Button>
 
                 {player.playing && (
@@ -377,7 +398,11 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 onChange={onCircuitChange}
                 frame={player.frame}
                 readOnly
-                height={300}
+                /* Dost velký, aby byla vidět celá LED i celý obvod. Ve
+                   třech stech pixelech se obvod ze sedmé lekce nevešel a
+                   rozsvícení — to jediné, na co se dítě dívá — bylo
+                   za okrajem. */
+                height={380}
               />
 
               {run?.error && (

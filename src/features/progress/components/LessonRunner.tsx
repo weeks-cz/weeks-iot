@@ -139,7 +139,9 @@ export function LessonRunner({
         <Card className="mb-6 border-trust-600 bg-trust-50 p-6">
           <MonoLabel className="mb-2">Hotovo</MonoLabel>
           <h2 className="heading-3 mb-2">Lekce &bdquo;{lessonTitle}&ldquo; je hotová</h2>
-          <p className="text-ink-500">Zvládl jsi to. Pojď na další.</p>
+          <p className="lesson-body text-ink-700">
+            {nextLessonSlug ? "Zvládl jsi to. Pojď na další." : "Zvládl jsi celý kurz!"}
+          </p>
         </Card>
 
         {isAuthenticated ? (
@@ -183,17 +185,31 @@ export function LessonRunner({
               >
                 Uložit můj postup
               </ButtonLink>
-              <button
-                type="button"
-                onClick={() => setCompleted(false)}
-                className="rounded-sm text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
-              >
-                Zatím ne, chci pokračovat
-              </button>
+              {/* Zeď nesmí stát mezi dítětem a obsahem — to je pravidlo
+                  projektu, ne kosmetika. Dřív tu byl jen odkaz zpátky do
+                  téže lekce, takže dítě, které si nechtělo zakládat účet,
+                  nemělo jak jít dál a kurz pro něj skončil. */}
+              {nextLessonSlug ? (
+                <ButtonLink
+                  href={`/kurz/${courseSlug}/${nextLessonSlug}`}
+                  variant="outline"
+                  size="lg"
+                >
+                  Další lekce →
+                </ButtonLink>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCompleted(false)}
+                  className="rounded-sm text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
+                >
+                  Zpátky k lekci
+                </button>
+              )}
             </div>
 
             <p className="mt-5 font-mono text-xs text-ink-300">
-              účet zakládá rodič · e-mail dítěte nepotřebujeme
+              účet zakládá rodič · e-mail dítěte nepotřebujeme · dál se dostaneš i bez něj
             </p>
           </Card>
         )}
