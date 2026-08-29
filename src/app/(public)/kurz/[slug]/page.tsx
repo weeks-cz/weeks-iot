@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { MonoLabel } from "@/components/ui/Surface";
 import { SITE } from "@/lib/site";
 import { firstPlayableLesson, getCourseOutline } from "@/features/courses/queries";
+import { CourseOutlineList } from "@/features/courses/components/CourseOutlineList";
+import { completedLessonSlugs } from "@/features/progress/queries";
+import { createClient } from "@/lib/supabase/server";
 
 interface Params {
   slug: string;
@@ -39,6 +41,14 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
 
   const first = firstPlayableLesson(outline);
   const remaining = outline.lessons.length - outline.publishedCount;
+
+  /* Postup z účtu. Anonymní většina ho má v prohlížeči a doplní si ho
+     seznam sám — tohle je jen ta půlka, kterou zná server. */
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const serverCompleted = auth.user
+    ? await completedLessonSlugs(outline.lessons.filter((l) => l.isPublished).map((l) => l.id))
+    : [];
 
   return (
     <main>
@@ -77,61 +87,11 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
           )}
         </div>
 
-        {/* Celý řádek je odkaz, ne jen tlačítko vpravo — cíl kliknutí má
-            odpovídat tomu, co vypadá klikatelně. */}
-        <ol className="flex flex-col gap-3">
-          {outline.lessons.map((lesson) => {
-            const body = (
-              <>
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-ink/20 font-mono text-sm">
-                  {lesson.orderIndex}
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display font-semibold text-ink">{lesson.title}</h3>
-                  {lesson.summary && (
-                    <p className="text-sm leading-relaxed text-ink-500">{lesson.summary}</p>
-                  )}
-                </div>
-
-                {lesson.estimatedMinutes && (
-                  <span className="font-mono text-xs text-ink-300">
-                    {lesson.estimatedMinutes} min
-                  </span>
-                )}
-
-                <span
-                  className={
-                    lesson.isPublished
-                      ? "rounded-md border border-ink px-4 py-2 text-sm font-semibold text-ink"
-                      : "font-mono text-xs text-ink-300"
-                  }
-                >
-                  {lesson.isPublished ? "Otevřít" : "připravujeme"}
-                </span>
-              </>
-            );
-
-            return (
-              <li key={lesson.id}>
-                {lesson.isPublished ? (
-                  <Link
-                    href={`/kurz/${slug}/${lesson.slug}`}
-                    className="card-maker card-maker-hover flex flex-wrap items-center gap-4 p-4
-                               focus-visible:outline-2 focus-visible:outline-offset-2
-                               focus-visible:outline-ink"
-                  >
-                    {body}
-                  </Link>
-                ) : (
-                  <div className="card-maker flex flex-wrap items-center gap-4 p-4 opacity-60">
-                    {body}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
+        <CourseOutlineList
+          courseSlug={slug}
+          lessons={outline.lessons}
+          serverCompleted={serverCompleted}
+        />
       </section>
     </main>
   );

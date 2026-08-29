@@ -92,13 +92,14 @@ export function LessonRunner({
    * minut. Zeď s registrací přijde teprve tehdy, když samo řekne, že
    * chce dál. Zeď má stát za doručenou hodnotou, ne místo ní.
    */
-  function handleSolved() {
-    const session = markLessonCompleted(courseSlug, lessonSlug);
+  function handleSolved(hintsUsed: number) {
+    const session = markLessonCompleted(courseSlug, lessonSlug, hintsUsed);
 
     void track(EVENT.LESSON_COMPLETE, {
       course: courseSlug,
       lesson: lessonSlug,
       order: lessonOrder,
+      hints: hintsUsed,
       anonymous: !isAuthenticated,
     });
 

@@ -19,8 +19,14 @@ const STEPS = ["Zadání", "Zapojení", "Program"] as const;
 
 interface Props {
   lesson: Lesson;
-  /** Zavolá se, až dítě projde všemi kontrolami. Zapíše postup. */
-  onSolved: () => void;
+  /**
+   * Zavolá se, až dítě projde všemi kontrolami. Zapíše postup.
+   *
+   * `hintsUsed` je počet nápověd, které si po cestě vyžádalo. Ukládá se
+   * k postupu, protože „dokončeno na první dobrou" a „dokončeno se všemi
+   * nápovědami" jsou o té lekci dvě úplně jiné zprávy.
+   */
+  onSolved: (hintsUsed: number) => void;
   /** Zavolá se, až si dítě výsledek prohlédne a chce jít dál. */
   onContinue: () => void;
   /** Nahlásí vyžádanou nápovědu — z toho se pozná, kde lekce drhne. */
@@ -116,7 +122,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     if (result.passed && !solved) {
       setSolved(true);
       clearDraft(lesson.slug);
-      onSolved();
+      onSolved(hints.wiring + hints.code);
     }
   }
 

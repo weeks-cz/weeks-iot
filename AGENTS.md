@@ -78,6 +78,48 @@ do metriky, kterou maximalizujeme.
 - **Tailwind v4 nemá `tailwind.config.ts`.** Konfigurace žije inline
   v `src/app/globals.css` pod `@theme`.
 
+## Emulátor a lekce
+
+Kurz stojí na třech vrstvách, které o sobě vědí co nejmíň:
+
+1. **Obvod** (`src/features/circuit/`) — sítě, cesty, kontrola zapojení,
+   simulace. Neví nic o lekcích ani o Arduinu jako jazyce.
+2. **Arduino** (`src/features/arduino/`) — lexer, parser, interpret, deska.
+   Neví nic o obvodu; mluví s ním přes rozhraní `Board`.
+3. **Lekce** (`src/features/lessons/`) — obsah, kontroly, průchod. Jediné
+   místo, kde se ty dvě vrstvy potkávají, je `simulate.ts`.
+
+**Kontroluje se chování, ne text kódu.** Program se doopravdy spustí nad
+obvodem, který dítě postavilo, a ptáme se, CO DĚLÁ. Původní kontrola
+porovnávala kód se vzorem a u nočního světla vyžadovala proměnnou pojmenovanou
+přesně `svetlo`; kdo napsal `hodnota`, dostal chybu za funkční program.
+
+**Databáze drží osnovu, kód drží obsah.** Lekce obsahuje funkce (`verify`
+u kontrol) a ty se přes hranici server → klient nepřenesou. Že se ty dva
+zdroje nerozejdou, hlídá `src/features/lessons/__tests__/seed.test.ts`, který
+čte migraci jako text. **Přidáváš lekci? Přidej i migraci** — jinak spadne test.
+
+**Lekce se přejímá testem, ne pohledem.** `lessons.test.ts` postaví ze zadání
+skutečný obvod a pustí na něm vzorové řešení. Chytá to překlepy v pinech,
+kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřeloží.
+
+### Pasti přímo v téhle vrstvě
+
+- **`findPath({ through })` je seznam POVOLENÝCH typů, ne vyžadovaných.**
+  „Vede tam cesta a je na ní rezistor?" se ptá `result.through.includes(...)`.
+  Bez toho svítila LED zapojená napřímo — přesně ta chyba, kterou lekce 1 učí.
+- **Snímek obvodu se pořizuje, když uplyne čas, ne na konci `loop()`.**
+  Blikání i přechod jasu se dějí uvnitř jednoho průchodu; jinak nejsou vidět.
+- **Kontroly poznávají součástky podle ROLE, ne podle pořadí.** Pořadí v obvodu
+  je pořadí, v jakém je dítě položilo. Role dává `checkWiring(...).roles`.
+- **`useFramePlayer` porovnává reference snímků.** Nové pole při každém renderu
+  (`x ?? []`) ho zacyklí; na prázdný stav je `NO_FRAMES`.
+- **Sítě součástky nespojují.** Rezistor ani LED nejsou vodič — spojení skrz ně
+  řeší `paths.ts`, protože u nich záleží na tom, že tam jsou. Napětí se proto
+  musí propagovat zvlášť (`conductivePairs` v `simulate.ts`).
+- **Ikony v `public/cad/palette/` jsou prázdné 1×1 pixely.** Paleta místo nich
+  kreslí skutečnou Wokwi součástku. Nespoléhej na `spec.paletteIcon`.
+
 ## Design
 
 Maker lab — technický výkres, ne dětská grafika. Portováno z
@@ -97,7 +139,7 @@ Mobile-first od 320 px. Dotykové cíle minimálně 44 px.
 
 ```bash
 npx tsc --noEmit    # musí být čistý pro nový kód
-npm test            # 162 testů
+npm test            # 386 testů
 npm run build       # odhalí úniky server→klient, které tsc nevidí
 ```
 
