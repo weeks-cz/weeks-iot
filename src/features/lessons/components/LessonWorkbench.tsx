@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Circle, Lightbulb, Play, Square } from "lucide-react";
+import { Check, Circle, Hand, Lightbulb, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel, Stepper } from "@/components/ui/Surface";
 import { CircuitBuilder } from "@/features/circuit/components/CircuitBuilder";
@@ -206,6 +206,9 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     .filter((id): id is string => Boolean(id));
 
   const firstUnmet = run?.outcomes.find((o) => !o.passed);
+
+  /* Součástky, se kterými se dá při běhu hýbat. Zatím jen tlačítka. */
+  const interactive = circuit.comps.filter((c) => c.type === "pushbutton");
 
   return (
     <div className="flex flex-col gap-6">
@@ -432,6 +435,17 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                    za okrajem. */
                 height={380}
               />
+
+              {/* Bez tohohle dítě netuší, že se dá sáhnout do obvodu — a
+                  lekce, která na stisku stojí, mu přijde rozbitá. */}
+              {interactive.length > 0 && (
+                <p className="rounded-md border border-primary-600 bg-primary-50 px-3 py-2 text-sm leading-relaxed text-primary-800">
+                  <Hand className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true" />
+                  {interactive.length > 1
+                    ? "Tlačítka v obvodu si můžeš zmáčknout — podrž je a dívej se, co to udělá."
+                    : "Tlačítko v obvodu si můžeš zmáčknout — podrž ho a dívej se, co to udělá."}
+                </p>
+              )}
 
               {run?.error && (
                 <Alert tone="danger" title={`Chyba na řádku ${run.error.line}`}>
