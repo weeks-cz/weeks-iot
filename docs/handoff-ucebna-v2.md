@@ -1,11 +1,47 @@
-# Učebna v2 — co musíš naklikat ty
+# Učebna v2 — stav nasazení
 
-Větev `feat/ucebna-v2`. Kód je hotový a staví se; tohle je seznam věcí,
-které nejdou udělat z repozitáře.
+> **Spuštěno 29. 8. 2026 na https://ucebna.weeks.cz** — kroky 1 až 8 hotové
+> a ověřené naostro. Tenhle dokument teď slouží jako záznam konfigurace
+> a jako seznam toho, co zbývá před bránou 19. 10.
 
-Pořadí není libovolné — kroky 1 až 3 na sobě závisí.
+## Hotová konfigurace
+
+| Věc | Stav |
+|---|---|
+| Supabase projekt | `zvfmgizjqozaypyasjru`, Frankfurt, 7 migrací |
+| Doména | `ucebna.weeks.cz`, Preview → větev `feat/ucebna-v2` |
+| Proměnné | 8, navázané na větev; produkce nedotčená |
+| Google OAuth | zapnuto, ověřeno registrací |
+| Resend + Auth Hook | zapnuto, magic link ověřen |
+| Stará aplikace | `iot.weeks.cz` beze změny |
+
+## Co ZBÝVÁ před bránou 19. 10.
+
+1. **Web je `noindex`.** Vercel to přidává všem Preview nasazením, tedy
+   i vlastní doméně. Teď je to správně (obsah lekcí je zástupný), ale před
+   spuštěním reklamy musí větev do produkce — jinak akvizice nemá kam ústit.
+2. **Google ukazuje `zvfmgizjqozaypyasjru.supabase.co`.** Rodiči, který
+   svěřuje data dítěte, to připomíná phishing. Řeší Supabase Custom Domain
+   (placený doplněk). Mezitím aspoň vyplnit Branding v Google Auth Platform.
+3. **Obsah lekce 1** včetně videa z HWLabu — úzké hrdlo celého roku.
+4. **Právní revize znění souhlasů** (`src/features/consent/texts.ts`).
+5. **Potvrdit správce údajů** — v kódu Lukáš Kubík, IČO 24878511. Odvozeno
+   z toho, že učebna jede přes vlastní pokladnu; neověřeno.
+
+## Změny proti Bráně 0, které patří na poradu
+
+- **Bod 10 se mění.** Od 15 let si účet spravuje sám uživatel, ne rodič.
+  Nutit patnáctiletého prohlásit „jsem zákonný zástupce" by vyrobilo
+  nepravdivý souhlas (§ 7 zák. 110/2019).
+- **Ukládá se celé datum narození, ne ročník.** Audit zvolil ročník kvůli
+  minimalizaci údajů; platilo to, dokud na věku nezáviselo, kdo smí
+  podepsat souhlas.
+- **Registrace nemá horní věkovou hranici.** Cílová skupina 10–15 je věc
+  měření, ne přístupu — počítá se v `docs/metriky-brana-1.sql`, dotaz 1b.
 
 ---
+
+# Referenční postup konfigurace
 
 ## 0. Nejdřív si přečti tohle
 
@@ -40,6 +76,12 @@ být důkazem.
    | `supabase/migrations/002_ucebna_rls.sql` | RLS, sloupcové granty, RPC |
    | `supabase/migrations/003_ucebna_seed.sql` | 14 krajů, kurz IoT, 7 lekcí |
    | `supabase/migrations/004_ucebna_rate_limit.sql` | omezování četnosti |
+   | `supabase/migrations/005_ucebna_self_consent.sql` | vlastní souhlas od 15 let |
+   | `supabase/migrations/006_ucebna_birth_date.sql` | přesné datum narození |
+   | `supabase/migrations/007_ucebna_account_type.sql` | typ účtu (rodič / sám) |
+
+   Nebo naráz přes CLI: `npx supabase link --project-ref <ref>` (v běžném
+   terminálu, potřebuje TTY) a pak `npx supabase db push`.
 
 3. Ověř, že to sedlo:
 
@@ -52,8 +94,9 @@ být důkazem.
 
 4. **Authentication → URL Configuration**
    - Site URL: `https://ucebna.weeks.cz`
-   - Redirect URLs: přidej `https://ucebna.weeks.cz/auth/callback`,
-     `https://*.vercel.app/auth/callback` a `http://localhost:3000/auth/callback`
+   - Redirect URLs: `https://ucebna.weeks.cz/auth/callback`,
+     `https://*-lukass-projects-2757878c.vercel.app/auth/callback`
+     a `http://localhost:3000/auth/callback`
 
 5. **Authentication → Providers → Email**: nech zapnuté „Confirm email".
    Bez potvrzení adresy nemáme to „přiměřené úsilí k ověření věku", které
@@ -68,16 +111,16 @@ být důkazem.
 
 ## 2. Google OAuth
 
-1. Google Cloud Console → nový projekt (nebo stávající Weeks) →
-   **APIs & Services → Credentials → Create OAuth client ID → Web application**
+1. Google Cloud Console → **Google Auth Platform → Clients → Create client →
+   Web application** (dřív se to jmenovalo APIs & Services → Credentials)
 2. Authorized redirect URI — přesně tahle jedna adresa, z Supabase, ne z naší
    domény:
    ```
    https://<tvůj-projekt>.supabase.co/auth/v1/callback
    ```
-3. **OAuth consent screen**: typ External, přidej logo a odkazy na podmínky
-   a zásady. Bez vyplněného consent screenu Google účet nepustí ven z testovacího
-   režimu.
+3. **Branding** a **Audience**: typ External, název aplikace, logo a odkazy
+   na podmínky i zásady. V **Audience** zkontroluj Publishing status — dokud
+   je „Testing", přihlásí se jen ručně přidaní test users.
 4. Supabase → **Authentication → Providers → Google**: zapnout, vložit
    Client ID a Client Secret.
 
@@ -93,8 +136,13 @@ být důkazem.
 3. Supabase → **Authentication → Hooks → Send Email Hook**:
    - Enable: ano
    - Type: HTTPS
-   - URL: `https://ucebna.weeks.cz/api/auth/email`
+   - URL: `https://ucebna.weeks.cz/api/auth/email/` — **s koncovým lomítkem**
    - Secret: vygeneruj a ulož — jde do `SUPABASE_AUTH_HOOK_SECRET`
+
+> **To lomítko tam musí být.** Projekt jede s `trailingSlash: true`, takže
+> adresa bez něj vrátí 308 (přesměrování) místo 200. Ověřeno naživo: endpoint
+> bez lomítka na POST neodpoví. E-maily by tiše přestaly chodit a v Supabase
+> by to přitom vypadalo, že hook běží.
 
 > Hook ověřuje podpis Standard Webhooks a bez správného secretu odmítne všechno
 > hláškou 401. Je to schválně: endpoint, který rozesílá jednorázové přihlašovací
@@ -120,8 +168,9 @@ SUPABASE_AUTH_HOOK_SECRET=<secret z kroku 3>
 RESEND_API_KEY=<klíč>
 EMAIL_FROM=Weeks Učebna <ucebna@weeks.cz>
 
-# Adresa. Na preview ji nenastavuj — vezme se z VERCEL_URL,
-# aby preview negenerovalo produkční kanonické odkazy.
+# Adresa. Musí být nastavená i na větvi s vlastní doménou — jede přes ni
+# nejen kanonický odkaz, ale i emailRedirectTo. Bez ní by potvrzovací
+# odkazy mířily na konkrétní nasazení a po dalším deployi přestaly platit.
 NEXT_PUBLIC_SITE_URL=https://ucebna.weeks.cz
 ```
 
