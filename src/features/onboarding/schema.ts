@@ -10,11 +10,24 @@ import { REGION_CODES } from "@/lib/regions";
  * ne bezpečnost.
  */
 
-/* Věkové pásmo. 10–15 je cílová skupina, hranice jsou o rok širší, aby
-   se neodmítalo dítě, které má za měsíc narozeniny, ani sourozenec,
-   který se veze s ním. */
+/**
+ * Kdo se smí zaregistrovat.
+ *
+ * Cílová skupina je 10–15 let, ale to je věc MĚŘENÍ, ne přístupu. Horní
+ * strop v registraci nic nechrání — jen odmítá lidi, kteří by si kurz
+ * chtěli projít: staršího sourozence, učitele, rodiče, který si to chce
+ * vyzkoušet dřív než dítě. Metriku brány to neohrozí, protože se od
+ * migrace 006 ukládá přesné datum a věkové pásmo jde spočítat v dotazu
+ * (viz docs/metriky-brana-1.sql).
+ *
+ * MAX_AGE proto slouží jen jako pojistka proti překlepu v roce.
+ */
 export const MIN_AGE = 6;
-export const MAX_AGE = 18;
+export const MAX_AGE = 100;
+
+/** Pásmo, na které se počítají čísla brány. Neomezuje registraci. */
+export const TARGET_MIN_AGE = 10;
+export const TARGET_MAX_AGE = 15;
 
 /** Věk souhlasu podle § 7 zák. č. 110/2019 Sb. */
 export const DIGITAL_CONSENT_AGE = 15;
@@ -121,7 +134,7 @@ export const birthDateSchema = z
   .refine((value) => {
     const age = ageOn(value);
     return age >= MIN_AGE && age <= MAX_AGE;
-  }, `Učebna je pro děti od ${MIN_AGE} do ${MAX_AGE} let`);
+  }, `Zadejte datum narození. Učebna je od ${MIN_AGE} let výš.`);
 
 export const avatarSchema = z
   .string()

@@ -21,13 +21,38 @@
 --
 -- „Zvenčí" znamená bez lektora. Účty z tábora sem nepatří — táborový režim
 -- žádné rodiče nezakládá, takže je stačí odlišit podle zdroje.
+--
+-- Registrace není věkově omezená (strop by jen odmítal staršího sourozence
+-- nebo učitele), takže se cílová skupina 10–15 let počítá až tady. Jde to
+-- přesně, protože se od migrace 006 ukládá celé datum narození.
 
 select
-  count(*) filter (where onboarding_completed_at is not null) as registrovani,
-  count(*) filter (where onboarding_completed_at is null)     as nedokoncene,
-  count(*) filter (where utm_source is not null)              as z_kampane,
-  count(*) filter (where utm_source is null)                  as prima_navsteva
-from public.parents;
+  count(*) filter (where p.onboarding_completed_at is not null) as registrovani,
+  count(*) filter (where p.onboarding_completed_at is null)     as nedokoncene,
+  count(*) filter (where p.utm_source is not null)              as z_kampane,
+  count(*) filter (where p.utm_source is null)                  as prima_navsteva
+from public.parents p;
+
+
+-- ── 1b. Registrovaní v cílové skupině ─────────────────────────────────────
+-- Tohle je číslo pro bránu. Účet se počítá tehdy, když má aspoň jeden
+-- profil ve věku 10–15 let.
+
+with vek as (
+  select
+    c.parent_id,
+    extract(year from age(current_date, c.birth_date))::int as let
+  from public.children c
+  where c.archived_at is null
+)
+select
+  count(distinct p.id)                                          as vsech_uctu,
+  count(distinct p.id) filter (where v.let between 10 and 15)   as v_cilove_skupine,
+  count(distinct p.id) filter (where v.let < 10)                as mladsi,
+  count(distinct p.id) filter (where v.let > 15)                as starsi
+from public.parents p
+join vek v on v.parent_id = p.id
+where p.onboarding_completed_at is not null;
 
 
 -- ── 2. Hlavní metrika brány: dokončení první lekce ────────────────────────

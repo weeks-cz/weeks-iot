@@ -176,9 +176,20 @@ describe("birthDateSchema", () => {
     }
   });
 
-  it("odmítne příliš staré i příliš mladé", () => {
-    expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: "1990-01-01" })).success).toBe(false);
+  it("pustí i dospělého — horní strop registraci neomezuje", () => {
+    // Cílová skupina je 10–15 let, ale to je věc měření, ne přístupu.
+    const r = onboardingSchema.safeParse(
+      validOnboarding({ childBirthDate: "1990-01-01", parentalConsent: false, selfConsent: true }),
+    );
+    expect(r.success).toBe(true);
+  });
+
+  it("odmítne příliš mladé dítě", () => {
     expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: "2025-01-01" })).success).toBe(false);
+  });
+
+  it("odmítne nesmyslný rok jako překlep", () => {
+    expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: "1890-01-01" })).success).toBe(false);
   });
 
   it("rozsah pro pole odpovídá povolenému věku", () => {
