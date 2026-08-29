@@ -33,12 +33,19 @@ describe("kroky zapojení", () => {
        v seznamu se nic nestalo a nemělo jak poznat, že je na dobré cestě. */
     const steps = wiringSteps(lessonSeedCircuit(lesson1), lesson1.wiring);
     const viaResistor = steps.filter(
-      (s) => s.kind === "connect" && s.instruction.includes("Rezistor"),
+      (s) => s.kind === "connect" && s.instruction.toLowerCase().includes("rezistor"),
     );
 
     expect(viaResistor.length).toBe(2);
     expect(viaResistor[0]?.instruction).toContain("pin 8");
-    expect(viaResistor[1]?.instruction).toContain("delší nožička");
+    expect(viaResistor[1]?.instruction).toContain("LED");
+    /* Celá věta patří do detailu, ne do instrukce. */
+    expect(viaResistor[1]?.detail).toContain("delší nožička");
+    /* Jeden řádek, ne souvětí — instrukce se čte koutkem oka uprostřed
+       práce. */
+    for (const step of viaResistor) {
+      expect(step.instruction.length).toBeLessThan(70);
+    }
   });
 
   it("první drátek k rezistoru odškrtne první půlku spoje", () => {
@@ -62,7 +69,7 @@ describe("kroky zapojení", () => {
 
     const steps = wiringSteps(halfway, lesson1.wiring);
     const viaResistor = steps.filter(
-      (s) => s.kind === "connect" && s.instruction.includes("Rezistor"),
+      (s) => s.kind === "connect" && s.instruction.toLowerCase().includes("rezistor"),
     );
 
     expect(viaResistor[0]?.done).toBe(true);
@@ -147,6 +154,8 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))("lekce %s", (_slu
          v deseti letech nic neříká, „delší nožička" ano. */
       expect(step.instruction).not.toContain("anode");
       expect(step.instruction).not.toContain("cathode");
+      /* Jeden řádek, ne souvětí — čte se koutkem oka uprostřed práce. */
+      expect(step.instruction.length).toBeLessThan(48);
     }
   });
 });
@@ -170,7 +179,7 @@ describe("průvodce nevede do pasti", () => {
     };
 
     const second = wiringSteps(halfway, lesson1.wiring).filter(
-      (s) => s.kind === "connect" && s.instruction.includes("druhou nožičku"),
+      (s) => s.kind === "connect" && s.detail?.includes("DRUHÉ nožičky"),
     )[0];
 
     const resistorPins = second!.pins.filter((p) => p.compId === "r");

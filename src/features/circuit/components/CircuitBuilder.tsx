@@ -136,21 +136,6 @@ export function CircuitBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, readOnly, highlightKey]);
 
-  /* Escape zavírá plochu na celé obrazovce. Až v druhé řadě — sama plocha
-     si ho bere na rušení rozdělaného drátku a na odložení součástky. */
-  useEffect(() => {
-    if (!expanded) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (state.wireFrom || state.armed) return;
-      setExpanded(false);
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [expanded, state.wireFrom, state.armed]);
-
   /* Po zvětšení i zmenšení se výřez srovná — jinak obvod zůstane někde
      v rohu úplně jinak velké plochy. */
   useEffect(() => {
@@ -234,6 +219,7 @@ export function CircuitBuilder({
               flagged={new Set(flagged ?? [])}
               highlightPins={highlightPins}
               showPins={showPins}
+              onEscape={expanded ? () => setExpanded(false) : undefined}
               readOnly={readOnly}
             />
           ) : (

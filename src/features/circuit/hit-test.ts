@@ -16,8 +16,14 @@ import type { Circuit, ComponentType, PinRef } from "./types";
  * Tak se to počítá.
  */
 
-/** Jak daleko od pinu se ještě chytá. V souřadnicích plochy. */
-const SNAP_RADIUS = 2.5 * PITCH;
+/**
+ * Jak daleko od pinu se ještě chytá. V souřadnicích plochy.
+ *
+ * Půldruhé rozteče. Víc vypadá vstřícně, ale u LED, která je široká čtyři
+ * rozteče, pak kolem pinů není kde kliknout na tělo — a součástka nejde
+ * vybrat, takže ani smazat. Menší nejde: prst má osm milimetrů.
+ */
+const SNAP_RADIUS = 1.5 * PITCH;
 
 export interface PinHit {
   pin: PinRef;

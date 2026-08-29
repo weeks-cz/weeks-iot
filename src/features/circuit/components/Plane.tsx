@@ -20,6 +20,15 @@ interface Props {
   highlightPins?: PinRef[];
   /** Ukázat tečky pinů i bez najetí myší. */
   showPins?: boolean;
+  /**
+   * Zavření plochy na celé obrazovce.
+   *
+   * Escape má jeden význam: „zpátky o krok". Nejdřív odloží rozdělaný
+   * drátek nebo nachystanou součástku, a teprve když není co odkládat,
+   * zavře plochu. Když si to hlídaly dvě komponenty zvlášť, udělal jeden
+   * stisk obojí naráz.
+   */
+  onEscape?: () => void;
   readOnly?: boolean;
 }
 
@@ -37,7 +46,16 @@ interface Props {
  * samovolně vyráběly dráty. Proto se u každého gesta měří, o kolik se
  * ukazatel pohnul, a co je tah, to není klik.
  */
-export function Plane({ state, dispatch, live, flagged, highlightPins, showPins, readOnly }: Props) {
+export function Plane({
+  state,
+  dispatch,
+  live,
+  flagged,
+  highlightPins,
+  showPins,
+  onEscape,
+  readOnly,
+}: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const planeRef = useRef<HTMLDivElement>(null);
 
@@ -77,7 +95,8 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
       if (e.key === "Escape") {
         if (state.wireFrom) dispatch({ type: "CANCEL_WIRE" });
         else if (state.armed) dispatch({ type: "ARM", kind: null });
-        else dispatch({ type: "SELECT", target: null });
+        else if (state.selection) dispatch({ type: "SELECT", target: null });
+        else onEscape?.();
         return;
       }
 
@@ -97,7 +116,7 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state.wireFrom, state.armed, state.selection, dispatch, readOnly]);
+  }, [state.wireFrom, state.armed, state.selection, dispatch, onEscape, readOnly]);
 
   const planePoint = useCallback(
     (clientX: number, clientY: number) => {

@@ -1,7 +1,12 @@
-import { getComponentSpec, pinLabel } from "@/features/circuit/components";
+import { getComponentSpec, pinLabel, pinShort } from "@/features/circuit/components";
 import { pinKey, resolveNets } from "@/features/circuit/nets";
 import { findPath } from "@/features/circuit/paths";
-import { checkWiring, type ConnectionSpec, type WiringSpec } from "@/features/circuit/wiring-check";
+import {
+  checkWiring,
+  type ConnectionSpec,
+  type PartSpec,
+  type WiringSpec,
+} from "@/features/circuit/wiring-check";
 import type { Circuit, ComponentType, PinRef } from "@/features/circuit/types";
 
 /**
@@ -97,14 +102,20 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
     if (type === "arduino-uno" || type === "breadboard-half") continue;
 
     const have = present.get(type) ?? 0;
-    const label = getComponentSpec(type).label;
+    /* Název z lekce, ne z registru: autor lekce píše „červená LED", registr
+       „LED červená". A za dvojtečkou stojí první pád, takže odpadá i
+       skloňování, které by se jinak muselo řešit u každé součástky. */
+    const label = spec.parts.find((p) => p.type === type)?.label ?? getComponentSpec(type).label;
 
     for (let i = 0; i < needed; i++) {
       steps.push({
         kind: "place",
+        /* Krátká věta v rozkazovacím způsobu. Instrukce se čte koutkem oka
+           uprostřed práce, takže se musí vejít na jeden řádek — dvouřádkový
+           nadpis plný šipek a závorek dítě přeskočí. */
         instruction:
           needed > 1
-            ? `Polož na desku ${label} (${i + 1}. z ${needed})`
+            ? `Polož na desku: ${label} (${i + 1}. ze ${needed})`
             : `Polož na desku: ${label}`,
         detail: getComponentSpec(type).intro?.what,
         place: type,
@@ -119,6 +130,14 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
   const wiring = checkWiring(circuit, spec);
   const nets = resolveNets(circuit);
 
+  /* Role, které v zadání nefigurují jako konec žádného spoje. Jsou to
+     mezičlánky (rezistory) a jejich název se hodí do instrukce. */
+  const endpoints = new Set<string>();
+  for (const conn of spec.connections) {
+    endpoints.add(conn.from.role);
+    endpoints.add(conn.to.role);
+  }
+
   for (const conn of spec.connections) {
     const fromId = wiring.roles?.[conn.from.role];
     const toId = wiring.roles?.[conn.to.role];
@@ -127,8 +146,11 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
     const toPart = spec.parts.find((p) => p.role === conn.to.role);
     if (!fromPart || !toPart) continue;
 
-    const fromWhat = `${fromPart.label} — ${pinLabel(fromPart.type, conn.from.pin)}`;
-    const toWhat = `${toPart.label} — ${pinLabel(toPart.type, conn.to.pin)}`;
+    /* „Arduino — pin 8" je pro dítě dvakrát totéž; stačí „pin 8".
+       U součástky naopak samotné „delší nožička" nestačí — musí se vědět
+       čí. Proto se název píše jen tam, kde nese informaci. */
+    const fromWhat = describe(fromPart, conn.from.pin);
+    const toWhat = describe(toPart, conn.to.pin);
 
     const fromPin: PinRef | null = fromId ? { compId: fromId, pinName: conn.from.pin } : null;
     const toPin: PinRef | null = toId ? { compId: toId, pinName: conn.to.pin } : null;
@@ -140,7 +162,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
     if (via.length === 0) {
       steps.push({
         kind: "connect",
-        instruction: `Spoj ${fromWhat} → ${toWhat}`,
+        instruction: `${fromWhat} → ${toWhat}`,
         detail: conn.hint,
         pins: [fromPin, toPin].filter((p): p is PinRef => p !== null),
         done: satisfied,
@@ -153,7 +175,9 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
        nemělo jak poznat, že je na dobré cestě. Tak se to rozpadne na
        dva kroky, každý za jeden drátek. */
     const viaType = via[0]!;
-    const viaLabel = getComponentSpec(viaType).label;
+    const viaLabel =
+      spec.parts.find((p) => p.type === viaType && !endpoints.has(p.role))?.label ??
+      getComponentSpec(viaType).label;
     const viaComp = fromPin ? pickBridge(circuit, viaType, fromPin, nets) : null;
     const viaPins = viaComp
       ? getComponentSpec(viaType).pins.map((pin) => ({ compId: viaComp, pinName: pin.name }))
@@ -172,8 +196,10 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
 
     steps.push({
       kind: "connect",
-      instruction: `Spoj ${fromWhat} → ${viaLabel}, jednu jeho nožičku`,
-      detail: "Je jedno kterou z nich — na tom, kterou stranou je otočený, nezáleží.",
+      instruction: `${fromWhat} → ${viaLabel}`,
+      detail:
+        `Veď drátek z ${longHint(fromPart, conn.from.pin)} na kteroukoli nožičku. ` +
+        "Na tom, kterou stranou součástka leží, nezáleží.",
       pins: [...(fromPin ? [fromPin] : []), ...viaPins],
       done: firstDone,
     });
@@ -205,8 +231,8 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
 
     steps.push({
       kind: "connect",
-      instruction: `Spoj druhou nožičku (${viaLabel}) → ${toWhat}`,
-      detail: conn.hint,
+      instruction: `${viaLabel} → ${toWhat}`,
+      detail: `Z DRUHÉ nožičky veď drátek na ${longHint(toPart, conn.to.pin)}. ${conn.hint}`,
       pins: [...(freePins.length > 0 ? freePins : viaPins), ...(toPin ? [toPin] : [])],
       done: satisfied,
       warning: shorted
@@ -217,6 +243,28 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
   }
 
   return steps;
+}
+
+/**
+ * Jak se o pinu mluví v krátké instrukci.
+ *
+ * U Arduina samotné jméno pinu stačí — „pin 8 na Arduinu" je dvakrát
+ * totéž, protože jiná deska na ploše není. U součástky se název musí
+ * říct, jinak „+" nedává smysl.
+ *
+ * Čeština se tomu brání: každá vazba by chtěla jiný pád. Proto to není
+ * věta, ale fráze v prvním pádu — ta jde vedle šipky použít vždycky.
+ */
+function describe(part: PartSpec, pin: string): string {
+  const short = pinShort(part.type, pin);
+  if (part.type === "arduino-uno") return short;
+  if (short === part.label) return part.label;
+  return `${part.label} ${short}`;
+}
+
+/** Celá věta pod instrukci — tam už na skloňování místo je. */
+function longHint(part: PartSpec, pin: string): string {
+  return `${pinLabel(part.type, pin)} na součástce „${part.label}"`;
 }
 
 /**

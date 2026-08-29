@@ -58,7 +58,15 @@ export function snapToGrid(value: number): number {
 
 export function builderReducer(state: BuilderState, action: BuilderAction): BuilderState {
   switch (action.type) {
-    case "PLACE":
+    case "PLACE": {
+      /* Dvě stejné součástky na totéž místo se nepokládají. Překrývají se
+         přesně, takže to vypadá jako jedna — dítě klepne, nevidí změnu,
+         klepne znovu a má v obvodu neviditelný nepořádek. */
+      const occupied = state.circuit.comps.some(
+        (c) => c.type === action.comp.type && c.x === action.comp.x && c.y === action.comp.y,
+      );
+      if (occupied) return { ...state, armed: null };
+
       return {
         ...state,
         circuit: { ...state.circuit, comps: [...state.circuit.comps, action.comp] },
@@ -68,6 +76,7 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         armed: null,
         selection: { kind: "component", id: action.comp.id },
       };
+    }
 
     case "MOVE":
       return {

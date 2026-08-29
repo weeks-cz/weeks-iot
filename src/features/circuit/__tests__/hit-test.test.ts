@@ -239,3 +239,61 @@ describe("náhled pozná, jestli se součástka zapíchne", () => {
     expect(wouldPlugIn(empty, "led-red", { x: 0, y: 0 })).toBe(false);
   });
 });
+
+describe("pokládání součástek", () => {
+  it("dvě stejné na totéž místo se nepoloží", async () => {
+    const { builderReducer, initBuilderState } = await import("../components/state");
+
+    /* Překrývaly by se přesně, takže by to vypadalo jako jedna — dítě
+       klepne, nevidí změnu, klepne znovu a má neviditelný nepořádek. */
+    const start = initBuilderState({ comps: [], wires: [] });
+    const comp = { id: "a", type: "led-red" as const, x: 64, y: 64, rotation: 0 as const };
+
+    const once = builderReducer(start, { type: "PLACE", comp });
+    const twice = builderReducer(once, { type: "PLACE", comp: { ...comp, id: "b" } });
+
+    expect(twice.circuit.comps).toHaveLength(1);
+  });
+
+  it("stejná součástka jinam se položí normálně", async () => {
+    const { builderReducer, initBuilderState } = await import("../components/state");
+
+    const start = initBuilderState({ comps: [], wires: [] });
+    const comp = { id: "a", type: "led-red" as const, x: 64, y: 64, rotation: 0 as const };
+
+    const once = builderReducer(start, { type: "PLACE", comp });
+    const twice = builderReducer(once, {
+      type: "PLACE",
+      comp: { ...comp, id: "b", x: 128 },
+    });
+
+    expect(twice.circuit.comps).toHaveLength(2);
+  });
+});
+
+describe("výběr součástky vedle pinů", () => {
+  it("klik na tělo LED míří na součástku, ne na nožičku", () => {
+    /* Nožičky LED jsou dole (dy=5). Vršek těla musí zůstat volný, jinak
+       se součástka nedá vybrat — a tedy ani smazat. */
+    const led: Circuit = {
+      comps: [{ id: "led", type: "led-red", x: 0, y: 0, rotation: 0 }],
+      wires: [],
+    };
+
+    const telo = { x: 2 * PITCH, y: 1 * PITCH };
+    expect(pinAt(led, telo)).toBeNull();
+    expect(componentAt(led, telo)).toBe("led");
+  });
+
+  it("nožička se pořád chytá i s rezervou na netrefení", () => {
+    const led: Circuit = {
+      comps: [{ id: "led", type: "led-red", x: 0, y: 0, rotation: 0 }],
+      wires: [],
+    };
+
+    /* Šest pixelů vedle a osm nad — pořád jednoznačně blíž k anodě než
+       ke katodě, která je o celou rozteč vpravo. */
+    const vedleAnody = { x: 2 * PITCH - 6, y: 5 * PITCH - 8 };
+    expect(pinAt(led, vedleAnody)?.pin.pinName).toBe("anode");
+  });
+});

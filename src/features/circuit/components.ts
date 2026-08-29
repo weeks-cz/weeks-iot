@@ -54,6 +54,45 @@ export function pinLabel(type: ComponentType, pinName: string): string {
   return pinName;
 }
 
+/**
+ * Jméno pinu do krátké instrukce.
+ *
+ * „delší nožička (+)" je dobrý popis, ale v instrukci z toho vznikne
+ * souvětí, které se láme na dva řádky. Uprostřed práce se čte jen krátká
+ * fráze, takže tahle varianta jde na dřeň: „+", „pin 8", „GND".
+ */
+export function pinShort(type: ComponentType, pinName: string): string {
+  const short = PIN_SHORT[type]?.[pinName];
+  if (short) return short;
+
+  if (type === "arduino-uno") {
+    if (/^D\d+$/.test(pinName)) return `pin ${pinName.slice(1)}`;
+    if (/^A\d$/.test(pinName)) return pinName;
+    if (pinName.startsWith("GND")) return "GND";
+    return pinName;
+  }
+
+  if (type === "breadboard-half") {
+    const row = /^row-([A-J])-(\d+)$/.exec(pinName);
+    if (row) return `${row[1]}${row[2]}`;
+  }
+
+  return pinName;
+}
+
+const PIN_SHORT: Partial<Record<ComponentType, Record<string, string>>> = {
+  "led-red": { anode: "+", cathode: "−" },
+  "led-yellow": { anode: "+", cathode: "−" },
+  "led-green": { anode: "+", cathode: "−" },
+  "led-blue": { anode: "+", cathode: "−" },
+  "led-rgb": { r: "R", g: "G", b: "B", cathode: "−" },
+  "resistor-220": { a: "nožička", b: "nožička" },
+  "pushbutton": { "1a": "levá strana", "1b": "levá strana", "2a": "pravá strana", "2b": "pravá strana" },
+  "piezo-buzzer": { "+": "+", "-": "−" },
+  "potentiometer": { "terminal-a": "kraj", signal: "střed", "terminal-b": "druhý kraj" },
+  "photoresistor": { vcc: "VCC", gnd: "GND", dout: "DO", aout: "AO" },
+};
+
 const PIN_LABELS: Partial<Record<ComponentType, Record<string, string>>> = {
   "led-red": { anode: "delší nožička (+)", cathode: "kratší nožička (−)" },
   "led-yellow": { anode: "delší nožička (+)", cathode: "kratší nožička (−)" },
