@@ -29,6 +29,10 @@ interface Props {
   /** Přihlášený uživatel zeď nevidí — už ji jednou prošel. */
   isAuthenticated: boolean;
   nextLessonSlug: string | null;
+  /** Všechny publikované lekce kurzu, v pořadí. Pro course_complete. */
+  publishedSlugs: string[];
+  /** Co už má dokončené přihlášený uživatel. U anonyma prázdné. */
+  completedSlugs: string[];
 }
 
 export function LessonRunner({
@@ -38,6 +42,8 @@ export function LessonRunner({
   lessonOrder,
   isAuthenticated,
   nextLessonSlug,
+  publishedSlugs,
+  completedSlugs,
 }: Props) {
   const [completed, setCompleted] = useState(false);
   const wallRef = useRef<HTMLDivElement>(null);
@@ -52,6 +58,16 @@ export function LessonRunner({
       order: lessonOrder,
       anonymous: !isAuthenticated,
     });
+
+    /* Start kurzu = start jeho první lekce. Samostatnou událost potřebuje
+       roční metrika dokončení kurzu, která má jiný jmenovatel než metrika
+       brány (ta měří jen lekci 1). */
+    if (lessonOrder === 1) {
+      void trackOnce(EVENT.COURSE_START, courseSlug, {
+        course: courseSlug,
+        anonymous: !isAuthenticated,
+      });
+    }
   }, [courseSlug, lessonSlug, lessonOrder, isAuthenticated]);
 
   /* Po dokončení se fokus přesune na zeď. Bez toho zůstane u tlačítka,
@@ -61,7 +77,8 @@ export function LessonRunner({
   }, [completed]);
 
   function handleComplete() {
-    markLessonCompleted(courseSlug, lessonSlug);
+    const session = markLessonCompleted(courseSlug, lessonSlug);
+
     void track(EVENT.LESSON_COMPLETE, {
       course: courseSlug,
       lesson: lessonSlug,
@@ -69,6 +86,25 @@ export function LessonRunner({
       anonymous: !isAuthenticated,
     });
     setCompleted(true);
+
+    /* Dokončení kurzu = dokončená poslední publikovaná lekce, ale jen když
+       jsou hotové i všechny předchozí. Odvozovat ho z „nemám kam dál" by
+       bylo špatně: kdo přeskočí na poslední lekci, kurz nedokončil.
+
+       Skládá se ze dvou zdrojů, protože každý zná jen půlku — anonymní
+       relace to, co se stalo v prohlížeči, a server to, co je v účtu. */
+    const doneInSession = session.lessons
+      .filter((l) => l.courseSlug === courseSlug && l.completedAt)
+      .map((l) => l.lessonSlug);
+    const allDone = new Set([...completedSlugs, ...doneInSession, lessonSlug]);
+
+    if (publishedSlugs.length > 0 && publishedSlugs.every((s) => allDone.has(s))) {
+      void trackOnce(EVENT.COURSE_COMPLETE, courseSlug, {
+        course: courseSlug,
+        lessons: publishedSlugs.length,
+        anonymous: !isAuthenticated,
+      });
+    }
 
     if (!isAuthenticated) {
       void track(EVENT.SIGNUP_PROMPT_VIEW, { after_lesson: lessonSlug, order: lessonOrder });
@@ -110,7 +146,19 @@ export function LessonRunner({
             </p>
 
             <div className="flex flex-wrap items-center gap-4">
-              <ButtonLink href="/registrace" size="lg">
+              <ButtonLink
+                href="/registrace"
+                size="lg"
+                /* Kolik lidí ze zdi opravdu vyrazí k registraci. Rozdíl
+                   proti signup_prompt_view je ta jediná věc, která říká,
+                   jestli je špatně text zdi, nebo až samotný formulář. */
+                onClick={() => {
+                  void track(EVENT.SIGNUP_START, {
+                    after_lesson: lessonSlug,
+                    order: lessonOrder,
+                  });
+                }}
+              >
                 Uložit můj postup
               </ButtonLink>
               <button

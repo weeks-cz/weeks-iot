@@ -99,6 +99,13 @@ export function captureAttribution(url: URL, referrer: string): AnonSession {
     if (value) attribution[key as keyof typeof utm] = value.slice(0, 200);
   }
 
+  /* Identifikátory kliku z reklamy. Ukládají se spolu s UTM, protože
+     platí pro tutéž návštěvu a serverová konverze je potřebuje. */
+  const fbclid = p.get("fbclid");
+  if (fbclid) attribution.fbclid = fbclid.slice(0, 255);
+  const gclid = p.get("gclid");
+  if (gclid) attribution.gclid = gclid.slice(0, 255);
+
   /* Odkazující stránku bereme jen zvenčí — vlastní navigace není zdroj. */
   if (referrer && !referrer.startsWith(url.origin)) {
     attribution.referrer = referrer.slice(0, 500);

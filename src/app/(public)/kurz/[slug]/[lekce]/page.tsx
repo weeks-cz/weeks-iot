@@ -5,6 +5,34 @@ import { MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
 import { SITE } from "@/lib/site";
 import { LessonRunner } from "@/features/progress/components/LessonRunner";
+import { cookies } from "next/headers";
+import { ACTIVE_CHILD_COOKIE } from "@/features/children/constants";
+
+/**
+ * Slugy lekcí, které má aktivní profil hotové.
+ *
+ * Cookie s profilem je jen volba, ne oprávnění — RLS pustí jen postup dětí
+ * přihlášeného účtu, takže podvržené id nic nevrátí.
+ */
+async function completedLessonSlugs(publishedIds: string[]): Promise<string[]> {
+  if (publishedIds.length === 0) return [];
+
+  const cookieStore = await cookies();
+  const childId = cookieStore.get(ACTIVE_CHILD_COOKIE)?.value;
+  if (!childId) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("progress")
+    .select("lesson_id, lessons(slug)")
+    .eq("child_id", childId)
+    .eq("status", "completed")
+    .in("lesson_id", publishedIds);
+
+  return (data ?? [])
+    .map((r) => (r as unknown as { lessons?: { slug?: string } }).lessons?.slug)
+    .filter((s): s is string => Boolean(s));
+}
 
 interface Params {
   slug: string;
@@ -40,6 +68,8 @@ async function loadLesson(courseSlug: string, lessonSlug: string) {
     lesson,
     nextLessonSlug: published[index + 1]?.slug ?? null,
     total: published.length,
+    publishedSlugs: published.map((l) => l.slug),
+    publishedIds: published.map((l) => l.id),
   };
 }
 
@@ -82,6 +112,11 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
 
+  /* Co má aktivní profil dokončené. Potřebuje to `course_complete` —
+     bez toho by se odvozovalo z „nemám kam dál", což by kurz označilo
+     za dokončený i tomu, kdo skočil rovnou na poslední lekci. */
+  const completedSlugs = auth.user ? await completedLessonSlugs(data.publishedIds) : [];
+
   return (
     <main className="section-container py-10">
       <nav aria-label="Drobečková navigace" className="mb-6">
@@ -114,6 +149,8 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
           lessonOrder={data.lesson.order_index}
           isAuthenticated={Boolean(auth.user)}
           nextLessonSlug={data.nextLessonSlug}
+          publishedSlugs={data.publishedSlugs}
+          completedSlugs={completedSlugs}
         />
       </div>
     </main>

@@ -12,7 +12,7 @@
  */
 
 /** Vyžadují přihlášení. */
-const PROTECTED_PREFIXES = ["/ucet", "/ucim-se"] as const;
+const PROTECTED_PREFIXES = ["/ucet", "/ucim-se", "/admin"] as const;
 
 /**
  * Nedávají smysl přihlášenému.

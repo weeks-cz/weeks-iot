@@ -19,7 +19,7 @@ describe("normalizePath", () => {
 
 describe("requiresAuth", () => {
   it("chrání rodičovskou a dětskou zónu", () => {
-    for (const p of ["/ucet", "/ucet/", "/ucet/deti", "/ucet/souhlasy/", "/ucim-se", "/ucim-se/prepnout/"]) {
+    for (const p of ["/ucet", "/ucet/", "/ucet/deti", "/ucet/souhlasy/", "/ucim-se", "/ucim-se/prepnout/", "/admin/metriky/"]) {
       expect(requiresAuth(p), p).toBe(true);
     }
   });
@@ -107,6 +107,7 @@ describe("decideAccess — celý graf přechodů", () => {
     const paths = [
       "/", "/kurz/iot/", "/prihlaseni/", "/registrace/", "/registrace/onboarding/",
       "/obnova-hesla/", "/obnova-hesla/nove/", "/ucet/", "/ucet/deti/", "/ucim-se/", "/tabor/",
+      "/admin/metriky/",
     ];
 
     for (const path of paths) {

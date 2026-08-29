@@ -37,6 +37,12 @@ export const attributionSchema = z.object({
   utmTerm: shortText.optional(),
   referrer: z.string().trim().max(500).optional(),
   landingPath: z.string().trim().max(500).optional(),
+  /* Identifikátor kliku z reklamy na Meta. Při PRVNÍ návštěvě ještě
+     neexistuje cookie _fbc — Pixel ji teprve vytvoří — takže bez tohohle
+     by se nejcennější párování ztratilo. */
+  fbclid: z.string().trim().max(255).optional(),
+  /* Totéž pro Google Ads. */
+  gclid: z.string().trim().max(255).optional(),
 });
 
 export type Attribution = z.infer<typeof attributionSchema>;
