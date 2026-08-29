@@ -45,6 +45,8 @@ interface Props {
   flagged?: boolean;
   /** Piny, na které se dítě má právě teď trefit. Průvodce je pulzuje. */
   highlightPins?: string[];
+  /** Pin, který se chytne, kdyby dítě teď kleplo. Ukazuje se dopředu. */
+  nearestPin?: string | null;
   /** Ukázat tečky pinů i bez najetí myší. */
   showPins?: boolean;
   readOnly?: boolean;
@@ -62,6 +64,7 @@ export function PlacedComponent({
   pressed,
   flagged,
   highlightPins,
+  nearestPin,
   showPins,
   readOnly,
   zoom,
@@ -177,12 +180,13 @@ export function PlacedComponent({
         {spec.pins.map((pin) => {
           const isStart = wireFrom?.compId === comp.id && wireFrom.pinName === pin.name;
           const isTarget = highlighted.has(pin.name);
+          const isNearest = nearestPin === pin.name;
 
           /* Velikost se přepočítává zpátky přes scale, aby tečka měla na
              obrazovce pořád stejný průměr bez ohledu na to, jak moc je
              součástka roztažená. Zvýrazněná je znatelně větší — je to
              jediné, co dítěti říká „klepni sem". */
-          const dot = isStart || isTarget ? 16 : 8;
+          const dot = isStart || isTarget || isNearest ? 16 : 8;
           const size = dot / spec.scale;
 
           return (
@@ -220,11 +224,13 @@ export function PlacedComponent({
                     ? "bg-primary-500 ring-2 ring-white"
                     : isTarget
                       ? "animate-pulse bg-cta-500 ring-2 ring-cta-200"
-                      : pinsVisible
-                      ? "bg-cta-400 ring-1 ring-cta-200"
-                      : crowded
-                        ? "bg-cta-400 opacity-0"
-                        : "bg-cta-400 opacity-0 ring-1 ring-cta-200 group-hover:opacity-100"
+                      : isNearest
+                        ? "bg-primary-500 ring-2 ring-primary-200"
+                        : pinsVisible
+                        ? "bg-cta-400 ring-1 ring-cta-200"
+                        : crowded
+                          ? "bg-cta-400 opacity-0"
+                          : "bg-cta-400 opacity-0 ring-1 ring-cta-200 group-hover:opacity-100"
                 }`}
                 style={{
                   width: size,

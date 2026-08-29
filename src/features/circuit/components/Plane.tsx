@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PlacedComponent } from "./PlacedComponent";
 import { WireLayer } from "./WireLayer";
+import { getComponentSpec } from "../components";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
-import { snapToGrid, type BuilderAction, type BuilderState } from "./state";
 import { componentAt, pinAt } from "../hit-test";
+import { snapToGrid, type BuilderAction, type BuilderState } from "./state";
 import type { ComponentType, PinRef } from "../types";
 
 interface Props {
@@ -28,11 +29,25 @@ interface Props {
  * Plocha je velká 4000 × 4000 a posouvá se pod výřezem. Díky tomu se dá
  * odjet stranou a nic se „neztratí za okrajem" — pro dítě, které si zrovna
  * rozházelo součástky, je to důležitější než přesné hranice.
+ *
+ * ── Tah není kliknutí ──────────────────────────────────────────────────────
+ * Prohlížeč po každém tahu pošle ještě `click`. Když dítě posunulo LED po
+ * breadboardu, ten click dobublal sem, plocha ho vzala jako klepnutí na
+ * nejbližší pin a začala kreslit drátek — takže se posouváním součástek
+ * samovolně vyráběly dráty. Proto se u každého gesta měří, o kolik se
+ * ukazatel pohnul, a co je tah, to není klik.
  */
 export function Plane({ state, dispatch, live, flagged, highlightPins, showPins, readOnly }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const planeRef = useRef<HTMLDivElement>(null);
-  const pan = useRef({ active: false, startX: 0, startY: 0, panX: 0, panY: 0 });
+
+  /** Odkud gesto začalo a jestli už překročilo práh tahu. */
+  const gesture = useRef({ x: 0, y: 0, dragged: false, panning: false, panX: 0, panY: 0 });
+  /** Kde je ukazatel — pro náhled nachystané součástky a zvýraznění pinu. */
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+
+  /** Nad kolik pixelů je to tah, ne klepnutí. Prst se vždycky trochu smýkne. */
+  const DRAG_THRESHOLD = 5;
 
   /* Kolečko zvětšuje. Musí se navěsit ručně s passive:false — React dává
      wheel listener pasivně a preventDefault by neprošel, takže by se
@@ -94,49 +109,57 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
     [state.zoom],
   );
 
-  /* Tah po prázdné ploše posouvá výřez. Pro dítě je to nejpřirozenější
-     gesto — a nekoliduje s ničím jiným, protože přetahovat se dají jen
-     součástky, a ty tah zachytí samy. */
-  const onPointerDown = useCallback(
+  /* Zachytává se v capture fázi, takže sem dorazí i gesta začatá na
+     součástce — ta si `pointerdown` zastavuje, aby jí plocha nepodjela
+     výřez, ale změřit ho potřebujeme tak jako tak. */
+  const onPointerDownCapture = useCallback(
     (e: React.PointerEvent) => {
-      if (e.target !== e.currentTarget && e.target !== planeRef.current) return;
+      const onEmpty = e.target === e.currentTarget || e.target === planeRef.current;
 
-      pan.current = {
-        active: true,
-        startX: e.clientX,
-        startY: e.clientY,
+      gesture.current = {
+        x: e.clientX,
+        y: e.clientY,
+        dragged: false,
+        /* Po prázdné ploše se posouvá výřez; nad součástkou ne — tam tah
+           patří té součástce. */
+        panning: onEmpty && !state.armed,
         panX: state.pan.x,
         panY: state.pan.y,
       };
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+      if (gesture.current.panning) {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      }
     },
-    [state.pan],
+    [state.armed, state.pan],
   );
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (pan.current.active) {
+      const g = gesture.current;
+      const moved = Math.hypot(e.clientX - g.x, e.clientY - g.y);
+      if (moved > DRAG_THRESHOLD) g.dragged = true;
+
+      if (g.panning && g.dragged) {
         dispatch({
           type: "SET_PAN",
-          pan: {
-            x: pan.current.panX + (e.clientX - pan.current.startX),
-            y: pan.current.panY + (e.clientY - pan.current.startY),
-          },
+          pan: { x: g.panX + (e.clientX - g.x), y: g.panY + (e.clientY - g.y) },
         });
         return;
       }
 
-      if (state.wireFrom) {
-        const pos = planePoint(e.clientX, e.clientY);
-        if (pos) dispatch({ type: "SET_CURSOR", pos });
-      }
+      const pos = planePoint(e.clientX, e.clientY);
+      if (!pos) return;
+
+      setHover(pos);
+      if (state.wireFrom) dispatch({ type: "SET_CURSOR", pos });
     },
     [dispatch, planePoint, state.wireFrom],
   );
 
-  const endPan = useCallback((e: React.PointerEvent) => {
-    if (!pan.current.active) return;
-    pan.current.active = false;
+  const endGesture = useCallback((e: React.PointerEvent) => {
+    if (!gesture.current.panning) return;
+    gesture.current.panning = false;
     const el = e.currentTarget as HTMLElement;
     if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
   }, []);
@@ -162,6 +185,13 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
   const onPlaneClick = useCallback(
     (e: React.MouseEvent) => {
       if (readOnly) return;
+
+      /* Konec tahu prohlížeč hlásí i jako kliknutí. Bez tohohle by
+         posouvání součástek po desce samo od sebe vyrábělo drátky. */
+      if (gesture.current.dragged) {
+        gesture.current.dragged = false;
+        return;
+      }
 
       const pos = planePoint(e.clientX, e.clientY);
       if (!pos) return;
@@ -203,17 +233,32 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
     [dispatch, onPinAction, planePoint, readOnly, state.armed, state.circuit, state.wireFrom],
   );
 
+  /* Pin pod ukazatelem. Zvýrazní se, takže je dopředu vidět, co se chytne —
+     bez toho je míření hádání, protože se chytá i pin, na který dítě
+     přesně neklepne. */
+  const nearest =
+    !readOnly && hover && !state.armed ? (pinAt(state.circuit, hover)?.pin ?? null) : null;
+
+  /* Náhled nachystané součástky. Tinkercad ukazuje, co se položí a kam,
+     ještě než se klepne — bez toho dítě kliká naslepo. */
+  const ghost = state.armed ? getComponentSpec(state.armed) : null;
+  const ghostAt = hover ? { x: snapToGrid(hover.x), y: snapToGrid(hover.y) } : null;
+  const GhostTag = ghost
+    ? (ghost.wokwiTag as unknown as React.FC<Record<string, unknown>>)
+    : null;
+
   return (
     <div
       ref={viewportRef}
       /* Ruka při tahu řeší CSS, ne stav. Ref se během renderu číst nesmí
          a překreslovat plochu kvůli tvaru kurzoru by bylo plýtvání. */
       className="absolute inset-0 touch-none overflow-hidden bg-paper-soft active:cursor-grabbing"
-      style={{ cursor: state.armed ? "copy" : undefined }}
-      onPointerDown={onPointerDown}
+      style={{ cursor: state.armed ? "copy" : state.wireFrom ? "crosshair" : undefined }}
+      onPointerDownCapture={onPointerDownCapture}
       onPointerMove={onPointerMove}
-      onPointerUp={endPan}
-      onPointerCancel={endPan}
+      onPointerUp={endGesture}
+      onPointerCancel={endGesture}
+      onPointerLeave={() => setHover(null)}
       onClick={onPlaneClick}
     >
       <div
@@ -246,11 +291,27 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
             highlightPins={(highlightPins ?? [])
               .filter((p) => p.compId === comp.id)
               .map((p) => p.pinName)}
+            nearestPin={nearest?.compId === comp.id ? nearest.pinName : null}
             showPins={showPins}
             readOnly={readOnly}
             zoom={state.zoom}
           />
         ))}
+
+        {GhostTag && ghost && ghostAt && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute opacity-50"
+            style={{
+              left: ghostAt.x,
+              top: ghostAt.y,
+              transform: `scale(${ghost.scale})`,
+              transformOrigin: "0 0",
+            }}
+          >
+            <GhostTag {...(ghost.wokwiAttrs ?? {})} />
+          </div>
+        )}
       </div>
     </div>
   );

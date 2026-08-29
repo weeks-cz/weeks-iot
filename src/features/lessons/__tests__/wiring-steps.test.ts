@@ -150,3 +150,30 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))("lekce %s", (_slu
     }
   });
 });
+
+describe("průvodce nevede do pasti", () => {
+  it("v druhém kroku zvýrazní jen nožičku, na které drát ještě není", () => {
+    /* Zvýrazňovat obě je past: dítě klepne na tu, která už drát má, oba
+       spoje skončí na jedné straně a rezistor je přemostěný. */
+    const seed = lessonSeedCircuit(lesson1);
+    const uno = seed.comps.find((c) => c.type === "arduino-uno")!;
+
+    const halfway: Circuit = {
+      comps: [
+        ...seed.comps,
+        { id: "led", type: "led-red", x: 400, y: 0, rotation: 0 },
+        { id: "r", type: "resistor-220", x: 200, y: 0, rotation: 0 },
+      ],
+      wires: [
+        { id: "w1", from: { compId: uno.id, pinName: "D8" }, to: { compId: "r", pinName: "a" } },
+      ],
+    };
+
+    const second = wiringSteps(halfway, lesson1.wiring).filter(
+      (s) => s.kind === "connect" && s.instruction.includes("druhou nožičku"),
+    )[0];
+
+    const resistorPins = second!.pins.filter((p) => p.compId === "r");
+    expect(resistorPins.map((p) => p.pinName)).toEqual(["b"]);
+  });
+});

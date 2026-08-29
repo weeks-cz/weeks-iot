@@ -188,11 +188,26 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
         pinKey(toPin.compId, toPin.pinName),
       ));
 
+    /* V druhém kroku se zvýrazní jen ta nožička, na které ještě drát
+       není. Zvýrazňovat obě je past: dítě klepne na tu, která už drát má,
+       oba spoje skončí na jedné straně a rezistor je přemostěný. Udělal
+       jsem tu chybu při zkoušení sám. */
+    const freePins = viaComp
+      ? viaPins.filter(
+          (pin) =>
+            !fromPin ||
+            !nets.connected(
+              pinKey(pin.compId, pin.pinName),
+              pinKey(fromPin.compId, fromPin.pinName),
+            ),
+        )
+      : [];
+
     steps.push({
       kind: "connect",
       instruction: `Spoj druhou nožičku (${viaLabel}) → ${toWhat}`,
       detail: conn.hint,
-      pins: [...viaPins, ...(toPin ? [toPin] : [])],
+      pins: [...(freePins.length > 0 ? freePins : viaPins), ...(toPin ? [toPin] : [])],
       done: satisfied,
       warning: shorted
         ? "Oba drátky ti vedou na tutéž nožičku — proud tak součástku obejde, jako by " +

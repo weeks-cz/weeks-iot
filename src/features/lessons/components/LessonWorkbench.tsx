@@ -243,8 +243,11 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
             highlightPins={step2?.pins}
             showPins
             /* Vyšší než jinde: v tomhle kroku se do plochy míří prstem
-               a čím větší je, tím větší jsou rozestupy mezi nožičkami. */
-            height={520}
+               a čím větší je, tím větší jsou rozestupy mezi nožičkami.
+               Kdo chce ještě víc místa, roztáhne si ji přes celou
+               obrazovku — návod pojede s ním. */
+            height={560}
+            toolbar={<CurrentStep steps={steps} current={step2} />}
             onReset={() => {
               setCircuit(seed);
               setWiringChecked(false);
