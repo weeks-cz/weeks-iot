@@ -23,7 +23,16 @@ import { promisify } from "node:util";
  * grant, takže ověření nemůže proběhnout v prohlížeči ani omylem.
  */
 
-const scryptAsync = promisify(scrypt);
+/* promisify(scrypt) se naváže na tříargumentový overload a čtvrtý parametr
+   s parametry KDF zahodí. Bez explicitního typu by se options tiše
+   ignorovaly a hashovalo by se s výchozím N=16384... shodou okolností
+   stejným, ale na to se spoléhat nedá. */
+const scryptAsync = promisify(scrypt) as (
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  options: { N: number; r: number; p: number; maxmem: number },
+) => Promise<Buffer>;
 
 const KEY_LENGTH = 32;
 const SALT_LENGTH = 16;
@@ -65,7 +74,7 @@ export async function hashPin(pin: string): Promise<string> {
   }
 
   const salt = randomBytes(SALT_LENGTH);
-  const key = (await scryptAsync(pin, salt, KEY_LENGTH, SCRYPT_PARAMS)) as Buffer;
+  const key = await scryptAsync(pin, salt, KEY_LENGTH, SCRYPT_PARAMS);
   return `scrypt$${salt.toString("hex")}$${key.toString("hex")}`;
 }
 
@@ -94,7 +103,7 @@ export async function verifyPin(pin: string, stored: string | null): Promise<boo
     const expected = Buffer.from(keyHex, "hex");
     if (salt.length !== SALT_LENGTH || expected.length !== KEY_LENGTH) return false;
 
-    const actual = (await scryptAsync(pin, salt, KEY_LENGTH, SCRYPT_PARAMS)) as Buffer;
+    const actual = await scryptAsync(pin, salt, KEY_LENGTH, SCRYPT_PARAMS);
     return timingSafeEqual(actual, expected);
   } catch {
     return false;

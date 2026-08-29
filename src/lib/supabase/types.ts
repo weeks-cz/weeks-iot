@@ -13,14 +13,14 @@ export type ProgressStatus = "started" | "completed";
 export type ProjectKind = "circuit" | "model" | "code";
 export type Plan = "free" | "premium";
 
-export interface RegionRow {
+export type RegionRow = {
   code: string;
   name: string;
   is_camp_catchment: boolean;
   sort_order: number;
 }
 
-export interface ParentRow {
+export type ParentRow = {
   id: string;
   email: string;
   region_code: string | null;
@@ -40,7 +40,7 @@ export interface ParentRow {
   updated_at: string;
 }
 
-export interface ConsentRow {
+export type ConsentRow = {
   id: number;
   parent_id: string;
   kind: ConsentKind;
@@ -53,7 +53,7 @@ export interface ConsentRow {
 }
 
 /** Bez PIN sloupců — klient je nemá v grantu a nikdy je nedostane. */
-export interface ChildRow {
+export type ChildRow = {
   id: string;
   parent_id: string;
   nick: string;
@@ -64,7 +64,7 @@ export interface ChildRow {
   updated_at: string;
 }
 
-export interface CourseRow {
+export type CourseRow = {
   id: string;
   slug: string;
   title: string;
@@ -75,7 +75,7 @@ export interface CourseRow {
   updated_at: string;
 }
 
-export interface LessonRow {
+export type LessonRow = {
   id: string;
   course_id: string;
   slug: string;
@@ -91,7 +91,7 @@ export interface LessonRow {
   updated_at: string;
 }
 
-export interface ProgressRow {
+export type ProgressRow = {
   id: number;
   child_id: string;
   lesson_id: string;
@@ -103,7 +103,7 @@ export interface ProgressRow {
   updated_at: string;
 }
 
-export interface ProjectRow {
+export type ProjectRow = {
   id: string;
   child_id: string;
   lesson_id: string | null;
@@ -115,7 +115,7 @@ export interface ProjectRow {
   updated_at: string;
 }
 
-export interface LearningEventRow {
+export type LearningEventRow = {
   id: number;
   parent_id: string | null;
   child_id: string | null;
@@ -125,7 +125,7 @@ export interface LearningEventRow {
   created_at: string;
 }
 
-export interface CityWaitlistRow {
+export type CityWaitlistRow = {
   id: number;
   parent_id: string | null;
   email: string | null;
@@ -134,6 +134,11 @@ export interface CityWaitlistRow {
   created_at: string;
 }
 
+/* POZOR: Row musí být `type`, ne `interface`. Interface nemá implicitní
+   index signature, takže by neprošel constraintem Record<string, unknown>
+   uvnitř GenericSchema — a celé Database["public"] by supabase-js vyhodnotil
+   jako `never`. Projeví se to jako "not assignable to parameter of type never"
+   u každého .insert(), což na skutečnou příčinu vůbec neukazuje. */
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -188,6 +193,11 @@ export interface Database {
       owns_child: {
         Args: { target: string };
         Returns: boolean;
+      };
+      /* Jen pro servisní roli — klient na ni nemá grant. */
+      bump_rate_limit: {
+        Args: { p_bucket: string; p_window_ms: number };
+        Returns: number;
       };
     };
     Enums: {

@@ -18,6 +18,11 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "src"),
       "@legacy": path.resolve(__dirname, "src/legacy"),
+      /* Vitest nemá podmínku `react-server`, takže by ze `server-only`
+         vytáhl klientskou variantu, která schválně vyhazuje. Testy běží
+         na serveru, takže se míří rovnou na prázdný modul.
+         Pojistka proti úniku do bundlu tím netrpí — tu dělá `next build`. */
+      "server-only": path.resolve(__dirname, "node_modules/server-only/empty.js"),
     },
   },
 });
