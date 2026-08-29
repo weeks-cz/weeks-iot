@@ -217,7 +217,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
           v Duolingu chce pokračovat. */}
       <Celebration active={solved} />
 
-      <Stepper steps={STEPS} current={step} label="Postup lekcí" />
+      <Stepper steps={STEPS} current={step} label="Postup lekcí" tone="loud" />
 
       {step === STEP.BRIEF && (
         <section className="flex flex-col gap-5">

@@ -92,25 +92,27 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
 
   return (
     <main className="section-container py-10">
-      <nav aria-label="Drobečková navigace" className="mb-6">
+      {/* Cesta zpět a metadata na jednom řádku. Dřív to byly dva bloky nad
+          sebou a hlavička odsunula práci o kus níž — na telefonu tak lekce
+          začínala až za ohybem. */}
+      <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <Link
           href={`/kurz/${slug}`}
           className="rounded-sm font-mono text-xs uppercase tracking-[0.2em] text-ink-500 hover:text-ink"
         >
           ← {data.course.title}
         </Link>
-      </nav>
-
-      <header className="mb-8 max-w-3xl">
-        <MonoLabel className="mb-3">
+        <MonoLabel>
           Lekce {data.lesson.order_index} z {data.total}
           {data.lesson.estimated_minutes ? ` · ${data.lesson.estimated_minutes} min` : ""}
         </MonoLabel>
+      </div>
 
-        <h1 className="heading-2 mb-3">{data.lesson.title}</h1>
+      <header className="mb-6 max-w-3xl">
+        <h1 className="heading-2 mb-2">{data.lesson.title}</h1>
 
         {data.lesson.summary && (
-          <p className="text-lg leading-relaxed text-ink-500">{data.lesson.summary}</p>
+          <p className="lesson-body text-ink-500">{data.lesson.summary}</p>
         )}
       </header>
 

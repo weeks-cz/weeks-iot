@@ -76,7 +76,7 @@ export function CodeEditor({ value, onChange, errorLine, disabled, rows = 14 }: 
         <div
           ref={gutterRef}
           aria-hidden="true"
-          className="max-h-full shrink-0 overflow-hidden bg-black/25 px-2 py-3 text-right font-mono text-xs leading-6 text-paper/35 select-none"
+          className="max-h-full shrink-0 overflow-hidden bg-black/25 px-2 py-3 text-right font-mono text-[0.8rem] leading-7 text-paper/35 select-none"
         >
           {Array.from({ length: lines }, (_, i) => (
             <div key={i} className={errorLine === i + 1 ? "font-bold text-danger-300" : undefined}>
@@ -100,7 +100,9 @@ export function CodeEditor({ value, onChange, errorLine, disabled, rows = 14 }: 
           /* Bez zalamování schválně: jeden řádek kódu = jeden řádek na
              obrazovce, jinak by čísla vlevo ukazovala na něco jiného než
              text vedle nich. Dlouhý řádek se odroluje do strany. */
-          className="w-full resize-y overflow-x-auto whitespace-pre bg-transparent px-3 py-3 font-mono text-sm leading-6 text-paper outline-none placeholder:text-paper/30 disabled:opacity-60"
+          /* O stupeň větší než jinde: kód se čte znak po znaku a rozdíl
+             mezi `;` a `:` musí být vidět bez mhouření. */
+          className="w-full resize-y overflow-x-auto whitespace-pre bg-transparent px-3 py-3 font-mono text-[0.9375rem] leading-7 text-paper outline-none placeholder:text-paper/30 disabled:opacity-60"
         />
       </div>
     </div>

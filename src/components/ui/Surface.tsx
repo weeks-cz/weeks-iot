@@ -111,6 +111,7 @@ export function Stepper({
   steps,
   current,
   label = "Postup registrace",
+  tone = "compact",
   className,
 }: {
   steps: readonly string[];
@@ -118,15 +119,25 @@ export function Stepper({
   current: number;
   /** Co ten postup je — čtečka ho ohlásí místo obecného „navigace". */
   label?: string;
+  /**
+   * Jak výrazný má být.
+   *
+   * `compact` do rodičovské zóny, kde je postup podružná informace vedle
+   * formuláře. `loud` do lekcí: dítě potřebuje na první pohled vidět,
+   * kolik už má za sebou — to je jediná odměna, která ho drží uprostřed
+   * dvacetiminutové práce.
+   */
+  tone?: "compact" | "loud";
   className?: string;
 }) {
+  const loud = tone === "loud";
   return (
     <nav aria-label={label} className={cn("w-full", className)}>
-      <p className="mono-label mb-2">
+      <p className={cn("mono-label", loud ? "mb-2.5" : "mb-2")}>
         Krok {current + 1} ze {steps.length} — {steps[current]}
       </p>
 
-      <ol className="flex gap-1.5">
+      <ol className={cn("flex", loud ? "gap-2" : "gap-1.5")}>
         {steps.map((step, index) => {
           const done = index < current;
           const active = index === current;
@@ -138,9 +149,10 @@ export function Stepper({
               <div
                 aria-current={active ? "step" : undefined}
                 className={cn(
-                  "h-1.5 rounded-full transition-colors",
+                  "rounded-full transition-all duration-500",
+                  loud ? "h-2.5" : "h-1.5",
                   done && "bg-trust-500",
-                  active && "bg-primary-600",
+                  active && cn("bg-primary-600", loud && "shadow-hard-sm"),
                   !done && !active && "bg-ink/15",
                 )}
               />
