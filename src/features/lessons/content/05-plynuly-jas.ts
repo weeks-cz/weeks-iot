@@ -29,7 +29,7 @@ export const lesson5: Lesson = {
       "Proto tuhle lekci stavíš na pinu 9, ne na osmičce jako minule.",
   },
 
-  palette: ["led-red", "resistor-220"],
+  palette: ["breadboard-half", "led-red", "resistor-220"],
 
   wiring: {
     parts: [

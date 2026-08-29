@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { getComponentSpec } from "../components";
+import { getComponentSpec, pinLabel } from "../components";
 import { PIN_HIT_AREA, PITCH } from "../constants";
 import { snapToGrid, type BuilderAction } from "./state";
 import type { CircuitComponent, PinRef } from "../types";
@@ -17,6 +17,13 @@ import type { CircuitComponent, PinRef } from "../types";
  * ── Proč pointer, a ne mouse ───────────────────────────────────────────────
  * Stará verze poslouchala mousedown/mousemove. Na tabletu se tím nedá udělat
  * vůbec nic. Pointer events pokrývají myš, dotyk i pero jedním kódem.
+ *
+ * ── Proč tlačítka pinů nechytají myš ───────────────────────────────────────
+ * Chytala, a klikalo se to mizerně: u LED jsou nožičky 16 px od sebe, ale
+ * dotykový cíl musí být aspoň dvacetipixelový, takže se cíle překrývaly a
+ * vyhrával ten pozdější v DOM, ne ten bližší. Kliknutí teď řeší plocha přes
+ * vzdálenost (`hit-test.ts`) a tlačítka tu zůstávají jako vrstva pro
+ * klávesnici a čtečku — ta pořadí v DOM nevadí.
  */
 
 interface Props {
@@ -36,6 +43,10 @@ interface Props {
   pressed?: boolean;
   /** Zvýraznit, protože se jí týká nesplněný bod zapojení. */
   flagged?: boolean;
+  /** Piny, na které se dítě má právě teď trefit. Průvodce je pulzuje. */
+  highlightPins?: string[];
+  /** Ukázat tečky pinů i bez najetí myší. */
+  showPins?: boolean;
   readOnly?: boolean;
   zoom: number;
 }
@@ -50,6 +61,8 @@ export function PlacedComponent({
   sounding,
   pressed,
   flagged,
+  highlightPins,
+  showPins,
   readOnly,
   zoom,
 }: Props) {
@@ -75,6 +88,9 @@ export function PlacedComponent({
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (readOnly || e.button !== 0) return;
+      /* Tah se nesmí dostat na plochu — ta by ho brala jako posouvání
+         výřezu. Kliknutí ale propustíme, protože ho vyhodnocuje plocha
+         (nejbližší pin). */
       e.stopPropagation();
 
       dispatch({ type: "SELECT", target: { kind: "component", id: comp.id } });
@@ -124,14 +140,22 @@ export function PlacedComponent({
     Record<string, unknown> & { ref?: React.Ref<HTMLElement> }
   >;
 
-  /* Piny jsou vidět při najetí, při vedení drátku a u vybrané součástky.
-     Pořád viditelné by z Arduina byl ježek. */
-  const pinsVisible = Boolean(wireFrom) || selected;
+  /* Tečky pinů jsou vidět, když se zapojuje. Dřív naskakovaly až při
+     najetí myší, takže dítě nevidělo, kam se dá kliknout — na tabletu,
+     kde žádné najetí neexistuje, vůbec.
+
+     Breadboard je výjimka: má devět set pinů a tečky přes ně jsou oranžová
+     záplava, ve které nejde nic najít. Dírky má nakreslené ve své vlastní
+     grafice, takže je stejně vidět, kam se dá píchnout — ukazují se u něj
+     jen ty, na které průvodce zrovna ukazuje. */
+  const crowded = comp.type === "breadboard-half";
+  const pinsVisible = !crowded && (showPins || Boolean(wireFrom) || selected);
+  const highlighted = new Set(highlightPins ?? []);
 
   return (
     <div
       data-comp-id={comp.id}
-      className="group absolute select-none touch-none"
+      className="group absolute touch-none select-none"
       style={{
         left: comp.x,
         top: comp.y,
@@ -152,44 +176,62 @@ export function PlacedComponent({
       <div className="pointer-events-none absolute inset-0">
         {spec.pins.map((pin) => {
           const isStart = wireFrom?.compId === comp.id && wireFrom.pinName === pin.name;
+          const isTarget = highlighted.has(pin.name);
+
+          /* Velikost se přepočítává zpátky přes scale, aby tečka měla na
+             obrazovce pořád stejný průměr bez ohledu na to, jak moc je
+             součástka roztažená. Zvýrazněná je znatelně větší — je to
+             jediné, co dítěti říká „klepni sem". */
+          const dot = isStart || isTarget ? 16 : 8;
+          const size = dot / spec.scale;
 
           return (
             <button
               key={pin.name}
               type="button"
               disabled={readOnly}
-              onPointerDown={(e) => e.stopPropagation()}
+              /* Myš a prst řeší plocha přes vzdálenost; tady zůstává jen
+                 cesta klávesnicí, které pointer-events nevadí. */
+              tabIndex={readOnly ? -1 : 0}
               onClick={(e) => {
                 e.stopPropagation();
                 if (!readOnly) onPinAction({ compId: comp.id, pinName: pin.name });
               }}
-              className="pointer-events-auto absolute flex items-center justify-center rounded-full opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 group-hover:opacity-100"
+              className="absolute rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
               style={{
-                left: (pin.dx * PITCH) / spec.scale - PIN_HIT_AREA / 2,
-                top: (pin.dy * PITCH) / spec.scale - PIN_HIT_AREA / 2,
-                width: PIN_HIT_AREA,
-                height: PIN_HIT_AREA,
-                opacity: pinsVisible ? 1 : undefined,
-                cursor: wireFrom ? "crosshair" : "pointer",
+                left: (pin.dx * PITCH) / spec.scale - PIN_HIT_AREA / spec.scale / 2,
+                top: (pin.dy * PITCH) / spec.scale - PIN_HIT_AREA / spec.scale / 2,
+                width: PIN_HIT_AREA / spec.scale,
+                height: PIN_HIT_AREA / spec.scale,
+                pointerEvents: "none",
               }}
-              /* Název součástky patří do popisku vždycky. „Dotáhnout
-                 drátek na pin a" je pro čtečku k ničemu — pinů se stejným
-                 jménem je na desce několik a slyšet se musí, na které
-                 součástce ten pin je. */
               aria-label={
                 isStart
-                  ? `Zrušit drátek z pinu ${pin.name} na ${spec.label}`
+                  ? `Zrušit drátek z: ${spec.label} — ${pinLabel(comp.type, pin.name)}`
                   : wireFrom
-                    ? `Dotáhnout drátek na pin ${pin.name} na ${spec.label}`
-                    : `Začít drátek z pinu ${pin.name} na ${spec.label}`
+                    ? `Dotáhnout drátek na: ${spec.label} — ${pinLabel(comp.type, pin.name)}`
+                    : `Začít drátek z: ${spec.label} — ${pinLabel(comp.type, pin.name)}`
               }
             >
               <span
-                className={
+                aria-hidden="true"
+                className={`absolute rounded-full transition-all ${
                   isStart
-                    ? "block h-3 w-3 rounded-full bg-primary-500 ring-2 ring-white"
-                    : "block h-2 w-2 rounded-full bg-cta-400 ring-1 ring-cta-200 hover:h-3 hover:w-3 hover:bg-cta-300"
-                }
+                    ? "bg-primary-500 ring-2 ring-white"
+                    : isTarget
+                      ? "animate-pulse bg-cta-500 ring-2 ring-cta-200"
+                      : pinsVisible
+                      ? "bg-cta-400 ring-1 ring-cta-200"
+                      : crowded
+                        ? "bg-cta-400 opacity-0"
+                        : "bg-cta-400 opacity-0 ring-1 ring-cta-200 group-hover:opacity-100"
+                }`}
+                style={{
+                  width: size,
+                  height: size,
+                  left: `calc(50% - ${size / 2}px)`,
+                  top: `calc(50% - ${size / 2}px)`,
+                }}
               />
             </button>
           );

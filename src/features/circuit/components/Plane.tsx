@@ -5,6 +5,7 @@ import { PlacedComponent } from "./PlacedComponent";
 import { WireLayer } from "./WireLayer";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
 import { snapToGrid, type BuilderAction, type BuilderState } from "./state";
+import { componentAt, pinAt } from "../hit-test";
 import type { ComponentType, PinRef } from "../types";
 
 interface Props {
@@ -14,6 +15,10 @@ interface Props {
   live: Map<string, { brightness?: number; sounding?: boolean; pressed?: boolean }>;
   /** Součástky, kterých se týká nesplněný bod zapojení. */
   flagged: Set<string>;
+  /** Piny, na které se dítě má právě trefit — od průvodce zapojením. */
+  highlightPins?: PinRef[];
+  /** Ukázat tečky pinů i bez najetí myší. */
+  showPins?: boolean;
   readOnly?: boolean;
 }
 
@@ -24,7 +29,7 @@ interface Props {
  * odjet stranou a nic se „neztratí za okrajem" — pro dítě, které si zrovna
  * rozházelo součástky, je to důležitější než přesné hranice.
  */
-export function Plane({ state, dispatch, live, flagged, readOnly }: Props) {
+export function Plane({ state, dispatch, live, flagged, highlightPins, showPins, readOnly }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const planeRef = useRef<HTMLDivElement>(null);
   const pan = useRef({ active: false, startX: 0, startY: 0, panX: 0, panY: 0 });
@@ -136,34 +141,6 @@ export function Plane({ state, dispatch, live, flagged, readOnly }: Props) {
     if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
   }, []);
 
-  const onBackgroundClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target !== e.currentTarget && e.target !== planeRef.current) return;
-
-      /* Nachystaná součástka se položí tam, kam dítě kleplo. */
-      if (state.armed && !readOnly) {
-        const pos = planePoint(e.clientX, e.clientY);
-        if (pos) {
-          dispatch({
-            type: "PLACE",
-            comp: {
-              id: crypto.randomUUID(),
-              type: state.armed as ComponentType,
-              x: snapToGrid(pos.x),
-              y: snapToGrid(pos.y),
-              rotation: 0,
-            },
-          });
-        }
-        return;
-      }
-
-      if (state.wireFrom) dispatch({ type: "CANCEL_WIRE" });
-      else dispatch({ type: "SELECT", target: null });
-    },
-    [dispatch, planePoint, readOnly, state.armed, state.wireFrom],
-  );
-
   const onPinAction = useCallback(
     (pin: PinRef) => {
       if (!state.wireFrom) {
@@ -173,6 +150,57 @@ export function Plane({ state, dispatch, live, flagged, readOnly }: Props) {
       dispatch({ type: "FINISH_WIRE", to: pin });
     },
     [dispatch, state.wireFrom],
+  );
+
+  /**
+   * Kliknutí kamkoli do plochy.
+   *
+   * Pořadí je záměrné: nejdřív pin (i když se dítě netrefilo přesně), pak
+   * součástka, pak prázdno. Kliknutí na pin je to jediné, co se v builderu
+   * dělá pořád dokola — musí vyhrát nad vším ostatním.
+   */
+  const onPlaneClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (readOnly) return;
+
+      const pos = planePoint(e.clientX, e.clientY);
+      if (!pos) return;
+
+      /* Nachystaná součástka z palety se položí tam, kam dítě kleplo. */
+      if (state.armed) {
+        dispatch({
+          type: "PLACE",
+          comp: {
+            id: crypto.randomUUID(),
+            type: state.armed as ComponentType,
+            x: snapToGrid(pos.x),
+            y: snapToGrid(pos.y),
+            rotation: 0,
+          },
+        });
+        return;
+      }
+
+      const hit = pinAt(state.circuit, pos);
+      if (hit) {
+        onPinAction(hit.pin);
+        return;
+      }
+
+      /* Vedle pinu, ale na součástce: vybrat ji (jde pak smazat). Rozdělaný
+         drátek to zruší — kdo mine, chce nejspíš přestat. */
+      if (state.wireFrom) {
+        dispatch({ type: "CANCEL_WIRE" });
+        return;
+      }
+
+      const compId = componentAt(state.circuit, pos);
+      dispatch({
+        type: "SELECT",
+        target: compId ? { kind: "component", id: compId } : null,
+      });
+    },
+    [dispatch, onPinAction, planePoint, readOnly, state.armed, state.circuit, state.wireFrom],
   );
 
   return (
@@ -186,7 +214,7 @@ export function Plane({ state, dispatch, live, flagged, readOnly }: Props) {
       onPointerMove={onPointerMove}
       onPointerUp={endPan}
       onPointerCancel={endPan}
-      onClick={onBackgroundClick}
+      onClick={onPlaneClick}
     >
       <div
         ref={planeRef}
@@ -215,6 +243,10 @@ export function Plane({ state, dispatch, live, flagged, readOnly }: Props) {
             brightness={live.get(comp.id)?.brightness}
             sounding={live.get(comp.id)?.sounding}
             flagged={flagged.has(comp.id)}
+            highlightPins={(highlightPins ?? [])
+              .filter((p) => p.compId === comp.id)
+              .map((p) => p.pinName)}
+            showPins={showPins}
             readOnly={readOnly}
             zoom={state.zoom}
           />

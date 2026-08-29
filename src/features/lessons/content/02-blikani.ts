@@ -32,7 +32,7 @@ export const lesson2: Lesson = {
       "Proto se u větších programů delay používá opatrně. Tady je ale přesně to, co chceme.",
   },
 
-  palette: ["led-red", "resistor-220"],
+  palette: ["breadboard-half", "led-red", "resistor-220"],
 
   wiring: {
     parts: [

@@ -16,7 +16,67 @@ export interface ComponentSpec {
   spanY: number;                             // PITCH units
   paletteIcon: string;                       // path under public/
   scale: number;                             // CSS transform scale to fit on PITCH grid
+  /**
+   * Co to je, řečeno dítěti.
+   *
+   * Bez tohohle je paleta seznam neznámých slov. „Rezistor 220 Ω" nikomu
+   * v deseti letech nic neříká; „brzda na proud, aby se LED nespálila" ano.
+   */
+  intro?: { what: string; why: string };
 }
+
+/**
+ * Lidský název pinu.
+ *
+ * V obvodu se pin jmenuje „anode", protože tak se jmenuje v datech. Dítěti
+ * se ale musí říct „delší nožička" — to je jediné, co na součástce v ruce
+ * i na obrazovce opravdu pozná.
+ */
+export function pinLabel(type: ComponentType, pinName: string): string {
+  const custom = PIN_LABELS[type]?.[pinName];
+  if (custom) return custom;
+
+  if (type === "arduino-uno") {
+    if (/^D\d+$/.test(pinName)) return `pin ${pinName.slice(1)}`;
+    if (/^A\d$/.test(pinName)) return `pin ${pinName} (měřicí)`;
+    if (pinName.startsWith("GND")) return "GND (zem)";
+    if (pinName === "5V" || pinName === "3.3V") return `${pinName} (napájení)`;
+    return pinName;
+  }
+
+  if (type === "breadboard-half") {
+    const rail = /^(top|bot)-(.)-\d+$/.exec(pinName);
+    if (rail) return rail[2] === "+" ? "kladná lišta" : "záporná lišta";
+    const row = /^row-([A-J])-(\d+)$/.exec(pinName);
+    if (row) return `řada ${row[1]}, sloupec ${row[2]}`;
+  }
+
+  return pinName;
+}
+
+const PIN_LABELS: Partial<Record<ComponentType, Record<string, string>>> = {
+  "led-red": { anode: "delší nožička (+)", cathode: "kratší nožička (−)" },
+  "led-yellow": { anode: "delší nožička (+)", cathode: "kratší nožička (−)" },
+  "led-green": { anode: "delší nožička (+)", cathode: "kratší nožička (−)" },
+  "led-blue": { anode: "delší nožička (+)", cathode: "kratší nožička (−)" },
+  "led-rgb": {
+    r: "červená", g: "zelená", b: "modrá", cathode: "společná nožička (−)",
+  },
+  "resistor-220": { a: "levá nožička", b: "pravá nožička" },
+  "pushbutton": {
+    "1a": "levý horní kontakt", "1b": "levý dolní kontakt",
+    "2a": "pravý horní kontakt", "2b": "pravý dolní kontakt",
+  },
+  "piezo-buzzer": { "+": "nožička +", "-": "nožička −" },
+  "potentiometer": {
+    "terminal-a": "krajní nožička", signal: "prostřední nožička (výstup)",
+    "terminal-b": "druhá krajní nožička",
+  },
+  "photoresistor": {
+    vcc: "VCC (napájení)", gnd: "GND (zem)",
+    dout: "DO — jen ano/ne", aout: "AO — naměřená hodnota",
+  },
+};
 
 function generateBreadboardHalfPins(): PinSpec[] {
   const pins: PinSpec[] = [];
@@ -58,6 +118,10 @@ const led = (color: string): Omit<ComponentSpec, "type" | "label" | "paletteIcon
 export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
   "arduino-uno": {
     type: "arduino-uno",
+    intro: {
+      what: "Malý počítač o velikosti dlaně. Nemá obrazovku ani klávesnici — místo toho má po krajích řadu pinů, kterými ovládá všechno, co k nim připojíš.",
+      why: "Je to mozek obvodu. Program, který napíšeš, běží právě v něm.",
+    },
     label: "Arduino Uno",
     wokwiTag: "wokwi-arduino-uno",
     // scale=1.68: 275×202px → 462×340px; natural pin spacing ~9.5px → 16px (1 PITCH).
@@ -93,18 +157,30 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
   },
   "breadboard-half": {
     type: "breadboard-half",
+    intro: {
+      what: "Deska plná dírek, do kterých se zapichují součástky. Nic se nepájí — všechno jde zase vytáhnout.",
+      why: "Dírky ve stejném sloupci jsou uvnitř propojené. Dvě nožičky spojíš tím, že je zapíchneš do stejného sloupce.",
+    },
     label: "Breadboard",
     wokwiTag: "wokwi-breadboard-half",
     pins: generateBreadboardHalfPins(),
     spanX: 30, spanY: 15, scale: 1.0,
     paletteIcon: "/cad/palette/breadboard-half.png",
   },
-  "led-red":    { ...led("red"),    type: "led-red",    label: "LED červená", paletteIcon: "/cad/palette/led-red.png" },
-  "led-yellow": { ...led("yellow"), type: "led-yellow", label: "LED žlutá",   paletteIcon: "/cad/palette/led-yellow.png" },
-  "led-green":  { ...led("green"),  type: "led-green",  label: "LED zelená",  paletteIcon: "/cad/palette/led-green.png" },
-  "led-blue":   { ...led("blue"),   type: "led-blue",   label: "LED modrá",   paletteIcon: "/cad/palette/led-blue.png" },
+  "led-red":    { ...led("red"),    type: "led-red",
+    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." },    label: "LED červená", paletteIcon: "/cad/palette/led-red.png" },
+  "led-yellow": { ...led("yellow"), type: "led-yellow",
+    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." }, label: "LED žlutá",   paletteIcon: "/cad/palette/led-yellow.png" },
+  "led-green":  { ...led("green"),  type: "led-green",
+    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." },  label: "LED zelená",  paletteIcon: "/cad/palette/led-green.png" },
+  "led-blue":   { ...led("blue"),   type: "led-blue",
+    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." },   label: "LED modrá",   paletteIcon: "/cad/palette/led-blue.png" },
   "led-rgb": {
-    type: "led-rgb", label: "LED RGB",
+    type: "led-rgb",
+    intro: {
+      what: "LED, která umí tři barvy naráz. Uvnitř jsou vlastně tři světélka.",
+      why: "Každá barva má vlastní nožičku a vlastní pin; společná nožička jde na zem.",
+    }, label: "LED RGB",
     wokwiTag: "wokwi-rgb-led",
     // scale=1.78: 42×73px → 75×130px; pins at R(8.5,44)→(1,5), COM(18,54)→(2,6), G(26.4,44)→(3,5), B(35.7,44)→(4,5)
     pins: [
@@ -117,7 +193,11 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     paletteIcon: "/cad/palette/led-rgb.png",
   },
   "resistor-220": {
-    type: "resistor-220", label: "Rezistor 220 Ω",
+    type: "resistor-220",
+    intro: {
+      what: "Brzda na proud. Sama nic nedělá, ale propustí jen tolik, kolik LED unese.",
+      why: "Bez ní by si LED vzala všechno, co jí Arduino nabídne, a spálila by se. Na jejím místě v obvodu nezáleží — hlavně ať je v cestě.",
+    }, label: "Rezistor 220 Ω",
     wokwiTag: "wokwi-resistor",
     wokwiAttrs: { value: "220" },
     // scale=1.09: 59×11px → 64×12px; pin1(0,5.65)→(0,0), pin2(58.8,5.65)→(4,0); spacing 58.8×1.09≈64=4 PITCH
@@ -126,7 +206,11 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     paletteIcon: "/cad/palette/resistor-220.png",
   },
   "pushbutton": {
-    type: "pushbutton", label: "Tlačítko",
+    type: "pushbutton",
+    intro: {
+      what: "Obyčejné tlačítko. Dokud ho držíš, propojí své dvě strany; jakmile pustíš, přeruší je.",
+      why: "Arduino díky němu pozná, že se něco stalo. Je to jeho jediný způsob, jak se tě zeptat.",
+    }, label: "Tlačítko",
     wokwiTag: "wokwi-pushbutton",
     wokwiAttrs: { color: "red" },
     // scale=1.0: 67×45px; left pins at x=0→dx=0, right at x=67→dx=4; top y=13→dy=1, bottom y=32→dy=2
@@ -138,7 +222,11 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     paletteIcon: "/cad/palette/pushbutton.png",
   },
   "piezo-buzzer": {
-    type: "piezo-buzzer", label: "Piezo buzzer",
+    type: "piezo-buzzer",
+    intro: {
+      what: "Bzučák. Dělá to co LED, ale slyšitelně — čím vyšší číslo mu pošleš, tím vyšší tón.",
+      why: "Nožička + patří k pinu, nožička − na zem. Rezistor nepotřebuje.",
+    }, label: "Piezo buzzer",
     wokwiTag: "wokwi-buzzer",
     // scale=1.6: 64×76px; + at natural(27,84)→(43,134)≈(3,8)×PITCH; - at (37,84)→(59,134)≈(4,8)×PITCH
     pins: [{ name: "+", dx: 3, dy: 8 }, { name: "-", dx: 4, dy: 8 }],
@@ -146,7 +234,11 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     paletteIcon: "/cad/palette/piezo-buzzer.png",
   },
   "potentiometer": {
-    type: "potentiometer", label: "Potenciometr",
+    type: "potentiometer",
+    intro: {
+      what: "Otočný knoflík. Podle toho, jak ho natočíš, posílá do Arduina číslo od 0 do 1023.",
+      why: "Krajní nožičky patří na napájení a na zem, prostřední posílá hodnotu.",
+    }, label: "Potenciometr",
     wokwiTag: "wokwi-potentiometer",
     // scale=1.6: 76×76px; pins at y=68.5→dy=7; GND(29)→dx=3, SIG(39)→dx=4, VCC(49)→dx=5; spacing 10px×1.6=16=1 PITCH
     pins: [
@@ -158,7 +250,11 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     paletteIcon: "/cad/palette/potentiometer.png",
   },
   "photoresistor": {
-    type: "photoresistor", label: "Fotorezistor",
+    type: "photoresistor",
+    intro: {
+      what: "Čidlo světla. Měří, kolik je kolem něj světla, a posílá číslo — velké ve světle, malé ve tmě.",
+      why: "Potřebuje tři drátky: napájení (VCC), zem (GND) a výstup (AO), kterým hodnotu posílá.",
+    }, label: "Fotorezistor",
     wokwiTag: "wokwi-photoresistor-sensor",
     // scale=1.78: 174×62px → 310×110px; all 4 pins at x=172→dx=19; VCC(y=16)→dy=2, GND(26)→dy=3, DO(35.8)→dy=4, AO(45.5)→dy=5
     pins: [

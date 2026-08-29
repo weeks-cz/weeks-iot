@@ -34,7 +34,7 @@ export const lesson3: Lesson = {
       "nečte náhodu.",
   },
 
-  palette: ["led-red", "resistor-220", "pushbutton"],
+  palette: ["breadboard-half", "led-red", "resistor-220", "pushbutton"],
 
   wiring: {
     parts: [

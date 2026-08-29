@@ -34,7 +34,7 @@ export const lesson1: Lesson = {
       "Bez něj to jednou blikne a je po ní. Proto ho tam kontrola vyžaduje.",
   },
 
-  palette: ["led-red", "resistor-220"],
+  palette: ["breadboard-half", "led-red", "resistor-220"],
 
   wiring: {
     parts: [

@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Minus, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Palette } from "./Palette";
 import { Plane } from "./Plane";
 import { useBuilderReducer } from "./state";
-import { fitCircuit } from "./fit";
-import { registerBreadboardHalf } from "../register-breadboard";
+import { ensureVisible, fitCircuit } from "./fit";
+import { useWokwiElements } from "./useWokwiElements";
 import { SAVE_DEBOUNCE_MS, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
-import type { Circuit, ComponentType } from "../types";
+import type { Circuit, ComponentType, PinRef } from "../types";
 import type { SimulationFrame } from "../simulate";
 
 interface Props {
@@ -19,6 +19,10 @@ interface Props {
   frame?: SimulationFrame | null;
   /** Součástky, ke kterým se váže nesplněný bod zapojení. */
   flagged?: string[];
+  /** Piny, na které se má dítě právě trefit — plocha je rozbliká. */
+  highlightPins?: PinRef[];
+  /** Ukázat tečky pinů i bez najetí myší. Zapíná se v kroku zapojování. */
+  showPins?: boolean;
   /** Vrátit obvod do výchozího stavu lekce. */
   onReset?: () => void;
   readOnly?: boolean;
@@ -42,12 +46,14 @@ export function CircuitBuilder({
   onChange,
   frame,
   flagged,
+  highlightPins,
+  showPins,
   onReset,
   readOnly,
   height = 460,
 }: Props) {
   const [state, dispatch] = useBuilderReducer(initialCircuit);
-  const [ready, setReady] = useState(false);
+  const ready = useWokwiElements();
   const lastSent = useRef<Circuit>(initialCircuit);
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -64,26 +70,44 @@ export function CircuitBuilder({
     dispatch({ type: "SET_PAN", pan: next.pan });
   }, [dispatch]);
 
-  /* Wokwi prvky se načítají až v prohlížeči. Jsou to custom elements —
-     na serveru není `customElements` a import by build shodil. */
-  useEffect(() => {
-    let alive = true;
-    registerBreadboardHalf();
-    void import("@wokwi/elements").then(() => {
-      if (alive) setReady(true);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  /* Výřez se jednou nastaví tak, aby byla vidět celá deska.
+     V editovatelném builderu JEN jednou na začátku: dítě si pak výřez
+     posouvá samo a přeskakovat mu ho pod rukama by bylo horší než kus
+     obvodu za okrajem. V náhledu se přepočítá pokaždé, protože tam se
+     nedá hýbat ničím. */
+  const fitted = useRef(false);
 
-  /* Náhled se sám nastaví tak, aby bylo vidět všechno. V editovatelném
-     builderu se to nedělá: dítě si výřez posunulo samo a přeskočit mu ho
-     pod rukama je horší než kus obvodu za okrajem. */
   useEffect(() => {
-    if (!ready || !readOnly) return;
+    if (!ready) return;
+    if (!readOnly && fitted.current) return;
+
+    fitted.current = true;
     fit(initialCircuit);
   }, [ready, readOnly, initialCircuit, fit]);
+
+  /* Zvýrazněné piny musí být vidět. Jinak plocha bliká někam za okraj a
+     dítě hledá tečku, která na obrazovce není. Posouvá se jen tehdy, když
+     opravdu nejsou vidět — skákání pod rukama je horší než nic. */
+  const highlightKey = (highlightPins ?? []).map((p) => `${p.compId}#${p.pinName}`).join(",");
+
+  useEffect(() => {
+    if (!ready || readOnly || !highlightPins?.length) return;
+
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const pan = ensureVisible(
+      state.circuit,
+      highlightPins,
+      { width: rect.width, height: rect.height },
+      { zoom: state.zoom, pan: state.pan },
+    );
+    if (pan) dispatch({ type: "SET_PAN", pan });
+    /* Závisí jen na TOM, KTERÉ piny se zvýrazňují — ne na výřezu samotném,
+       jinak by se efekt spouštěl po vlastním posunu donekonečna. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, readOnly, highlightKey]);
 
   /* Změny se posílají ven se zpožděním. Během tahu součástkou se stav mění
      desetkrát za vteřinu a nadřazená lekce po každé změně přepočítává
@@ -143,6 +167,8 @@ export function CircuitBuilder({
               dispatch={dispatch}
               live={live}
               flagged={new Set(flagged ?? [])}
+              highlightPins={highlightPins}
+              showPins={showPins}
               readOnly={readOnly}
             />
           ) : (
@@ -225,7 +251,8 @@ export function CircuitBuilder({
       {!readOnly && (
         <p className="border-t border-ink/10 bg-paper-soft px-3 py-2 text-[0.7rem] leading-snug text-ink-300">
           Součástku vyber vlevo a klepni do plochy. Drátek natáhneš klepnutím na
-          jednu nožičku a pak na druhou. Tahem po prázdné ploše se rozhlédneš.
+          jednu tečku a pak na druhou — nemusíš se trefit přesně, chytne se
+          nejbližší. Tahem po prázdné ploše se rozhlédneš.
         </p>
       )}
     </div>

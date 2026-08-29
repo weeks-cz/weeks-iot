@@ -5,17 +5,25 @@ import { Check, Circle, Lightbulb, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel, Stepper } from "@/components/ui/Surface";
 import { CircuitBuilder } from "@/features/circuit/components/CircuitBuilder";
+import { useWokwiElements } from "@/features/circuit/components/useWokwiElements";
 import { checkWiring } from "@/features/circuit/wiring-check";
 import type { Circuit } from "@/features/circuit/types";
 import { CodeEditor } from "./CodeEditor";
+import { PartsIntro } from "./PartsIntro";
+import { CurrentStep, StepList } from "./WiringGuide";
 import { useBuzzerSound } from "./useBuzzerSound";
 import { NO_FRAMES, useFramePlayer } from "./useFramePlayer";
 import { clearDraft, loadDraft, saveDraft } from "../draft";
 import { runLessonChecks, type LessonRunResult } from "../run-check";
 import { lessonSeedCircuit } from "../seed-circuit";
+import { currentStep, wiringSteps } from "../wiring-steps";
 import type { Lesson } from "../types";
 
-const STEPS = ["Zadání", "Zapojení", "Program"] as const;
+const STEPS = ["Zadání", "Součástky", "Zapojení", "Program"] as const;
+
+/* Indexy kroků. Pojmenované, protože `step === 2` po pár týdnech nikdo
+   nepřečte a přidání kroku doprostřed by tiše rozhodilo zbytek. */
+const STEP = { BRIEF: 0, PARTS: 1, WIRING: 2, CODE: 3 } as const;
 
 interface Props {
   lesson: Lesson;
@@ -57,6 +65,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   const [hints, setHints] = useState({ wiring: 0, code: 0 });
   const [run, setRun] = useState<LessonRunResult | null>(null);
   const [solved, setSolved] = useState(false);
+  const partsReady = useWokwiElements();
 
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const restored = useRef(false);
@@ -76,7 +85,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     setCode(draft.code);
     setCircuit(draft.circuit);
     /* Kdo se vrací k rozdělané práci, nechce znovu číst zadání. */
-    setStep(1);
+    setStep(STEP.WIRING);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [lesson.slug]);
 
@@ -94,6 +103,11 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   }, [step]);
 
   const wiring = useMemo(() => checkWiring(circuit, lesson.wiring), [circuit, lesson.wiring]);
+
+  /* Zapojení rozložené na kroky. Odškrtává se samo podle obvodu, takže
+     dítě smí zapojovat i v jiném pořadí, než navrhujeme. */
+  const steps = useMemo(() => wiringSteps(circuit, lesson.wiring), [circuit, lesson.wiring]);
+  const step2 = useMemo(() => currentStep(steps), [steps]);
 
   const player = useFramePlayer(run?.preview ?? NO_FRAMES);
   const buzzer = player.frame?.buzzers.find((b) => b.frequency > 0);
@@ -149,7 +163,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     <div className="flex flex-col gap-6">
       <Stepper steps={STEPS} current={step} label="Postup lekcí" />
 
-      {step === 0 && (
+      {step === STEP.BRIEF && (
         <section className="flex flex-col gap-5">
           {/* Cíl lekce je v hlavičce stránky; opakovat ho tady by z něj
               udělalo dvojitý nadpis nad sebou. */}
@@ -174,35 +188,71 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
           )}
 
           <div>
-            <Button size="lg" onClick={() => setStep(1)}>
+            <Button size="lg" onClick={() => setStep(STEP.PARTS)}>
               Jdu na to →
             </Button>
           </div>
         </section>
       )}
 
-      {step === 1 && (
+      {step === STEP.PARTS && (
+        <section className="flex flex-col gap-5">
+          <h2 ref={stepHeading} tabIndex={-1} className="heading-3 outline-none">
+            Seznam se se součástkami
+          </h2>
+
+          <p className="max-w-prose leading-relaxed text-ink-500">
+            Tohle jsou všechny součástky, které budeš potřebovat. Podívej se na
+            ně — za chvíli je budeš skládat dohromady.
+          </p>
+
+          <PartsIntro
+            parts={["arduino-uno", ...lesson.palette]}
+            ready={partsReady}
+          />
+
+          <div className="flex flex-wrap gap-3">
+            <Button variant="ghost" onClick={() => setStep(STEP.BRIEF)}>
+              ← Zpátky na zadání
+            </Button>
+            <Button size="lg" onClick={() => setStep(STEP.WIRING)}>
+              Jdu zapojovat →
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {step === STEP.WIRING && (
         <section className="flex flex-col gap-4">
           <h2 ref={stepHeading} tabIndex={-1} className="heading-3 outline-none">
             Zapoj obvod
           </h2>
 
-          <p className="max-w-prose leading-relaxed text-ink-500">
-            Součástky vezmi z palety a spoj je drátky. Až budeš myslet, že je to
-            správně, dej zkontrolovat.
-          </p>
+          {/* Aktuální krok těsně nad plochou, celý seznam až pod ní. Celý
+              průvodce nahoře plochu vytlačil z obrazovky a dítě pak rolovalo
+              mezi tím, CO má udělat, a tím, KDE to má udělat. */}
+          <CurrentStep steps={steps} current={step2} />
 
           <CircuitBuilder
             palette={lesson.palette}
             initialCircuit={circuit}
             onChange={onCircuitChange}
             flagged={flagged}
+            /* Piny aktuálního kroku blikají, takže je vidět, kam kliknout.
+               Bez toho je plocha les stejných teček. */
+            highlightPins={step2?.pins}
+            showPins
+            /* Vyšší než jinde: v tomhle kroku se do plochy míří prstem
+               a čím větší je, tím větší jsou rozestupy mezi nožičkami. */
+            height={520}
             onReset={() => {
               setCircuit(seed);
               setWiringChecked(false);
               setRun(null);
             }}
           />
+
+          <StepList steps={steps} current={step2} />
 
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => setWiringChecked(true)}>Zkontrolovat zapojení</Button>
@@ -217,10 +267,6 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 {hints.wiring === 0 ? "Poradit" : "Poradit víc"}
               </button>
             )}
-
-            <span className="font-mono text-xs text-ink-300">
-              {wiring.satisfied} z {wiring.total} spojů sedí
-            </span>
           </div>
 
           {hints.wiring > 0 && (
@@ -246,11 +292,11 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
           )}
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="ghost" onClick={() => setStep(0)}>
-              ← Zpátky na zadání
+            <Button variant="ghost" onClick={() => setStep(STEP.PARTS)}>
+              ← Zpátky k součástkám
             </Button>
             {wiring.ok && (
-              <Button size="lg" onClick={() => setStep(2)}>
+              <Button size="lg" onClick={() => setStep(STEP.CODE)}>
                 Napsat program →
               </Button>
             )}
@@ -258,7 +304,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
         </section>
       )}
 
-      {step === 2 && (
+      {step === STEP.CODE && (
         <section className="flex flex-col gap-4">
           <h2 ref={stepHeading} tabIndex={-1} className="heading-3 outline-none">
             Napiš program
@@ -382,7 +428,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
           </div>
 
           <div>
-            <Button variant="ghost" onClick={() => setStep(1)}>
+            <Button variant="ghost" onClick={() => setStep(STEP.WIRING)}>
               ← Zpátky k zapojení
             </Button>
           </div>
