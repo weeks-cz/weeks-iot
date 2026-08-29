@@ -119,6 +119,15 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
   musí propagovat zvlášť (`conductivePairs` v `simulate.ts`).
 - **Ikony v `public/cad/palette/` jsou prázdné 1×1 pixely.** Paleta místo nich
   kreslí skutečnou Wokwi součástku. Nespoléhej na `spec.paletteIcon`.
+- **Prohlížeč pošle po každém tahu ještě `click`.** Bez měření vzdálenosti
+  gesta začne posun součástky zároveň kreslit drátek.
+- **Zapíchnutí do breadboardu spojuje podle POLOHY.** Piny na téže souřadnici
+  jsou jedna síť, když je jedna strana deska (`breadboardContacts` v
+  `nets.ts`). Testy proto nesmí skládat součástky na (0,0) — propojí se.
+- **`NetVoltage.isGround` pouští proud tlačítkem bez ohledu na stisk.** Je to
+  tak správně u LED, ale u čtení vstupů ne — na to je `groundedNets`.
+- **Náhled běhu je vlastní běh, ne snímky z první kontroly.** Kontroly si
+  vstupy nastavují samy, takže by v lekci o tlačítku svítila LED bez stisku.
 
 ## Design
 
@@ -139,7 +148,7 @@ Mobile-first od 320 px. Dotykové cíle minimálně 44 px.
 
 ```bash
 npx tsc --noEmit    # musí být čistý pro nový kód
-npm test            # 386 testů
+npm test            # 442 testů
 npm run build       # odhalí úniky server→klient, které tsc nevidí
 ```
 
