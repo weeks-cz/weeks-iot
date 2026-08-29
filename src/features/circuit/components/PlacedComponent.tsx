@@ -49,6 +49,8 @@ interface Props {
   nearestPin?: string | null;
   /** Ukázat tečky pinů i bez najetí myší. */
   showPins?: boolean;
+  /** Držení tlačítka. Dokud drží, obvod je sepnutý — jako doopravdy. */
+  onPress?: (compId: string, down: boolean) => void;
   readOnly?: boolean;
   zoom: number;
 }
@@ -66,6 +68,7 @@ export function PlacedComponent({
   highlightPins,
   nearestPin,
   showPins,
+  onPress,
   readOnly,
   zoom,
 }: Props) {
@@ -88,8 +91,26 @@ export function PlacedComponent({
     if (pressed !== undefined) el.pressed = pressed;
   }, [brightness, sounding, pressed]);
 
+  /* Tlačítko se drží, ne přepíná. Na skutečné desce taky drží jen tak
+     dlouho, jak dlouho na něm máš prst — a lekce 3 na tom stojí. */
+  const holdable = comp.type === "pushbutton" && Boolean(onPress);
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
+      if (holdable) {
+        e.stopPropagation();
+        onPress?.(comp.id, true);
+
+        const release = () => {
+          onPress?.(comp.id, false);
+          window.removeEventListener("pointerup", release);
+          window.removeEventListener("pointercancel", release);
+        };
+        window.addEventListener("pointerup", release);
+        window.addEventListener("pointercancel", release);
+        return;
+      }
+
       if (readOnly || e.button !== 0) return;
       /* Tah se nesmí dostat na plochu — ta by ho brala jako posouvání
          výřezu. Kliknutí ale propustíme, protože ho vyhodnocuje plocha
@@ -134,7 +155,7 @@ export function PlacedComponent({
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     },
-    [comp.id, comp.x, comp.y, dispatch, readOnly, zoom],
+    [comp.id, comp.x, comp.y, dispatch, holdable, onPress, readOnly, zoom],
   );
 
   /* Custom element se v TSX chová jako komponenta. React 19 předá `ref`
@@ -164,7 +185,7 @@ export function PlacedComponent({
         top: comp.y,
         transform: `scale(${spec.scale})`,
         transformOrigin: "0 0",
-        cursor: readOnly ? "default" : "grab",
+        cursor: holdable ? "pointer" : readOnly ? "default" : "grab",
         outline: selected
           ? "2px solid var(--color-cta-500)"
           : flagged

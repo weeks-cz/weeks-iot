@@ -34,6 +34,14 @@ export function runLessonChecks(
   lesson: Lesson,
   circuit: Circuit,
   source: string,
+  /**
+   * Tlačítka, která dítě právě drží prstem.
+   *
+   * Kontroly si stisk řídí samy (`check.pressed`), ale náhled běhu se
+   * musí chovat podle toho, co dítě dělá — jinak by zmáčknutí tlačítka
+   * na desce nemělo žádný viditelný následek.
+   */
+  held: Set<string> = new Set(),
 ): LessonRunResult {
   /* Role se rozdělí jednou. Kontrola zapojení je umí přiřadit i tehdy, když
      zapojení není hotové — a to je záměr: dítě má vidět, jak se jeho obvod
@@ -43,16 +51,25 @@ export function runLessonChecks(
 
   const outcomes: CheckOutcome[] = [];
   let error: LessonRunResult["error"] = null;
-  let preview: SimulationFrame[] = [];
+
+  /* Náhled je samostatný běh: ukazuje, co obvod dělá TEĎ — s tlačítky,
+     která dítě drží, a bez umělých vstupů kontrol.
+
+     Dřív se bral z první kontroly, takže v lekci o tlačítku svítila LED
+     i s puštěným tlačítkem: první kontrola si stisk nastavuje sama.
+     Dítě pak vidělo něco jiného, než co jeho obvod dělá. */
+  const previewRun = runProgram(source, circuit, {
+    iterations: 20,
+    inputs: { pressed: held },
+  });
+  const preview = previewRun.frames;
 
   for (const check of lesson.checks) {
     const run = runProgram(source, circuit, {
       iterations: check.iterations,
       pinInputs: toPinInputs(check),
-      inputs: { pressed: toPressed(check, ctx) },
+      inputs: { pressed: new Set([...toPressed(check, ctx), ...held]) },
     });
-
-    if (preview.length === 0) preview = run.frames;
 
     if (!run.ok) {
       /* Chyba v kódu není „neprošla kontrola". Dítě má slyšet, co je

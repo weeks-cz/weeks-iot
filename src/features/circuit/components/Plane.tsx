@@ -21,6 +21,13 @@ interface Props {
   /** Ukázat tečky pinů i bez najetí myší. */
   showPins?: boolean;
   /**
+   * Zmáčknutí tlačítka v obvodu.
+   *
+   * Bez tohohle je tlačítko na desce dekorace: dítě napíše program,
+   * spustí ho a nic se nestane, protože zmáčknout ho nemá jak.
+   */
+  onPress?: (compId: string, down: boolean) => void;
+  /**
    * Zavření plochy na celé obrazovce.
    *
    * Escape má jeden význam: „zpátky o krok". Nejdřív odloží rozdělaný
@@ -53,6 +60,7 @@ export function Plane({
   flagged,
   highlightPins,
   showPins,
+  onPress,
   onEscape,
   readOnly,
 }: Props) {
@@ -309,6 +317,8 @@ export function Plane({
             onPinAction={onPinAction}
             brightness={live.get(comp.id)?.brightness}
             sounding={live.get(comp.id)?.sounding}
+            pressed={live.get(comp.id)?.pressed}
+            onPress={onPress}
             flagged={flagged.has(comp.id)}
             highlightPins={(highlightPins ?? [])
               .filter((p) => p.compId === comp.id)

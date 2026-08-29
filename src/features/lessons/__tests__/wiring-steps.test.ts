@@ -186,3 +186,34 @@ describe("průvodce nevede do pasti", () => {
     expect(resistorPins.map((p) => p.pinName)).toEqual(["b"]);
   });
 });
+
+describe("náhled ukazuje, co obvod dělá teď", () => {
+  it("v lekci o tlačítku nesvítí LED, dokud se tlačítko nedrží", async () => {
+    /* Dřív se náhled bral z první kontroly, která si stisk nastavuje
+       sama — dítě tedy vidělo rozsvícenou LED, aniž by na tlačítko
+       sáhlo, a nemělo jak pochopit, co jeho program dělá. */
+    const { runLessonChecks } = await import("../run-check");
+    const { referenceCircuit } = await import("../reference-circuit");
+    const { lesson3 } = await import("../content");
+
+    const circuit = referenceCircuit(lesson3.wiring);
+    const puštěné = runLessonChecks(lesson3, circuit, lesson3.solution);
+
+    expect(puštěné.passed).toBe(true);
+    expect(puštěné.preview.every((f) => (f.leds[0]?.brightness ?? 0) === 0)).toBe(true);
+  });
+
+  it("s drženým tlačítkem se rozsvítí", async () => {
+    const { runLessonChecks } = await import("../run-check");
+    const { referenceCircuit } = await import("../reference-circuit");
+    const { checkWiring } = await import("@/features/circuit/wiring-check");
+    const { lesson3 } = await import("../content");
+
+    const circuit = referenceCircuit(lesson3.wiring);
+    const btnId = checkWiring(circuit, lesson3.wiring).roles?.tlacitko;
+    expect(btnId).toBeDefined();
+
+    const držené = runLessonChecks(lesson3, circuit, lesson3.solution, new Set([btnId!]));
+    expect(držené.preview.some((f) => (f.leds[0]?.brightness ?? 0) > 0)).toBe(true);
+  });
+});

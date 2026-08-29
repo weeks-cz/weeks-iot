@@ -66,6 +66,10 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   const [hints, setHints] = useState({ wiring: 0, code: 0 });
   const [run, setRun] = useState<LessonRunResult | null>(null);
   const [running, setRunning] = useState(false);
+  /* Tlačítka, která dítě právě drží. Simulace se s nimi přepočítá, takže
+     stisk je vidět na obvodu okamžitě — a lekce o tlačítku má konečně
+     smysl. */
+  const [pressed, setPressed] = useState<Set<string>>(new Set());
   const [solved, setSolved] = useState(false);
   const partsReady = useWokwiElements();
 
@@ -139,6 +143,28 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     onHint?.(kind, shown);
   }
 
+  /* Přepočet běhu, když dítě zmáčkne nebo pustí tlačítko. Program se
+     pustí znovu s novým stavem obvodu — jinak by stisk nic neudělal. */
+  const rerun = useCallback(
+    (held: Set<string>) => {
+      setRun((prev) => (prev ? runLessonChecks(lesson, circuit, code, held) : prev));
+    },
+    [lesson, circuit, code],
+  );
+
+  const handlePress = useCallback(
+    (compId: string, down: boolean) => {
+      setPressed((prev) => {
+        const next = new Set(prev);
+        if (down) next.add(compId);
+        else next.delete(compId);
+        rerun(next);
+        return next;
+      });
+    },
+    [rerun],
+  );
+
   function handleRun() {
     /* Kontrola je synchronní a u jednoduchého programu doběhne dřív, než
        stihne prohlížeč překreslit — kliknutí by pak vypadalo, že se nic
@@ -150,7 +176,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
       /* Přehrávání spustí sám přehrávač, jakmile dostane nové snímky.
          Volat to odsud by znamenalo sáhnout na stav, který se v tomhle
          renderu ještě nezměnil. */
-      const result = runLessonChecks(lesson, circuit, code);
+      const result = runLessonChecks(lesson, circuit, code, pressed);
       setRun(result);
       setRunning(false);
 
@@ -397,6 +423,8 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 initialCircuit={circuit}
                 onChange={onCircuitChange}
                 frame={player.frame}
+                pressed={pressed}
+                onPress={handlePress}
                 readOnly
                 /* Dost velký, aby byla vidět celá LED i celý obvod. Ve
                    třech stech pixelech se obvod ze sedmé lekce nevešel a

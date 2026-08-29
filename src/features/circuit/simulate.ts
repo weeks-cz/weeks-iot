@@ -377,6 +377,129 @@ function buzzerFrequency(
   return 0;
 }
 
+/**
+ * Sítě, ze kterých se dá dostat na zem — se započtením stisku.
+ *
+ * Šíří se jen dvojicemi pinů, které opravdu vedou proud. Nezmáčknuté
+ * tlačítko svoje dvě poloviny nespojuje, takže se přes ně zem nedostane.
+ */
+function groundedNets(
+  circuit: Circuit,
+  nets: NetMap,
+  pressed: Set<string>,
+): Set<string> {
+  const uno = circuit.comps.find((c) => c.type === "arduino-uno");
+  const found = new Set<string>();
+  if (!uno) return found;
+
+  const spec = getComponentSpec("arduino-uno");
+  const queue: string[] = [];
+
+  for (const g of GROUND_PINS) {
+    if (!spec.pins.some((p) => p.name === g)) continue;
+    const net = nets.netOf(pinKey(uno.id, g));
+    if (found.has(net)) continue;
+    found.add(net);
+    queue.push(net);
+  }
+
+  while (queue.length > 0) {
+    const net = queue.shift()!;
+
+    for (const comp of circuit.comps) {
+      for (const [a, b] of conductivePairs(comp, pressed.has(comp.id))) {
+        const netA = nets.netOf(pinKey(comp.id, a));
+        const netB = nets.netOf(pinKey(comp.id, b));
+
+        const other = netA === net ? netB : netB === net ? netA : null;
+        if (other === null || found.has(other)) continue;
+
+        found.add(other);
+        queue.push(other);
+      }
+    }
+  }
+
+  return found;
+}
+
+/**
+ * Co přečtou vstupní piny z OBVODU.
+ *
+ * ── Co tím opravujeme ──────────────────────────────────────────────────────
+ * Vstupy se dosud braly jen z konfigurace — kontrola lekce si nastavila
+ * „na pinu 7 je nula" a hotovo. Jenže pak tlačítko v obvodu nedělalo nic:
+ * dítě si ho v lekci o tlačítku nemohlo zmáčknout a zjistit, co se stane.
+ * Program musí číst tentýž obvod, který dítě postavilo, jinak je zapojení
+ * tlačítka dekorace.
+ *
+ * Pin je LOW, když ho něco stahuje k zemi — typicky zmáčknuté tlačítko.
+ * HIGH, když na něm sedí napětí. Jinak platí, co drží pinMode: INPUT_PULLUP
+ * si pin sám drží nahoře, holý INPUT visí na nule.
+ */
+function readInputsFromCircuit(
+  circuit: Circuit,
+  board: BoardState,
+  inputs: SimulationInputs,
+): Map<number, number> {
+  const values = new Map<number, number>();
+
+  const uno = circuit.comps.find((c) => c.type === "arduino-uno");
+  if (!uno) return values;
+
+  const nets = resolveNets(circuit);
+  const voltage = new NetVoltage(nets, circuit);
+  const pressed = inputs.pressed ?? new Set<string>();
+
+  const spec = getComponentSpec("arduino-uno");
+  for (const p of POWER_PINS) {
+    if (spec.pins.some((x) => x.name === p)) voltage.drive(uno.id, p, 255);
+  }
+
+  /* Napětí projde vodivými součástkami — stejná úvaha jako u snímku. */
+  for (let round = 0; round < 8; round++) {
+    let changed = false;
+    for (const comp of circuit.comps) {
+      for (const [a, b] of conductivePairs(comp, pressed.has(comp.id))) {
+        const best = Math.max(voltage.level(comp.id, a), voltage.level(comp.id, b));
+        if (best <= 0) continue;
+        for (const pin of [a, b]) {
+          if (voltage.level(comp.id, pin) < best) {
+            voltage.drive(comp.id, pin, best);
+            changed = true;
+          }
+        }
+      }
+    }
+    if (!changed) break;
+  }
+
+  /* Zem se počítá znovu a POCTIVĚ: `NetVoltage.isGround` pouští proud
+     tlačítkem bez ohledu na stisk, protože jinde je to tak správně (obvod
+     s tlačítkem v cestě nemá vypadat rozpojený, dokud ho někdo nedrží).
+     Tady je to ale přesně naopak — nezmáčknuté tlačítko nesmí pin stáhnout
+     dolů, jinak program čte stisk, který se nestal. */
+  const grounded = groundedNets(circuit, nets, pressed);
+
+  for (const pin of spec.pins) {
+    const number = arduinoPinNumber(pin.name);
+    if (number === null) continue;
+
+    const mode = board.modes.get(number);
+    if (mode !== "input" && mode !== "input_pullup") continue;
+
+    if (grounded.has(nets.netOf(pinKey(uno.id, pin.name)))) {
+      values.set(number, 0);
+    } else if (voltage.level(uno.id, pin.name) > 0) {
+      values.set(number, 1023);
+    } else if (mode === "input_pullup") {
+      values.set(number, 1023);
+    }
+  }
+
+  return values;
+}
+
 /* ── Celý běh ───────────────────────────────────────────────────────────── */
 
 /**
@@ -431,7 +554,20 @@ export function runProgram(
   }
 
   const state = emptyBoardState();
-  for (const [pin, value] of config.pinInputs ?? []) state.inputs.set(pin, value);
+
+  /* Ručně zadané hodnoty mají přednost — kontrola lekce musí umět říct
+     „senzor teď hlásí tmu" bez ohledu na to, co je v obvodu. Zbytek se
+     dopočítá z obvodu, aby tlačítko doopravdy fungovalo. */
+  const forced = config.pinInputs ?? new Map<number, number>();
+
+  const refreshInputs = () => {
+    const fromCircuit = readInputsFromCircuit(circuit, state, config.inputs ?? {});
+    state.inputs.clear();
+    for (const [pin, value] of fromCircuit) state.inputs.set(pin, value);
+    for (const [pin, value] of forced) state.inputs.set(pin, value);
+  };
+
+  refreshInputs();
 
   const nets = resolveNets(circuit);
   const frames: SimulationFrame[] = [];
@@ -460,6 +596,10 @@ export function runProgram(
   try {
     interp.runSetup();
     snapshot();
+
+    /* Po setupu se ví, které piny jsou vstupy — teprve teď se dá jejich
+       stav z obvodu přečíst. */
+    refreshInputs();
 
     const iterations = config.iterations ?? 20;
     for (let i = 0; i < iterations; i++) {

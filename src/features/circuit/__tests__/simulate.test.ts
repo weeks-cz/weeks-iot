@@ -283,3 +283,76 @@ describe("chyby v kódu", () => {
     expect(Date.now() - start).toBeLessThan(10_000);
   });
 });
+
+describe("tlačítko v obvodu opravdu něco dělá", () => {
+  /* Do téhle chvíle se vstupy braly jen z konfigurace: kontrola lekce si
+     nastavila „na pinu 7 je nula" a tlačítko v obvodu bylo dekorace. Dítě
+     si ho v lekci o tlačítku nemohlo zmáčknout a nic zjistit. */
+  const btn = comp("btn", "pushbutton");
+
+  function tlacitkoNaPinu7(): Circuit {
+    return {
+      comps: [UNO, LED, RES, btn],
+      wires: [
+        w(["uno", "D8"], ["r", "a"]),
+        w(["r", "b"], ["led", "anode"]),
+        w(["led", "cathode"], ["uno", "GND-1"]),
+        w(["uno", "D7"], ["btn", "1a"]),
+        w(["btn", "2a"], ["uno", "GND-1"]),
+      ],
+    };
+  }
+
+  const SRC = `
+    void setup() { pinMode(7, INPUT_PULLUP); pinMode(8, OUTPUT); }
+    void loop() {
+      if (digitalRead(7) == LOW) { digitalWrite(8, HIGH); } else { digitalWrite(8, LOW); }
+    }
+  `;
+
+  it("puštěné tlačítko čte pin nahoře — LED nesvítí", () => {
+    const r = runProgram(SRC, tlacitkoNaPinu7(), { iterations: 2 });
+    expect(r.frames.at(-1)!.leds[0]!.brightness).toBe(0);
+  });
+
+  it("zmáčknuté tlačítko stáhne pin k zemi — LED se rozsvítí", () => {
+    const r = runProgram(SRC, tlacitkoNaPinu7(), {
+      iterations: 2,
+      inputs: { pressed: new Set(["btn"]) },
+    });
+    expect(r.frames.at(-1)!.leds[0]!.brightness).toBeGreaterThan(0);
+  });
+
+  it("nezapojené tlačítko obvod neovlivní", () => {
+    /* Zmáčknout tlačítko, které nikam nevede, nesmí nic udělat — jinak by
+       lekce prošla i s obvodem, který dítě nezapojilo. */
+    const bezDratku: Circuit = {
+      comps: [UNO, LED, RES, btn],
+      wires: [
+        w(["uno", "D8"], ["r", "a"]),
+        w(["r", "b"], ["led", "anode"]),
+        w(["led", "cathode"], ["uno", "GND-1"]),
+      ],
+    };
+
+    const r = runProgram(SRC, bezDratku, {
+      iterations: 2,
+      inputs: { pressed: new Set(["btn"]) },
+    });
+    expect(r.frames.at(-1)!.leds[0]!.brightness).toBe(0);
+  });
+
+  it("hodnota zadaná kontrolou přebíjí obvod", () => {
+    /* Kontrola lekce musí umět říct „senzor hlásí tmu" bez ohledu na to,
+       co v obvodu je — jinak by se noční světlo nedalo otestovat. */
+    const r = runProgram(
+      `void setup() { pinMode(7, INPUT_PULLUP); pinMode(8, OUTPUT); }
+       void loop() {
+         if (digitalRead(7) == LOW) { digitalWrite(8, HIGH); } else { digitalWrite(8, LOW); }
+       }`,
+      tlacitkoNaPinu7(),
+      { iterations: 2, pinInputs: new Map([[7, 0]]) },
+    );
+    expect(r.frames.at(-1)!.leds[0]!.brightness).toBeGreaterThan(0);
+  });
+});

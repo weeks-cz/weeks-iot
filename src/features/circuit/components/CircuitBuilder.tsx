@@ -25,6 +25,10 @@ interface Props {
   showPins?: boolean;
   /** Součástka, kterou po dítěti chce aktuální krok návodu. */
   suggested?: ComponentType | null;
+  /** Která tlačítka jsou právě držená. */
+  pressed?: Set<string>;
+  /** Zmáčknutí tlačítka v obvodu — jen když má smysl, tedy při běhu. */
+  onPress?: (compId: string, down: boolean) => void;
   /**
    * Obvod, na který se dítě vrátí tlačítkem „Začít znovu".
    *
@@ -69,6 +73,8 @@ export function CircuitBuilder({
   highlightPins,
   showPins,
   suggested,
+  pressed,
+  onPress,
   resetTo,
   onReset,
   readOnly,
@@ -164,6 +170,9 @@ export function CircuitBuilder({
   for (const buzzer of frame?.buzzers ?? []) {
     live.set(buzzer.compId, { sounding: buzzer.frequency > 0 });
   }
+  for (const id of pressed ?? []) {
+    live.set(id, { ...(live.get(id) ?? {}), pressed: true });
+  }
 
   const setZoom = (value: number) =>
     dispatch({
@@ -219,6 +228,7 @@ export function CircuitBuilder({
               flagged={new Set(flagged ?? [])}
               highlightPins={highlightPins}
               showPins={showPins}
+              onPress={onPress}
               onEscape={expanded ? () => setExpanded(false) : undefined}
               readOnly={readOnly}
             />
