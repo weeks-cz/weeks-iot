@@ -1,7 +1,7 @@
 import { getComponentSpec } from "./components";
 import { PITCH } from "./constants";
 import { resolvePinPosition } from "./pins";
-import type { Circuit, PinRef } from "./types";
+import type { Circuit, ComponentType, PinRef } from "./types";
 
 /**
  * Který pin dítě myslelo.
@@ -96,4 +96,33 @@ export function componentAt(circuit: Circuit, point: { x: number; y: number }): 
   }
 
   return bestId;
+}
+
+/**
+ * Zapíchla by se sem součástka do desky?
+ *
+ * Náhled podle toho pozná, jestli ukazuje „tady to bude zapojené" nebo
+ * „tady to bude jen ležet". Bez toho dítě položí LED vedle desky, vypadá
+ * to skoro stejně a rozdíl zjistí až z návodu, který se neodškrtne.
+ */
+export function wouldPlugIn(
+  circuit: Circuit,
+  type: ComponentType,
+  at: { x: number; y: number },
+): boolean {
+  const boards = circuit.comps.filter((c) => c.type === "breadboard-half");
+  if (boards.length === 0) return false;
+
+  const holes = new Set<string>();
+  for (const board of boards) {
+    for (const pin of getComponentSpec(board.type).pins) {
+      holes.add(`${board.x + pin.dx * PITCH},${board.y + pin.dy * PITCH}`);
+    }
+  }
+
+  /* Stačí jedna nožička v dírce — druhá může přečnívat, na desce se to
+     tak běžně dělá. */
+  return getComponentSpec(type).pins.some((pin) =>
+    holes.has(`${at.x + pin.dx * PITCH},${at.y + pin.dy * PITCH}`),
+  );
 }

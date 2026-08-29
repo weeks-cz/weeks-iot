@@ -210,3 +210,32 @@ describe("součástka zapíchnutá do breadboardu", () => {
     expect(hit?.pin.compId).toBe("r");
   });
 });
+
+describe("náhled pozná, jestli se součástka zapíchne", () => {
+  const board: Circuit = {
+    comps: [{ id: "bb", type: "breadboard-half", x: 0, y: 0, rotation: 0 }],
+    wires: [],
+  };
+
+  it("nad dírkami ano", async () => {
+    const { wouldPlugIn } = await import("../hit-test");
+    /* Řada A je dy=2, sloupec 1 je dx=0 → rezistor s nožičkou na (0, 2×PITCH). */
+    expect(wouldPlugIn(board, "resistor-220", { x: 0, y: 2 * PITCH })).toBe(true);
+  });
+
+  it("vedle desky ne", async () => {
+    const { wouldPlugIn } = await import("../hit-test");
+    expect(wouldPlugIn(board, "resistor-220", { x: 2000, y: 2000 })).toBe(false);
+  });
+
+  it("mezi dírkami ne — nožička musí sedět přesně", async () => {
+    const { wouldPlugIn } = await import("../hit-test");
+    expect(wouldPlugIn(board, "resistor-220", { x: 8, y: 2 * PITCH })).toBe(false);
+  });
+
+  it("bez desky na ploše není kam zapíchnout", async () => {
+    const { wouldPlugIn } = await import("../hit-test");
+    const empty: Circuit = { comps: [], wires: [] };
+    expect(wouldPlugIn(empty, "led-red", { x: 0, y: 0 })).toBe(false);
+  });
+});

@@ -5,7 +5,7 @@ import { PlacedComponent } from "./PlacedComponent";
 import { WireLayer } from "./WireLayer";
 import { getComponentSpec } from "../components";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
-import { componentAt, pinAt } from "../hit-test";
+import { componentAt, pinAt, wouldPlugIn } from "../hit-test";
 import { snapToGrid, type BuilderAction, type BuilderState } from "./state";
 import type { ComponentType, PinRef } from "../types";
 
@@ -243,6 +243,9 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
      ještě než se klepne — bez toho dítě kliká naslepo. */
   const ghost = state.armed ? getComponentSpec(state.armed) : null;
   const ghostAt = hover ? { x: snapToGrid(hover.x), y: snapToGrid(hover.y) } : null;
+  /* A rovnou i to, jestli se tam součástka zapíchne, nebo jen položí. */
+  const ghostPlugs =
+    state.armed && ghostAt ? wouldPlugIn(state.circuit, state.armed, ghostAt) : false;
   const GhostTag = ghost
     ? (ghost.wokwiTag as unknown as React.FC<Record<string, unknown>>)
     : null;
@@ -299,18 +302,38 @@ export function Plane({ state, dispatch, live, flagged, highlightPins, showPins,
         ))}
 
         {GhostTag && ghost && ghostAt && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute opacity-50"
-            style={{
-              left: ghostAt.x,
-              top: ghostAt.y,
-              transform: `scale(${ghost.scale})`,
-              transformOrigin: "0 0",
-            }}
-          >
-            <GhostTag {...(ghost.wokwiAttrs ?? {})} />
-          </div>
+          <>
+            {/* Zelený obrys = nožičky padnou do dírek a bude to spojené.
+                Bez obrysu součástka jen leží vedle desky. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute rounded-sm transition-colors"
+              style={{
+                left: ghostAt.x - 4,
+                top: ghostAt.y - 4,
+                width: ghost.spanX * PITCH + 8,
+                height: ghost.spanY * PITCH + 8,
+                border: ghostPlugs
+                  ? "2px solid var(--color-trust-500)"
+                  : "2px dashed color-mix(in srgb, var(--color-ink) 25%, transparent)",
+                background: ghostPlugs
+                  ? "color-mix(in srgb, var(--color-trust-500) 10%, transparent)"
+                  : undefined,
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute opacity-60"
+              style={{
+                left: ghostAt.x,
+                top: ghostAt.y,
+                transform: `scale(${ghost.scale})`,
+                transformOrigin: "0 0",
+              }}
+            >
+              <GhostTag {...(ghost.wokwiAttrs ?? {})} />
+            </div>
+          </>
         )}
       </div>
     </div>
