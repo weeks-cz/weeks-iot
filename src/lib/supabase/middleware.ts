@@ -1,16 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./types";
-
-/** Cesty, na které se nedostane nepřihlášený návštěvník. */
-const PROTECTED_PREFIXES = ["/ucet", "/ucim-se"];
-
-/** Cesty, které přihlášenému rodiči nedávají smysl. */
-const GUEST_ONLY_PREFIXES = ["/prihlaseni", "/registrace"];
-
-function matchesPrefix(pathname: string, prefixes: string[]): boolean {
-  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
+import { decideAccess } from "@/features/auth/route-access";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -45,7 +36,9 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname, search } = request.nextUrl;
 
-  if (!user && matchesPrefix(pathname, PROTECTED_PREFIXES)) {
+  const decision = decideAccess(pathname, Boolean(user));
+
+  if (decision.action === "toLogin") {
     const url = request.nextUrl.clone();
     url.pathname = "/prihlaseni";
     url.search = "";
@@ -56,7 +49,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && matchesPrefix(pathname, GUEST_ONLY_PREFIXES)) {
+  if (decision.action === "toAccount") {
     const url = request.nextUrl.clone();
     url.pathname = "/ucet";
     url.search = "";
