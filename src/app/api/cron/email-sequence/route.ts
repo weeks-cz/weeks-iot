@@ -39,8 +39,18 @@ export async function GET(request: Request) {
     }
   }
 
+  /* ── Nácvik nasucho ──────────────────────────────────────────────────
+     `?dryRun=1` projde úplně stejnou logikou, ale nic neodešle a nic
+     nezapíše — jen vypíše, co by odešlo komu.
+
+     Existuje to proto, že testování téhle routy proti ostrým datům
+     poslalo 29. 8. pět uvítacích e-mailů na skutečné schránky. Cron,
+     který se nedá vyzkoušet nanečisto, se bude zkoušet naostro. */
+  const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
+
   const service = createServiceClient();
   const results = { sent: 0, skipped: 0, failed: 0 };
+  const plan: Array<{ email: string; step: string }> = [];
 
   const { data: parents } = await service
     .from("parents")
@@ -102,6 +112,8 @@ export async function GET(request: Request) {
         } as never);
 
         if (!consented) {
+          results.skipped += 1;
+          if (dryRun) continue;
           /* Zapíše se jako přeskočený, aby se to nezkoušelo každý den znovu. */
           await service.from("email_log").insert({
             parent_id: parent.id,
@@ -109,7 +121,6 @@ export async function GET(request: Request) {
             ok: false,
             error: "bez souhlasu s obchodními sděleními",
           });
-          results.skipped += 1;
           continue;
         }
       }
@@ -123,6 +134,12 @@ export async function GET(request: Request) {
          se tu už jednou stala: zápis tiše selhával kvůli chybějícímu
          grantu a cron při každém běhu posílal totéž znovu. Odeslaný
          e-mail se nedá vzít zpět, zápis do logu ano. */
+      if (dryRun) {
+        plan.push({ email: parent.email, step: step.id });
+        results.sent += 1;
+        continue;
+      }
+
       const { error: claimError } = await service.from("email_log").insert({
         parent_id: parent.id,
         step: step.id,
@@ -160,6 +177,6 @@ export async function GET(request: Request) {
     }
   }
 
-  console.info("[cron/email-sequence]", results);
-  return NextResponse.json(results);
+  console.info("[cron/email-sequence]", { dryRun, ...results });
+  return NextResponse.json(dryRun ? { dryRun: true, ...results, plan } : results);
 }
