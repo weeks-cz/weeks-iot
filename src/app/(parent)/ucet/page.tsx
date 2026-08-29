@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { Alert, Badge, Card, MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/features/account/session";
 import { segmentForRegion } from "@/lib/regions";
 import { Avatar } from "@/features/children/avatars";
 import { ContinueButton } from "@/features/children/components/ContinueButton";
@@ -21,22 +22,23 @@ export default async function AccountPage({
   searchParams: Promise<{ vitejte?: string; heslo?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/prihlaseni");
 
-  const [{ data: parent }, children, catchment, { data: consents }] = await Promise.all([
-    supabase
-      .from("parents")
-      .select("region_code, plan, created_at, account_type")
-      .eq("id", auth.user.id)
-      .maybeSingle(),
-    getChildren(auth.user.id),
+  /* Session už načetl layout — tohle volání je z cache a nestojí nic. */
+  const session = await getSession();
+  if (!session) redirect("/prihlaseni");
+
+  const parent = session.account;
+  const supabase = await createClient();
+
+  /* Zbytek paralelně. Sekvenčně by to byly tři round-tripy za sebou,
+     což se u databáze v jiném městě sečte. */
+  const [children, catchment, { data: consents }] = await Promise.all([
+    getChildren(session.userId),
     getCampCatchment(),
     supabase
       .from("consents")
       .select("kind, version, granted, created_at, id")
-      .eq("parent_id", auth.user.id),
+      .eq("parent_id", session.userId),
   ]);
 
   const segment = segmentForRegion(

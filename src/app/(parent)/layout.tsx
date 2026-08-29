@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
-import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "@/features/auth/actions";
+import { getSession } from "@/features/account/session";
 import { voiceFor } from "@/features/account/voice";
 
 export const metadata: Metadata = {
@@ -11,20 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-
   /* Middleware sem nepřihlášeného nepustí, ale layout si to ověřuje sám.
      Autorizace se nemá spoléhat na jedinou vrstvu — kdyby se změnil
-     matcher middlewaru, tahle zóna by se tiše otevřela. */
-  if (!auth.user) redirect("/prihlaseni?next=%2Fucet");
+     matcher middlewaru, tahle zóna by se tiše otevřela.
 
-  const { data: parent } = await supabase
-    .from("parents")
-    .select("onboarding_completed_at, email, account_type")
-    .eq("id", auth.user.id)
-    .maybeSingle();
+     getSession() je cachovaná v rámci jednoho vykreslení, takže totéž
+     volání ve stránce pod tímhle layoutem už nic nestojí. */
+  const session = await getSession();
+  if (!session) redirect("/prihlaseni?next=%2Fucet");
 
+  const parent = session.account;
   if (!parent?.onboarding_completed_at) redirect("/registrace/onboarding");
 
   const voice = voiceFor(parent.account_type);
@@ -75,7 +71,7 @@ export default async function ParentLayout({ children }: { children: React.React
 
       <footer className="section-container border-t border-ink/10 py-6">
         <p className="font-mono text-xs text-ink-300">
-          Přihlášen jako {parent.email}
+          Přihlášen jako {session.email}
         </p>
       </footer>
     </div>

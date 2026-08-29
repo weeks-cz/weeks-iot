@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/features/account/session";
 import { CONTROLLER } from "@/lib/site";
 import { consentStatuses } from "@/features/consent/logic";
 import { ConsentList } from "@/features/consent/components/ConsentList";
@@ -10,14 +11,14 @@ import { ConsentList } from "@/features/consent/components/ConsentList";
 export const metadata: Metadata = { title: "Souhlasy" };
 
 export default async function ConsentsPage() {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/prihlaseni");
+  const session = await getSession();
+  if (!session) redirect("/prihlaseni");
 
+  const supabase = await createClient();
   const { data: consents } = await supabase
     .from("consents")
     .select("id, kind, version, granted, created_at")
-    .eq("parent_id", auth.user.id)
+    .eq("parent_id", session.userId)
     .order("created_at", { ascending: false });
 
   return (
@@ -31,7 +32,9 @@ export default async function ConsentsPage() {
         </p>
       </header>
 
-      <ConsentList statuses={consentStatuses(consents ?? [])} />
+      <ConsentList
+        statuses={consentStatuses(consents ?? [], session.account?.account_type !== "self")}
+      />
 
       <div className="mt-8 border-t border-ink/10 pt-6">
         <h2 className="heading-3 mb-2">Zrušení účtu</h2>

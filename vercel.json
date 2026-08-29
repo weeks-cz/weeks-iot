@@ -15,5 +15,8 @@
       "path": "/api/cron/email-sequence",
       "schedule": "0 9 * * *"
     }
+  ],
+  "regions": [
+    "fra1"
   ]
 }

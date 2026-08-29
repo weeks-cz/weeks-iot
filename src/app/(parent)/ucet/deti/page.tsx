@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { MonoLabel } from "@/components/ui/Surface";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/features/account/session";
 import { ChildManager } from "@/features/children/components/ChildManager";
 import { getChildren } from "@/features/children/queries";
 import { voiceFor } from "@/features/account/voice";
@@ -9,18 +9,11 @@ import { voiceFor } from "@/features/account/voice";
 export const metadata: Metadata = { title: "Profily dětí" };
 
 export default async function ChildrenPage() {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/prihlaseni");
+  const session = await getSession();
+  if (!session) redirect("/prihlaseni");
 
-  const { data: parent } = await supabase
-    .from("parents")
-    .select("account_type")
-    .eq("id", auth.user.id)
-    .maybeSingle();
-
-  const voice = voiceFor(parent?.account_type);
-  const children = await getChildren(auth.user.id);
+  const voice = voiceFor(session.account?.account_type);
+  const children = await getChildren(session.userId);
 
   return (
     <div className="max-w-3xl">

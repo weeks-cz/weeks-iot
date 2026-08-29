@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { MonoLabel } from "@/components/ui/Surface";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/features/account/session";
 import { getChildren } from "@/features/children/queries";
 import { DeleteAccountForm } from "@/features/consent/components/DeleteAccountForm";
 import { voiceFor } from "@/features/account/voice";
@@ -23,18 +23,11 @@ export default async function DeleteAccountPage({
   searchParams: Promise<{ duvod?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/prihlaseni");
+  const session = await getSession();
+  if (!session) redirect("/prihlaseni");
 
-  const { data: parent } = await supabase
-    .from("parents")
-    .select("account_type")
-    .eq("id", auth.user.id)
-    .maybeSingle();
-
-  const children = await getChildren(auth.user.id);
-  const voice = voiceFor(parent?.account_type);
+  const children = await getChildren(session.userId);
+  const voice = voiceFor(session.account?.account_type);
   const reason = params.duvod ? REASONS[params.duvod] : undefined;
 
   return (
@@ -46,7 +39,7 @@ export default async function DeleteAccountPage({
         reason={reason}
         childNames={children.map((c) => c.nick)}
         isSelfManaged={!voice.canAddProfiles}
-        email={auth.user.email ?? ""}
+        email={session.email}
       />
     </div>
   );
