@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlacedComponent } from "./PlacedComponent";
 import { WireLayer } from "./WireLayer";
-import { getComponentSpec } from "../components";
+import { getComponentSpec, pinLabel } from "../components";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
-import { componentAt, pinAt, wouldPlugIn } from "../hit-test";
+import { componentAt, pinAt, pluggedPoints, wouldPlugIn } from "../hit-test";
 import { snapToGrid, type BuilderAction, type BuilderState } from "./state";
 import type { ComponentType, PinRef } from "../types";
 
@@ -266,6 +266,26 @@ export function Plane({
   const nearest =
     !readOnly && hover && !state.armed ? (pinAt(state.circuit, hover)?.pin ?? null) : null;
 
+  /* Popisek nožičky pod kurzorem — Tinkercad ukazuje „Anoda" a je to
+     nejrychlejší způsob, jak se dítě naučí, která nožička je která.
+     Vykresluje se MIMO škálovanou plochu, aby se při oddálení nezmenšil
+     do nečitelna. */
+  const nearestComp = nearest ? state.circuit.comps.find((c) => c.id === nearest.compId) : null;
+  const tooltip =
+    nearest && nearestComp && hover
+      ? {
+          text: `${getComponentSpec(nearestComp.type).label} · ${pinLabel(nearestComp.type, nearest.pinName)}`,
+          /* Souřadnice plochy → souřadnice výřezu: plocha sedí na
+             left/top 2000 a škáluje se kolem svého počátku. */
+          x: 2000 + state.pan.x + hover.x * state.zoom,
+          y: 2000 + state.pan.y + hover.y * state.zoom,
+        }
+      : null;
+
+  /* Zapíchnuté nožičky. Přepočítávat je při každém renderu je levné
+     (desítky pinů) a odpadá tím další memo závislé na obvodu. */
+  const plugged = pluggedPoints(state.circuit);
+
   /* Náhled nachystané součástky. Tinkercad ukazuje, co se položí a kam,
      ještě než se klepne — bez toho dítě kliká naslepo. */
   const ghost = state.armed ? getComponentSpec(state.armed) : null;
@@ -330,6 +350,26 @@ export function Plane({
           />
         ))}
 
+        {/* Zelené kroužky: tahle nožička je opravdu v dírce. Stejná
+            zpětná vazba jako v Tinkercadu — bez ní se „zapíchnuto" nedá
+            odlišit od „leží o pixel vedle". */}
+        {plugged.map((pt, i) => (
+          <div
+            key={`plug-${i}`}
+            aria-hidden="true"
+            className="pointer-events-none absolute rounded-full"
+            style={{
+              left: pt.x - 6,
+              top: pt.y - 6,
+              width: 12,
+              height: 12,
+              border: "2.5px solid var(--color-trust-500)",
+              background: "color-mix(in srgb, var(--color-trust-500) 18%, transparent)",
+              zIndex: 12,
+            }}
+          />
+        ))}
+
         {GhostTag && ghost && ghostAt && (
           <>
             {/* Zelený obrys = nožičky padnou do dírek a bude to spojené.
@@ -365,6 +405,16 @@ export function Plane({
           </>
         )}
       </div>
+
+      {tooltip && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute z-20 -translate-x-1/2 rounded-md border border-ink/20 bg-ink px-2.5 py-1 font-mono text-xs text-paper shadow-hard-sm"
+          style={{ left: tooltip.x, top: tooltip.y - 34 }}
+        >
+          {tooltip.text}
+        </div>
+      )}
     </div>
   );
 }

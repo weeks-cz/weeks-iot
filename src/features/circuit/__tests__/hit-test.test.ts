@@ -18,9 +18,10 @@ const circuit: Circuit = {
   wires: [],
 };
 
-/* LED: anoda dx=2, katoda dx=3, obě dy=5 → 32/48 px vodorovně, 80 svisle. */
-const ANODE = { x: 2 * PITCH, y: 5 * PITCH };
-const CATHODE = { x: 3 * PITCH, y: 5 * PITCH };
+/* LED: katoda dx=2, ANODA dx=3 (v kresbě Wokwi je anoda vpravo — spec to
+   dřív měla obráceně a model věřil opačné nožičce, než dítě vidělo). */
+const CATHODE = { x: 2 * PITCH, y: 5 * PITCH };
+const ANODE = { x: 3 * PITCH, y: 5 * PITCH };
 
 describe("nejbližší pin", () => {
   it("přesný zásah chytne ten pin", () => {
@@ -31,8 +32,8 @@ describe("nejbližší pin", () => {
   it("mezi dvěma nožičkami LED vyhraje ta bližší, ne ta pozdější v pořadí", () => {
     /* Tohle je ta chyba, kterou to opravuje: cíle se překrývaly a chytal
        se pin podle pořadí v DOM. Dítě klikalo na plus a dostalo mínus. */
-    expect(pinAt(circuit, { x: ANODE.x + 4, y: ANODE.y })?.pin.pinName).toBe("anode");
-    expect(pinAt(circuit, { x: CATHODE.x - 4, y: CATHODE.y })?.pin.pinName).toBe("cathode");
+    expect(pinAt(circuit, { x: ANODE.x - 4, y: ANODE.y })?.pin.pinName).toBe("anode");
+    expect(pinAt(circuit, { x: CATHODE.x + 4, y: CATHODE.y })?.pin.pinName).toBe("cathode");
   });
 
   it("mimo dosah nechytá nic", () => {
@@ -119,7 +120,7 @@ describe("posun na zvýrazněné piny", () => {
     /* Tečka půl centimetru od hrany je sice technicky vidět, ale míří se
        na ni mizerně — a u dotyku ji zakryje vlastní prst. */
     const edge: Circuit = {
-      comps: [{ id: "led", type: "led-red", x: 0, y: 0, rotation: 0 }],
+      comps: [{ id: "led", type: "led-red", x: -2 * PITCH, y: 0, rotation: 0 }],
       wires: [],
     };
 
@@ -292,8 +293,8 @@ describe("výběr součástky vedle pinů", () => {
     };
 
     /* Šest pixelů vedle a osm nad — pořád jednoznačně blíž k anodě než
-       ke katodě, která je o celou rozteč vpravo. */
-    const vedleAnody = { x: 2 * PITCH - 6, y: 5 * PITCH - 8 };
+       ke katodě, která je o celou rozteč vlevo. */
+    const vedleAnody = { x: 3 * PITCH + 6, y: 5 * PITCH - 8 };
     expect(pinAt(led, vedleAnody)?.pin.pinName).toBe("anode");
   });
 });

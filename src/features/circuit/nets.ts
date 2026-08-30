@@ -116,7 +116,7 @@ export interface NetMap {
  * breadboardu nezastrkává a dvě součástky přes sebe jsou nepořádek na
  * ploše, ne elektrický spoj.
  */
-const PLUGGABLE: ReadonlySet<string> = new Set([
+export const PLUGGABLE: ReadonlySet<string> = new Set([
   "led-red",
   "led-yellow",
   "led-green",
@@ -126,7 +126,9 @@ const PLUGGABLE: ReadonlySet<string> = new Set([
   "pushbutton",
   "piezo-buzzer",
   "potentiometer",
-  "photoresistor",
+  /* Fotorezistor tu schválně NENÍ: je to modul se čtyřmi piny pod sebou.
+     Zapíchnutý do jednoho sloupce desky by měl VCC, GND i výstup v jedné
+     síti — zkrat. Zapojuje se drátky, jako v lekci 7. */
 ]);
 
 function breadboardContacts(circuit: Circuit): PinKey[][] {
@@ -178,6 +180,17 @@ export function resolveNets(circuit: Circuit): NetMap {
     }
     for (const group of breadboardGroups(comp)) {
       for (let i = 1; i < group.length; i++) uf.union(group[0]!, group[i]!);
+    }
+
+    /* Všechny GND piny Arduina jsou JEDNA zem — na skutečné desce jsou
+       propojené uvnitř. Dřív prošla katoda jen do GND-1, protože lekce
+       jmenovala právě ten; dítě, které vybralo jiný ze tří GND, dostalo
+       „chybí spoj" u správného zapojení. */
+    if (comp.type === "arduino-uno") {
+      const gnds = getComponentSpec(comp.type)
+        .pins.filter((pin) => pin.name.startsWith("GND"))
+        .map((pin) => pinKey(comp.id, pin.name));
+      for (let i = 1; i < gnds.length; i++) uf.union(gnds[0]!, gnds[i]!);
     }
   }
 

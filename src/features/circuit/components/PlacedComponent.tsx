@@ -195,7 +195,18 @@ export function PlacedComponent({
       }}
       onPointerDown={onPointerDown}
     >
-      <Tag ref={elementRef} {...(spec.wokwiAttrs ?? {})} />
+      {/* Kresba se posouvá zvlášť od pinů: nožičky Wokwi prvků skoro nikdy
+          neleží na mřížce, tak stojí na mřížce piny a kresba se přisune
+          k nim. Posun je v přirozených jednotkách — rodič škáluje. */}
+      <div
+        style={
+          spec.visualOffset
+            ? { transform: `translate(${spec.visualOffset.x}px, ${spec.visualOffset.y}px)` }
+            : undefined
+        }
+      >
+        <Tag ref={elementRef} {...(spec.wokwiAttrs ?? {})} />
+      </div>
 
       <div className="pointer-events-none absolute inset-0">
         {spec.pins.map((pin) => {

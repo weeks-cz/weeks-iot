@@ -79,12 +79,14 @@ int tlacitko = 7;
 
 void setup() {
   pinMode(led, OUTPUT);
-  // Nastav pin tlačítka jako vstup s pullupem.
-
+  // Tlačítko je vstup: Arduino ho poslouchá.
+  pinMode(tlacitko, INPUT_PULLUP);
 }
 
 void loop() {
-  // Přečti tlačítko a rozhodni, jestli LED svítí.
+  // ÚKOL: Když je tlačítko zmáčknuté, rozsviť. Jinak zhasni.
+  //   1) přečti tlačítko: digitalRead(tlacitko)
+  //   2) rozhodni se: if (…== LOW) { rozsviť } else { zhasni }
 
 }
 `,

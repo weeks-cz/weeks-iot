@@ -97,7 +97,11 @@ void setup() {
 }
 
 void loop() {
-  // Přečti senzor, vypiš hodnotu a rozhodni o LED.
+  // ÚKOL 1: Přečti senzor:  int svetlo = analogRead(senzor);
+  // ÚKOL 2: Vypiš hodnotu:  Serial.println(svetlo);
+  // ÚKOL 3: Rozhodni se: když je svetlo MENŠÍ než hranice,
+  //         rozsviť LED. Jinak ji zhasni. (if / else)
+  // Nakonec přidej delay(200), ať výpis neletí moc rychle.
 
 }
 `,

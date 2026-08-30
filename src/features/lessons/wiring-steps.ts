@@ -155,6 +155,11 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
     const fromPin: PinRef | null = fromId ? { compId: fromId, pinName: conn.from.pin } : null;
     const toPin: PinRef | null = toId ? { compId: toId, pinName: conn.to.pin } : null;
 
+    /* Zem je zem: když krok vede na GND, blikají všechny tři GND piny
+       Arduina. Jsou vnitřně propojené a dítě si smí vybrat kterýkoli. */
+    const toPins: PinRef[] = toPin ? expandGround(toPart, toPin) : [];
+    const fromPins: PinRef[] = fromPin ? expandGround(fromPart, fromPin) : [];
+
     const satisfied = connectionSatisfied(circuit, conn, wiring.roles, nets);
     const via = conn.through ?? [];
 
@@ -164,7 +169,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
         kind: "connect",
         instruction: `${fromWhat} → ${toWhat}`,
         detail: conn.hint,
-        pins: [fromPin, toPin].filter((p): p is PinRef => p !== null),
+        pins: [...fromPins, ...toPins],
         done: satisfied,
       });
       continue;
@@ -200,7 +205,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
       detail:
         `Veď drátek z ${longHint(fromPart, conn.from.pin)} na kteroukoli nožičku. ` +
         "Na tom, kterou stranou součástka leží, nezáleží.",
-      pins: [...(fromPin ? [fromPin] : []), ...viaPins],
+      pins: [...fromPins, ...viaPins],
       done: firstDone,
     });
 
@@ -233,7 +238,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
       kind: "connect",
       instruction: `${viaLabel} → ${toWhat}`,
       detail: `Z DRUHÉ nožičky veď drátek na ${longHint(toPart, conn.to.pin)}. ${conn.hint}`,
-      pins: [...(freePins.length > 0 ? freePins : viaPins), ...(toPin ? [toPin] : [])],
+      pins: [...(freePins.length > 0 ? freePins : viaPins), ...toPins],
       done: satisfied,
       warning: shorted
         ? "Oba drátky ti vedou na tutéž nožičku — proud tak součástku obejde, jako by " +
@@ -243,6 +248,15 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
   }
 
   return steps;
+}
+
+/** GND pin Arduina → všechny jeho GND piny. Ostatní piny beze změny. */
+function expandGround(part: PartSpec, pin: PinRef): PinRef[] {
+  if (part.type !== "arduino-uno" || !pin.pinName.startsWith("GND")) return [pin];
+
+  return getComponentSpec("arduino-uno")
+    .pins.filter((p) => p.name.startsWith("GND"))
+    .map((p) => ({ compId: pin.compId, pinName: p.name }));
 }
 
 /**

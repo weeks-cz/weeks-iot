@@ -76,7 +76,9 @@ void setup() {
 }
 
 void loop() {
-  // Když je tlačítko zmáčknuté, ozvi se. Jinak mlč.
+  // ÚKOL: Když je tlačítko zmáčknuté, hraj. Jinak mlč.
+  //   1) if (digitalRead(tlacitko) == LOW) → tone(bzucak, 440)
+  //   2) else → noTone(bzucak)
 
 }
 `,

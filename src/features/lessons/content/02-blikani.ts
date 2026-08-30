@@ -66,7 +66,11 @@ void setup() {
 }
 
 void loop() {
-  // Rozsviť, počkej, zhasni, počkej.
+  // ÚKOL: Rozsviť, počkej, zhasni, počkej. Čtyři řádky:
+  //   1) digitalWrite — zapnout
+  //   2) delay — počkat
+  //   3) digitalWrite — vypnout
+  //   4) delay — počkat
 
 }
 `,

@@ -66,7 +66,9 @@ void setup() {
 }
 
 void loop() {
-  // Projeď jas od 0 do 255 a zase zpátky.
+  // ÚKOL 1: Projeď jas nahoru — smyčka for od 0 do 255,
+  //         uvnitř analogWrite a krátký delay(5).
+  // ÚKOL 2: A zase dolů — druhá smyčka od 255 k 0 (jas--).
 
 }
 `,

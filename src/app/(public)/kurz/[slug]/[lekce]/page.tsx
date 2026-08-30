@@ -91,7 +91,7 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
   const completedSlugs = auth.user ? await completedLessonSlugs(data.publishedIds) : [];
 
   return (
-    <main className="section-container py-10">
+    <main className="section-container py-6 sm:py-8">
       {/* Cesta zpět a metadata na jednom řádku. Dřív to byly dva bloky nad
           sebou a hlavička odsunula práci o kus níž — na telefonu tak lekce
           začínala až za ohybem. */}
@@ -116,7 +116,10 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
         )}
       </header>
 
-      <div className="max-w-3xl">
+      {/* Práce dostane celou šířku. Texty uvnitř si drží čitelnou šířku
+          přes max-w-prose; zaškrtit CELOU lekci na 768 px znamenalo malou
+          plochu na skládání a půl obrazovky bílého místa. */}
+      <div className="max-w-6xl">
         <LessonRunner
           courseSlug={slug}
           lessonSlug={lekce}

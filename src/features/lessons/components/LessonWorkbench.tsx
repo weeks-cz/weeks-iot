@@ -17,6 +17,7 @@ import { NO_FRAMES, useFramePlayer } from "./useFramePlayer";
 import { clearDraft, loadDraft, saveDraft } from "../draft";
 import { runLessonChecks, type LessonRunResult } from "../run-check";
 import { lessonSeedCircuit } from "../seed-circuit";
+import { vocabularyFor } from "../vocabulary";
 import { currentStep, wiringSteps } from "../wiring-steps";
 import type { Lesson } from "../types";
 
@@ -71,6 +72,11 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
      smysl. */
   const [pressed, setPressed] = useState<Set<string>>(new Set());
   const [solved, setSolved] = useState(false);
+  /* Rozdělaná práce z minula. Ukazuje se jako nabídka, ne jako skok:
+     dřív se rovnou přepnulo na zapojování a dítě, které lekci jen kdysi
+     otevřelo, se ocitlo v kroku 3 ze 4 bez zadání a bez seznámení se
+     součástkami — a nechápalo proč. */
+  const [hasDraft, setHasDraft] = useState(false);
   const partsReady = useWokwiElements();
 
   const stepHeading = useRef<HTMLHeadingElement>(null);
@@ -88,11 +94,11 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
     restored.current = true;
     /* eslint-disable react-hooks/set-state-in-effect -- jednorázové přečtení
-       vnějšího stavu po připojení, ne řetězení stavů; viz komentář výše. */
+       vnějšího stavu po připojení, ne řetězení stavů; localStorage na
+       serveru není, takže dřív to načíst nejde. */
     setCode(draft.code);
     setCircuit(draft.circuit);
-    /* Kdo se vrací k rozdělané práci, nechce znovu číst zadání. */
-    setStep(STEP.WIRING);
+    setHasDraft(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [lesson.slug]);
 
@@ -210,6 +216,10 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   /* Součástky, se kterými se dá při běhu hýbat. Zatím jen tlačítka. */
   const interactive = circuit.comps.filter((c) => c.type === "pushbutton");
 
+  /* Tahák k příkazům téhle lekce. Vybírá se podle vzorového řešení —
+     má obsahovat to, co dítě bude potřebovat, ne to, co už napsalo. */
+  const vocabulary = vocabularyFor(lesson.solution);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Odměna za dvacet minut práce. Zelený rámeček je oznámení,
@@ -221,6 +231,17 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
       {step === STEP.BRIEF && (
         <section className="flex flex-col gap-5">
+          {hasDraft && !solved && (
+            <div className="animate-slide-in flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-600 bg-primary-50 px-4 py-3">
+              <p className="text-sm font-semibold text-primary-800">
+                Minule jsi tu nechal{"\u00a0"}rozdělanou práci.
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setStep(STEP.WIRING)}>
+                Pokračovat, kde jsem skončil →
+              </Button>
+            </div>
+          )}
+
           {/* Cíl lekce je v hlavičce stránky; opakovat ho tady by z něj
               udělalo dvojitý nadpis nad sebou. */}
           <h2 ref={stepHeading} tabIndex={-1} className="heading-3 outline-none">
@@ -320,14 +341,10 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
             <Button onClick={() => setWiringChecked(true)}>Zkontrolovat zapojení</Button>
 
             {hints.wiring < lesson.wiringHints.length && (
-              <button
-                type="button"
-                onClick={() => revealHint("wiring")}
-                className="inline-flex items-center gap-1.5 rounded-sm text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
-              >
+              <Button size="sm" variant="outline" onClick={() => revealHint("wiring")}>
                 <Lightbulb className="h-4 w-4" aria-hidden="true" />
                 {hints.wiring === 0 ? "Poradit" : "Poradit víc"}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -374,6 +391,22 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="flex flex-col gap-3">
+              {vocabulary.length > 0 && (
+                <div className="rounded-md border border-ink/15 bg-paper-soft p-3">
+                  <p className="mono-label mb-2">Tahák — příkazy téhle lekce</p>
+                  <dl className="flex flex-col gap-2">
+                    {vocabulary.map((entry) => (
+                      <div key={entry.needle} className="text-sm leading-snug">
+                        <dt className="inline rounded-sm bg-ink px-1.5 py-0.5 font-mono text-[0.8rem] text-paper">
+                          {entry.syntax}
+                        </dt>{" "}
+                        <dd className="mt-1 inline text-ink-500">{entry.what}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              )}
+
               <CodeEditor
                 value={code}
                 onChange={(next) => {
@@ -397,14 +430,10 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 )}
 
                 {hints.code < lesson.codeHints.length && (
-                  <button
-                    type="button"
-                    onClick={() => revealHint("code")}
-                    className="inline-flex items-center gap-1.5 rounded-sm text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
-                  >
+                  <Button size="sm" variant="outline" onClick={() => revealHint("code")}>
                     <Lightbulb className="h-4 w-4" aria-hidden="true" />
                     {hints.code === 0 ? "Poradit" : "Poradit víc"}
-                  </button>
+                  </Button>
                 )}
               </div>
 

@@ -1,4 +1,5 @@
 import { getComponentSpec } from "./components";
+import { PLUGGABLE } from "./nets";
 import { PITCH } from "./constants";
 import { resolvePinPosition } from "./pins";
 import type { Circuit, ComponentType, PinRef } from "./types";
@@ -131,4 +132,35 @@ export function wouldPlugIn(
   return getComponentSpec(type).pins.some((pin) =>
     holes.has(`${at.x + pin.dx * PITCH},${at.y + pin.dy * PITCH}`),
   );
+}
+
+/**
+ * Body, kde nožička součástky sedí v dírce breadboardu.
+ *
+ * Plocha na nich kreslí zelené kroužky — stejnou zpětnou vazbu, jakou
+ * dává Tinkercad. Bez ní dítě nepozná rozdíl mezi „zapíchnuto" a „leží
+ * o pixel vedle", protože kresba vypadá skoro stejně.
+ */
+export function pluggedPoints(circuit: Circuit): Array<{ x: number; y: number }> {
+  const boards = circuit.comps.filter((c) => c.type === "breadboard-half");
+  if (boards.length === 0) return [];
+
+  const holes = new Set<string>();
+  for (const board of boards) {
+    for (const pin of getComponentSpec(board.type).pins) {
+      holes.add(`${board.x + pin.dx * PITCH},${board.y + pin.dy * PITCH}`);
+    }
+  }
+
+  const points: Array<{ x: number; y: number }> = [];
+  for (const comp of circuit.comps) {
+    if (!PLUGGABLE.has(comp.type)) continue;
+    for (const pin of getComponentSpec(comp.type).pins) {
+      const x = comp.x + pin.dx * PITCH;
+      const y = comp.y + pin.dy * PITCH;
+      if (holes.has(`${x},${y}`)) points.push({ x, y });
+    }
+  }
+
+  return points;
 }

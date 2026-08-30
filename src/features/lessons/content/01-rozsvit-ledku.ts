@@ -72,12 +72,14 @@ export const lesson1: Lesson = {
 int led = 8;
 
 void setup() {
-  // Tady řekneš Arduinu, že pin 8 bude něco ovládat.
+  // ÚKOL 1: Řekni Arduinu, že pin s LED bude OVLÁDAT.
+  //         Tvar příkazu najdeš v taháku u „pinMode".
 
 }
 
 void loop() {
-  // Tady LED rozsvítíš.
+  // ÚKOL 2: Rozsviť LED — pošli na pin HIGH.
+  //         Tvar najdeš v taháku u „digitalWrite".
 
 }
 `,
