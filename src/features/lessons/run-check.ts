@@ -1,3 +1,4 @@
+import { silentProgramReason, type SilentReason } from "@/features/arduino/silent-program";
 import { runProgram, type SimulationFrame } from "@/features/circuit/simulate";
 import { checkWiring } from "@/features/circuit/wiring-check";
 import type { Circuit } from "@/features/circuit/types";
@@ -24,6 +25,14 @@ export interface LessonRunResult {
   /** Chyba překladu nebo běhu. Když je, kontroly se neposuzují. */
   error: { message: string; line: number } | null;
   outcomes: CheckOutcome[];
+  /**
+   * Proč program mlčí, když neudělal vůbec nic.
+   *
+   * Ptáme se jen tehdy, když neprošla ani JEDNA kontrola. U programu,
+   * kterému něco funguje, by to ukazovalo na komentář, co si dítě schovalo
+   * stranou schválně.
+   */
+  silent: SilentReason | null;
   /** Prošly všechny body? */
   passed: boolean;
   /** Snímky prvního běhu — do animace obvodu. */
@@ -86,10 +95,19 @@ export function runLessonChecks(
     });
   }
 
+  const passed = error === null && outcomes.length > 0 && outcomes.every((o) => o.passed);
+
+  /* Program, který se přeložil a přitom neudělal vůbec nic, byl doteď
+     neviditelný třetí stav: dítě dostalo nápovědu „napiš digitalWrite(led,
+     HIGH)" ve chvíli, kdy tu větu mělo zakomentovanou na obrazovce před
+     sebou. */
+  const nothingWorks = error === null && outcomes.length > 0 && outcomes.every((o) => !o.passed);
+
   return {
     error,
     outcomes,
-    passed: error === null && outcomes.length > 0 && outcomes.every((o) => o.passed),
+    silent: nothingWorks ? silentProgramReason(source, lesson.starterCode) : null,
+    passed,
     preview,
   };
 }

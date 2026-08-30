@@ -137,6 +137,21 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
   tlačítko — a stisk pak nic neměnil.
 - **Kontroly tlačítkových lekcí mačkají roli (`pressed`), ne pin.** Vnucený
   `pinInputs` pustí i obvod s trvale uzemněným pinem.
+- **Editor musí barvit komentáře.** Dokud byl text jednobarevný, dítě napsalo
+  příkaz do řádku, který už `//` měl, a nemělo jak poznat, že jeho program je
+  prázdný. Barevný `<pre>` leží pod průhlednou `textarea` — obě vrstvy musí mít
+  stejné písmo, prokládání i odsazení a synchronizované rolování v OBOU osách.
+- **Přeložený program, který nic nedělá, je třetí stav.** Není to chyba
+  překladu ani nesplněná kontrola. `silentProgramReason` ho pojmenuje a
+  `run-check` se na něj ptá jen tehdy, když neprošla ANI JEDNA kontrola —
+  jinak by ukazoval na komentář, co si dítě schovalo stranou schválně.
+- **Z každého kroku musí vést cesta ven.** Nápovědy dojdou a „Napsat program"
+  se objeví teprve, když zapojení sedí — bez únikové cesty tam lekce končí.
+  Po poslední nápovědě proto přibude „Zapoj tenhle krok za mě" (`applyStep`)
+  a „Ukázat řešení". Počítá se do `hintsUsed` jednou za krok, ne za kliknutí.
+- **`CircuitBuilder` si obvod drží sám** — `initialCircuit` je opravdu jen
+  počáteční hodnota. Dovnitř se obvod dostane jedině přes `pushCircuit`, které
+  porovnává REFERENCI, takže každé vnucení musí být nový objekt.
 
 ## Design
 
@@ -157,7 +172,7 @@ Mobile-first od 320 px. Dotykové cíle minimálně 44 px.
 
 ```bash
 npx tsc --noEmit    # musí být čistý pro nový kód
-npm test            # 444 testů
+npm test            # 499 testů
 npm run build       # odhalí úniky server→klient, které tsc nevidí
 ```
 

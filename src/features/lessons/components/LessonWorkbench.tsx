@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Circle, Hand, Lightbulb, Play, Square } from "lucide-react";
+import { Check, Circle, Eye, Hand, Lightbulb, Play, Square, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel, Stepper } from "@/components/ui/Surface";
 import { CircuitBuilder } from "@/features/circuit/components/CircuitBuilder";
@@ -9,11 +9,12 @@ import { useWokwiElements } from "@/features/circuit/components/useWokwiElements
 import { checkWiring } from "@/features/circuit/wiring-check";
 import type { Circuit } from "@/features/circuit/types";
 import { Celebration } from "./Celebration";
-import { CodeEditor } from "./CodeEditor";
+import { CodeEditor, CodeView } from "./CodeEditor";
 import { PartsIntro } from "./PartsIntro";
 import { CurrentStep, StepList } from "./WiringGuide";
 import { useBuzzerSound } from "./useBuzzerSound";
 import { NO_FRAMES, useFramePlayer } from "./useFramePlayer";
+import { applyStep } from "../apply-step";
 import { clearDraft, loadDraft, saveDraft } from "../draft";
 import { runLessonChecks, type LessonRunResult } from "../run-check";
 import { lessonSeedCircuit } from "../seed-circuit";
@@ -65,6 +66,15 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   const [code, setCode] = useState(lesson.starterCode);
   const [wiringChecked, setWiringChecked] = useState(false);
   const [hints, setHints] = useState({ wiring: 0, code: 0 });
+  /* Úniková cesta z obou kroků. Zaseknout se doteď znamenalo konec lekce:
+     nápovědy jednou dojdou a dál nebylo nic. Do postupu se to počítá jednou
+     za krok, ne za každé kliknutí — jinak by osm zapojených drátků vypadalo
+     jako osm nápověd. */
+  const [assisted, setAssisted] = useState({ wiring: false, code: false });
+  const [showSolution, setShowSolution] = useState(false);
+  /* Obvod poslaný do plochy. Musí to být pokaždé nový objekt — builder si
+     obvod drží sám a porovnává reference. */
+  const [pushed, setPushed] = useState<Circuit | null>(null);
   const [run, setRun] = useState<LessonRunResult | null>(null);
   const [running, setRunning] = useState(false);
   /* Tlačítka, která dítě právě drží. Simulace se s nimi přepočítá, takže
@@ -149,6 +159,37 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     onHint?.(kind, shown);
   }
 
+  /* Nápovědy došly a dítě pořád neví. Do postupu se to hlásí jako nápověda
+     za poslední nápovědou — z toho se v číslech pozná, kde lekce drhne
+     natolik, že si na ni sama nestačí. */
+  function markAssist(kind: "wiring" | "code", total: number) {
+    if (assisted[kind]) return;
+    setAssisted({ ...assisted, [kind]: true });
+    onHint?.(kind, total + 1);
+  }
+
+  /**
+   * Jeden krok zapojení za dítě.
+   *
+   * Jeden, ne celý obvod: na ploše má být vidět, CO přibylo. Další krok
+   * pak většinou udělá samo.
+   */
+  function assistWiring() {
+    if (!step2) return;
+
+    const next = applyStep(circuit, step2);
+    setCircuit(next);
+    setPushed(next);
+    setWiringChecked(false);
+    setRun(null);
+    markAssist("wiring", lesson.wiringHints.length);
+  }
+
+  function revealSolution() {
+    setShowSolution(true);
+    markAssist("code", lesson.codeHints.length);
+  }
+
   /* Přepočet běhu, když dítě zmáčkne nebo pustí tlačítko. Program se
      pustí znovu s novým stavem obvodu — jinak by stisk nic neudělal. */
   const rerun = useCallback(
@@ -189,7 +230,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
       if (result.passed && !solved) {
         setSolved(true);
         clearDraft(lesson.slug);
-        onSolved(hints.wiring + hints.code);
+        onSolved(hints.wiring + hints.code + Number(assisted.wiring) + Number(assisted.code));
       }
     }, 160);
   }
@@ -328,6 +369,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                obrazovku — návod pojede s ním. */
             height={560}
             toolbar={<CurrentStep steps={steps} current={step2} />}
+            pushCircuit={pushed}
             resetTo={seed}
             onReset={() => {
               setWiringChecked(false);
@@ -344,6 +386,15 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
               <Button size="sm" variant="outline" onClick={() => revealHint("wiring")}>
                 <Lightbulb className="h-4 w-4" aria-hidden="true" />
                 {hints.wiring === 0 ? "Poradit" : "Poradit víc"}
+              </Button>
+            )}
+
+            {/* Nápovědy došly. Bez tohohle končí lekce tady: tlačítko
+                „Napsat program" se objeví teprve, když zapojení sedí. */}
+            {hints.wiring >= lesson.wiringHints.length && step2 && (
+              <Button size="sm" variant="outline" onClick={assistWiring}>
+                <Wand2 className="h-4 w-4" aria-hidden="true" />
+                Zapoj tenhle krok za mě
               </Button>
             )}
           </div>
@@ -413,7 +464,9 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                   setCode(next);
                   setRun(null);
                 }}
-                errorLine={run?.error?.line ?? null}
+                /* Chyba překladu i příkaz schovaný v komentáři ukazují na
+                   řádek. Bez toho musí dítě hledat „řádek 6" očima. */
+                markedLine={run?.error?.line ?? run?.silent?.line ?? null}
               />
 
               <div className="flex flex-wrap items-center gap-3">
@@ -435,6 +488,15 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                     {hints.code === 0 ? "Poradit" : "Poradit víc"}
                   </Button>
                 )}
+
+                {/* Poslední východisko. Do téhle chvíle dítě prošlo všechny
+                    nápovědy — teprve teď je to opravdu slepá ulička. */}
+                {hints.code >= lesson.codeHints.length && !showSolution && (
+                  <Button size="sm" variant="outline" onClick={revealSolution}>
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                    Ukázat řešení
+                  </Button>
+                )}
               </div>
 
               {hints.code > 0 && (
@@ -443,6 +505,32 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                     <li key={hint}>{hint}</li>
                   ))}
                 </ul>
+              )}
+
+              {showSolution && (
+                <Card className="p-4">
+                  <MonoLabel className="mb-3">Řešení</MonoLabel>
+
+                  <CodeView code={lesson.solution} />
+
+                  <p className="mt-3 text-sm leading-relaxed text-ink-500">
+                    Přepiš si to, nebo si to nech vložit. Spustit to musíš sám —
+                    a mrkni, čím se to liší od toho, co jsi měl.
+                  </p>
+
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setCode(lesson.solution);
+                        setRun(null);
+                      }}
+                    >
+                      Vložit do editoru
+                    </Button>
+                  </div>
+                </Card>
               )}
             </div>
 
@@ -482,6 +570,16 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 </Alert>
               )}
 
+              {/* Program se přeložil a přitom neudělal vůbec nic. Doteď na to
+                  nebyla hláška, takže dítě dostalo nápovědu „napiš
+                  digitalWrite(led, HIGH)" ve chvíli, kdy tu větu mělo
+                  zakomentovanou na obrazovce před sebou. */}
+              {run?.silent && (
+                <Alert tone="warning" title="Program zatím nic nedělá">
+                  {run.silent.message}
+                </Alert>
+              )}
+
               {run && !run.error && (
                 <Card className="p-4">
                   <MonoLabel className="mb-3">Kontrola</MonoLabel>
@@ -510,7 +608,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                     ))}
                   </ul>
 
-                  {firstUnmet && (
+                  {firstUnmet && !run.silent && (
                     <p className="mt-3 border-t border-ink/10 pt-3 text-sm leading-relaxed text-ink-500">
                       {firstUnmet.hint}
                     </p>

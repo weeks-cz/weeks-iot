@@ -36,8 +36,18 @@ export interface WiringStep {
   detail?: string;
   /** Součástka, kterou má dítě vzít z palety. Jen u `place`. */
   place?: ComponentType;
-  /** Piny, které má krok spojit — plocha je zvýrazní. Jen u `connect`. */
+  /**
+   * Piny, které má krok spojit — plocha je zvýrazní. Jen u `connect`.
+   *
+   * Je to `from` a `to` za sebou. Zvýraznění mezi nimi nerozlišuje, ale
+   * „zapoj to za mě" ano: musí vědět, kde drátek začíná a kde končí.
+   * Proto se to nesestavuje ručně na každém místě, ale v `connectStep`.
+   */
   pins: PinRef[];
+  /** Odkud drátek vede. Kterýkoli z nich; je jich víc u zaměnitelných pinů. */
+  from: PinRef[];
+  /** Kam drátek vede. */
+  to: PinRef[];
   /** Je krok hotový? */
   done: boolean;
   /**
@@ -47,6 +57,17 @@ export interface WiringStep {
    * dva drátky a nemá jak poznat, proč se krok neodškrtl.
    */
   warning?: string;
+}
+
+/**
+ * Krok „spoj tohle s tímhle".
+ *
+ * Jediné místo, kde se `pins` skládá z konců spoje. Kdyby se to psalo na
+ * každém místě zvlášť, rozešlo by se to — a „zapoj to za mě" by natáhlo
+ * drátek mezi dva piny, které spolu nemají nic společného.
+ */
+function connectStep(step: Omit<WiringStep, "kind" | "pins">): WiringStep {
+  return { ...step, kind: "connect", pins: [...step.from, ...step.to] };
 }
 
 /** Kolik kusů dané součástky zadání chce. */
@@ -120,6 +141,8 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
         detail: getComponentSpec(type).intro?.what,
         place: type,
         pins: [],
+        from: [],
+        to: [],
         done: i < have,
       });
     }
@@ -165,13 +188,15 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
 
     /* Spoj bez mezičlánku je jeden drátek a jeden krok. */
     if (via.length === 0) {
-      steps.push({
-        kind: "connect",
-        instruction: `${fromWhat} → ${toWhat}`,
-        detail: conn.hint,
-        pins: [...fromPins, ...toPins],
-        done: satisfied,
-      });
+      steps.push(
+        connectStep({
+          instruction: `${fromWhat} → ${toWhat}`,
+          detail: conn.hint,
+          from: fromPins,
+          to: toPins,
+          done: satisfied,
+        }),
+      );
       continue;
     }
 
@@ -199,15 +224,17 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
           ),
       );
 
-    steps.push({
-      kind: "connect",
-      instruction: `${fromWhat} → ${viaLabel}`,
-      detail:
-        `Veď drátek z ${longHint(fromPart, conn.from.pin)} na kteroukoli nožičku. ` +
-        "Na tom, kterou stranou součástka leží, nezáleží.",
-      pins: [...fromPins, ...viaPins],
-      done: firstDone,
-    });
+    steps.push(
+      connectStep({
+        instruction: `${fromWhat} → ${viaLabel}`,
+        detail:
+          `Veď drátek z ${longHint(fromPart, conn.from.pin)} na kteroukoli nožičku. ` +
+          "Na tom, kterou stranou součástka leží, nezáleží.",
+        from: fromPins,
+        to: viaPins,
+        done: firstDone,
+      }),
+    );
 
     /* Nejčastější chyba, kterou obvod nedá najevo: oba drátky skončí na
        TÉŽE nožičce. Vypadá to zapojeně, ale proud mezičlánek obejde —
@@ -234,17 +261,19 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
         )
       : [];
 
-    steps.push({
-      kind: "connect",
-      instruction: `${viaLabel} → ${toWhat}`,
-      detail: `Z DRUHÉ nožičky veď drátek na ${longHint(toPart, conn.to.pin)}. ${conn.hint}`,
-      pins: [...(freePins.length > 0 ? freePins : viaPins), ...toPins],
-      done: satisfied,
-      warning: shorted
-        ? "Oba drátky ti vedou na tutéž nožičku — proud tak součástku obejde, jako by " +
-          "tam nebyla. Přendej jeden z nich na druhou stranu."
-        : undefined,
-    });
+    steps.push(
+      connectStep({
+        instruction: `${viaLabel} → ${toWhat}`,
+        detail: `Z DRUHÉ nožičky veď drátek na ${longHint(toPart, conn.to.pin)}. ${conn.hint}`,
+        from: freePins.length > 0 ? freePins : viaPins,
+        to: toPins,
+        done: satisfied,
+        warning: shorted
+          ? "Oba drátky ti vedou na tutéž nožičku — proud tak součástku obejde, jako by " +
+            "tam nebyla. Přendej jeden z nich na druhou stranu."
+          : undefined,
+      }),
+    );
   }
 
   /* Tlačítko s propojenými stranami: spoj vypadá hotový, ale stisk by

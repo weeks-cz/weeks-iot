@@ -39,6 +39,17 @@ interface Props {
   resetTo?: Circuit;
   /** Zavolá se po resetu, aby o něm věděla i lekce. */
   onReset?: () => void;
+  /**
+   * Obvod vnucený zvenku — použije se, jakmile dorazí JINÝ objekt.
+   *
+   * Builder si jinak obvod drží sám a `initialCircuit` je opravdu jen
+   * počáteční hodnota. Lekce ale potřebuje umět jeden krok zapojení udělat
+   * za dítě, a k tomu musí jít hotový obvod poslat dovnitř.
+   *
+   * Porovnává se REFERENCE, ne obsah: každé vnucení musí být nový objekt,
+   * jinak druhé kliknutí na tutéž věc nic neudělá.
+   */
+  pushCircuit?: Circuit | null;
   readOnly?: boolean;
   height?: number;
   /**
@@ -77,6 +88,7 @@ export function CircuitBuilder({
   onPress,
   resetTo,
   onReset,
+  pushCircuit,
   readOnly,
   height = 460,
   toolbar,
@@ -117,6 +129,20 @@ export function CircuitBuilder({
     fitted.current = true;
     fit(initialCircuit);
   }, [ready, readOnly, initialCircuit, fit]);
+
+  /* Obvod poslaný zvenku. Výřez se doostří, aby bylo vidět, co přibylo —
+     součástka položená za okrajem obrazovky vypadá jako by se nic nestalo. */
+  const lastPushed = useRef(pushCircuit);
+
+  useEffect(() => {
+    if (!pushCircuit || pushCircuit === lastPushed.current) return;
+
+    lastPushed.current = pushCircuit;
+    dispatch({ type: "RESET", circuit: pushCircuit });
+    /* Zpátky ven se to neposílá — lekce ten obvod poslala, takže ho má. */
+    lastSent.current = pushCircuit;
+    requestAnimationFrame(() => fit(pushCircuit));
+  }, [pushCircuit, dispatch, fit]);
 
   /* Zvýrazněné piny musí být vidět. Jinak plocha bliká někam za okraj a
      dítě hledá tečku, která na obrazovce není. Posouvá se jen tehdy, když
