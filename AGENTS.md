@@ -128,6 +128,15 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
   tak správně u LED, ale u čtení vstupů ne — na to je `groundedNets`.
 - **Náhled běhu je vlastní běh, ne snímky z první kontroly.** Kontroly si
   vstupy nastavují samy, takže by v lekci o tlačítku svítila LED bez stisku.
+- **Skutečné pozice nožiček dává `element.pinInfo` Wokwi prvků.** Piny ve
+  spec stojí na mřížce a kresba se přisouvá přes `visualOffset` (změřeno
+  z pinInfo). Kdo mění `scale`, musí offset přepočítat. Wokwi LED má anodu
+  VPRAVO (A=x25, C=x15).
+- **Přímý spoj v zadání znamená nula součástek po cestě** (`maxHops:
+  through?.length ?? 0`). S `+1` prošla „zem" protažená skrz samotné
+  tlačítko — a stisk pak nic neměnil.
+- **Kontroly tlačítkových lekcí mačkají roli (`pressed`), ne pin.** Vnucený
+  `pinInputs` pustí i obvod s trvale uzemněným pinem.
 
 ## Design
 
@@ -148,7 +157,7 @@ Mobile-first od 320 px. Dotykové cíle minimálně 44 px.
 
 ```bash
 npx tsc --noEmit    # musí být čistý pro nový kód
-npm test            # 442 testů
+npm test            # 444 testů
 npm run build       # odhalí úniky server→klient, které tsc nevidí
 ```
 

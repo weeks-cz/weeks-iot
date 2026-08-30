@@ -117,11 +117,14 @@ void loop() {
 }
 `,
 
+  /* Kontroly MAČKAJÍ skutečné tlačítko v obvodu (pressed), nevnucují
+     pinu hodnotu. Vnucená hodnota by pustila i špatně zapojené tlačítko —
+     třeba obvod, kde je pin uzemněný natrvalo a stisk nic nemění. */
   checks: [
     {
       label: "Když tlačítko držíš, LED svítí",
       iterations: 3,
-      pinInputs: { 7: 0 },
+      pressed: ["tlacitko"],
       verify: (frames) => ledEverOn(frames),
       hint:
         "Se stisknutým tlačítkem LED nesvítí. Zmáčknuté tlačítko čte LOW — " +
@@ -130,7 +133,7 @@ void loop() {
     {
       label: "Když tlačítko pustíš, LED zhasne",
       iterations: 3,
-      pinInputs: { 7: 1 },
+      pressed: [],
       verify: (frames) => ledNeverOn(frames),
       hint:
         "S puštěným tlačítkem LED pořád svítí. Chybí ti větev else, která ji zhasne — " +

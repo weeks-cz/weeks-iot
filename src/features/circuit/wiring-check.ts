@@ -124,7 +124,7 @@ function checkAssignment(
       circuit,
       pinKey(fromId, conn.from.pin),
       pinKey(toId, conn.to.pin),
-      { through: conn.through, maxHops: (conn.through?.length ?? 0) + 1, nets },
+      { through: conn.through, maxHops: conn.through?.length ?? 0, nets },
     );
 
     if (!result.found) {

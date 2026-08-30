@@ -217,3 +217,53 @@ describe("náhled ukazuje, co obvod dělá teď", () => {
     expect(držené.preview.some((f) => (f.leds[0]?.brightness ?? 0) > 0)).toBe(true);
   });
 });
+
+describe("chyby zapojení tlačítka", () => {
+  it("uzemněná strana s pinem se nepočítá jako zapojená zem", async () => {
+    /* Přesně tuhle chybu jsem udělal při zkoušení: drát na zem skončil na
+       TÉŽE straně tlačítka jako pin 7. Průvodce to dřív odkýval, protože
+       cesta „2a → zem" se směla protáhnout SKRZ samotné tlačítko. Přímý
+       spoj teď znamená přímý — nula součástek po cestě. */
+    const { lesson3 } = await import("../content");
+    const seed = lessonSeedCircuit(lesson3);
+    const uno = seed.comps.find((c) => c.type === "arduino-uno")!;
+
+    const spatne: Circuit = {
+      comps: [
+        ...seed.comps,
+        { id: "led", type: "led-red", x: 600, y: 0, rotation: 0 },
+        { id: "r", type: "resistor-220", x: 400, y: 0, rotation: 0 },
+        { id: "btn", type: "pushbutton", x: 200, y: 480, rotation: 0 },
+      ],
+      wires: [
+        { id: "w1", from: { compId: uno.id, pinName: "D7" }, to: { compId: "btn", pinName: "1a" } },
+        /* Zem na STEJNOU stranu jako pin — 1b je s 1a spojená uvnitř. */
+        { id: "w2", from: { compId: "btn", pinName: "1b" }, to: { compId: uno.id, pinName: "GND-2" } },
+      ],
+    };
+
+    const steps = wiringSteps(spatne, lesson3.wiring);
+    const gndStep = steps.find((s) => s.kind === "connect" && s.instruction.includes("tlačítko pravá"));
+
+    expect(gndStep?.done).toBe(false);
+  });
+
+  it("kontroly lekce 3 mačkají skutečné tlačítko — trvale uzemněný pin neprojde", async () => {
+    const { runLessonChecks } = await import("../run-check");
+    const { referenceCircuit } = await import("../reference-circuit");
+    const { lesson3 } = await import("../content");
+
+    /* Vzorový obvod, ale zem přepojená na stranu pinu: LED svítí pořád
+       a „s puštěným tlačítkem zhasne" musí spadnout. */
+    const circuit = referenceCircuit(lesson3.wiring);
+    const bad: Circuit = {
+      comps: circuit.comps,
+      wires: circuit.wires.map((w) =>
+        w.from.pinName === "2a" ? { ...w, from: { ...w.from, pinName: "1b" } } : w,
+      ),
+    };
+
+    const result = runLessonChecks(lesson3, bad, lesson3.solution);
+    expect(result.passed).toBe(false);
+  });
+});

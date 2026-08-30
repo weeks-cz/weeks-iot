@@ -107,11 +107,14 @@ void loop() {
 }
 `,
 
+  /* Kontroly MAČKAJÍ skutečné tlačítko v obvodu (pressed), nevnucují
+     pinu hodnotu. Vnucená hodnota by pustila i špatně zapojené tlačítko —
+     třeba obvod, kde je pin uzemněný natrvalo a stisk nic nemění. */
   checks: [
     {
       label: "Se zmáčknutým tlačítkem se ozve tón",
       iterations: 3,
-      pinInputs: { 7: 0 },
+      pressed: ["tlacitko"],
       verify: (frames) => buzzerSounded(frames),
       hint:
         "Bzučák mlčí. Použil jsi tone(bzucak, 440)? A ptáš se na LOW — " +
@@ -120,7 +123,7 @@ void loop() {
     {
       label: "S puštěným tlačítkem je ticho",
       iterations: 3,
-      pinInputs: { 7: 1 },
+      pressed: [],
       verify: (frames) => !buzzerSounded(frames),
       hint:
         "Bzučák pípá i bez stisku. Chybí ti noTone(bzucak) ve větvi else — " +

@@ -71,7 +71,7 @@ function connectionSatisfied(
 
   const result = findPath(circuit, pinKey(fromId, conn.from.pin), pinKey(toId, conn.to.pin), {
     through: conn.through,
-    maxHops: (conn.through?.length ?? 0) + 1,
+    maxHops: conn.through?.length ?? 0,
     nets,
   });
 
@@ -245,6 +245,24 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
           "tam nebyla. Přendej jeden z nich na druhou stranu."
         : undefined,
     });
+  }
+
+  /* Tlačítko s propojenými stranami: spoj vypadá hotový, ale stisk by
+     nic nezměnil — obě strany už jsou spojené drátem nebo deskou. Stejná
+     rodina chyb jako přemostěný rezistor. */
+  for (const part of spec.parts) {
+    if (part.type !== "pushbutton") continue;
+    const id = wiring.roles?.[part.role];
+    if (!id) continue;
+
+    if (nets.connected(pinKey(id, "1a"), pinKey(id, "2a"))) {
+      const step = steps.find((st) => !st.done) ?? steps[steps.length - 1];
+      if (step) {
+        step.warning =
+          "Obě strany tlačítka máš propojené napřímo — stisk by pak nic nezměnil. " +
+          "Jeden drátek patří na levou stranu tlačítka, druhý na pravou.";
+      }
+    }
   }
 
   return steps;
