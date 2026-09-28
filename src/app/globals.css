@@ -315,4 +315,19 @@
       linear-gradient(to bottom, rgba(165, 180, 252, 0.07) 1px, transparent 1px);
     background-size: 32px 32px;
   }
+
+  /* ── Nekonečný pás ──────────────────────────────────────────────────
+     Stejný jako na weeks.cz. Jen na úvodní stránce — v lekci by se hýbal
+     vedle věci, na kterou se má dítě soustředit. Při omezeném pohybu ho
+     zastaví globální pravidlo v @layer base. */
+  .ticker-track {
+    width: max-content;
+    animation: ticker 32s linear infinite;
+  }
+
+  @keyframes ticker {
+    to {
+      transform: translateX(-50%);
+    }
+  }
 }

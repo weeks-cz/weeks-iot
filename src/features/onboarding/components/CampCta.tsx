@@ -35,8 +35,7 @@ export function CampCta({
 
         <p className="mb-5 max-w-prose leading-relaxed text-paper/70">
           Příměstský tábor chytrých technologií v Praze a Karlových Varech. Skutečné
-          Arduino, skutečná 3D tiskárna, lektor u stolu. Roční předplatné{" "}
-          <span className="font-mono">699 Kč</span> se z ceny tábora odečítá.
+          Arduino, skutečná 3D tiskárna, lektor u stolu.
         </p>
 
         <CampLink placement={placement} />

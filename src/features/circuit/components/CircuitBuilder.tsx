@@ -51,6 +51,11 @@ interface Props {
    */
   pushCircuit?: Circuit | null;
   readOnly?: boolean;
+  /**
+   * Jen obrázek: bez rámečku a bez ovládání. Pro ukázku na úvodní stránce,
+   * kde obvod stojí místo fotky a nikdo s ním nemá nic dělat.
+   */
+  bare?: boolean;
   height?: number;
   /**
    * Návod ke kroku, který se veze i do režimu přes celou obrazovku.
@@ -90,6 +95,7 @@ export function CircuitBuilder({
   onReset,
   pushCircuit,
   readOnly,
+  bare,
   height = 460,
   toolbar,
 }: Props) {
@@ -222,7 +228,9 @@ export function CircuitBuilder({
       className={
         expanded
           ? "flex h-full min-h-0 flex-col bg-paper"
-          : "overflow-hidden rounded-lg border border-ink/15 bg-paper"
+          : bare
+            ? "overflow-hidden bg-paper"
+            : "overflow-hidden rounded-lg border border-ink/15 bg-paper"
       }
     >
       {expanded && toolbar && (
@@ -273,89 +281,91 @@ export function CircuitBuilder({
           {/* Ovládání. Mazací tlačítko je tu proto, že na tabletu žádná
               klávesa Delete není — bez něj by se špatně natažený drátek
               nedal odstranit vůbec. */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2">
-            <div className="pointer-events-auto flex flex-wrap gap-1">
-              {selectedLabel && !readOnly && (
+          {!bare && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2">
+              <div className="pointer-events-auto flex flex-wrap gap-1">
+                {selectedLabel && !readOnly && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      dispatch(
+                        state.selection?.kind === "component"
+                          ? { type: "DELETE_COMPONENT", id: state.selection.id }
+                          : { type: "DELETE_WIRE", id: state.selection!.id },
+                      )
+                    }
+                    className="flex min-h-11 items-center gap-2 rounded-md border border-ink bg-paper px-3.5 text-sm font-semibold text-ink shadow-hard-sm hover:bg-danger-50"
+                  >
+                    <Trash2 className="h-4 w-4 text-danger-600" aria-hidden="true" />
+                    Smazat {selectedLabel}
+                  </button>
+                )}
+
+                {resetTo && !readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: "RESET", circuit: resetTo });
+                      /* Výřez taky, jinak zůstane odjetý někam, kde po
+                         resetu nic není. */
+                      requestAnimationFrame(() => fit(resetTo));
+                      onReset?.();
+                    }}
+                    className="flex min-h-11 items-center gap-2 rounded-md border border-ink/30 bg-paper px-3.5 text-sm font-medium text-ink-500 hover:border-ink hover:text-ink"
+                  >
+                    <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                    Začít znovu
+                  </button>
+                )}
+              </div>
+
+              <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border border-ink bg-paper p-0.5 shadow-hard-sm">
                 <button
                   type="button"
-                  onClick={() =>
-                    dispatch(
-                      state.selection?.kind === "component"
-                        ? { type: "DELETE_COMPONENT", id: state.selection.id }
-                        : { type: "DELETE_WIRE", id: state.selection!.id },
-                    )
-                  }
-                  className="flex min-h-11 items-center gap-2 rounded-md border border-ink bg-paper px-3.5 text-sm font-semibold text-ink shadow-hard-sm hover:bg-danger-50"
-                >
-                  <Trash2 className="h-4 w-4 text-danger-600" aria-hidden="true" />
-                  Smazat {selectedLabel}
-                </button>
-              )}
-
-              {resetTo && !readOnly && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    dispatch({ type: "RESET", circuit: resetTo });
-                    /* Výřez taky, jinak zůstane odjetý někam, kde po
-                       resetu nic není. */
-                    requestAnimationFrame(() => fit(resetTo));
-                    onReset?.();
-                  }}
-                  className="flex min-h-11 items-center gap-2 rounded-md border border-ink/30 bg-paper px-3.5 text-sm font-medium text-ink-500 hover:border-ink hover:text-ink"
-                >
-                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
-                  Začít znovu
-                </button>
-              )}
-            </div>
-
-            <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border border-ink bg-paper p-0.5 shadow-hard-sm">
-              <button
-                type="button"
-                onClick={() => setZoom(state.zoom - ZOOM_STEP)}
-                className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
-                aria-label="Oddálit"
-              >
-                <Minus className="h-5 w-5" aria-hidden="true" />
-              </button>
-
-              {/* Ne „zpět na sto procent", ale „ukaž mi všechno". Kdo se
-                  ztratil posouváním plochy, potřebuje tohle. */}
-              <button
-                type="button"
-                onClick={() => fit(state.circuit)}
-                className="min-h-11 px-2 font-mono text-sm tabular-nums text-ink-500 hover:text-ink"
-                aria-label="Ukázat celý obvod"
-              >
-                {Math.round(state.zoom * 100)} %
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setZoom(state.zoom + ZOOM_STEP)}
-                className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
-                aria-label="Přiblížit"
-              >
-                <Plus className="h-5 w-5" aria-hidden="true" />
-              </button>
-
-              {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => setExpanded((v) => !v)}
+                  onClick={() => setZoom(state.zoom - ZOOM_STEP)}
                   className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
-                  aria-label={expanded ? "Zmenšit plochu" : "Roztáhnout na celou obrazovku"}
+                  aria-label="Oddálit"
                 >
-                  {expanded ? (
-                    <Minimize2 className="h-5 w-5" aria-hidden="true" />
-                  ) : (
-                    <Maximize2 className="h-5 w-5" aria-hidden="true" />
-                  )}
+                  <Minus className="h-5 w-5" aria-hidden="true" />
                 </button>
-              )}
+
+                {/* Ne „zpět na sto procent", ale „ukaž mi všechno". Kdo se
+                    ztratil posouváním plochy, potřebuje tohle. */}
+                <button
+                  type="button"
+                  onClick={() => fit(state.circuit)}
+                  className="min-h-11 px-2 font-mono text-sm tabular-nums text-ink-500 hover:text-ink"
+                  aria-label="Ukázat celý obvod"
+                >
+                  {Math.round(state.zoom * 100)} %
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setZoom(state.zoom + ZOOM_STEP)}
+                  className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
+                  aria-label="Přiblížit"
+                >
+                  <Plus className="h-5 w-5" aria-hidden="true" />
+                </button>
+
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((v) => !v)}
+                    className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
+                    aria-label={expanded ? "Zmenšit plochu" : "Roztáhnout na celou obrazovku"}
+                  >
+                    {expanded ? (
+                      <Minimize2 className="h-5 w-5" aria-hidden="true" />
+                    ) : (
+                      <Maximize2 className="h-5 w-5" aria-hidden="true" />
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
