@@ -37,6 +37,18 @@ export interface WiringStep {
   /** Součástka, kterou má dítě vzít z palety. Jen u `place`. */
   place?: ComponentType;
   /**
+   * Pin Arduina, ke kterému součástka povede. Jen u `place`. „Zapoj to
+   * za mě" podle něj zapíchne součástku do desky nad ten pin, aby drátek
+   * šel skoro svisle.
+   */
+  near?: string;
+  /**
+   * O kolik roztečí vedle pinu `near` má součástka sednout. LED, která
+   * vede přes rezistor, nechá místo přímo nad pinem jemu — jinak by ho
+   * zabrala sama a rezistor by skončil stranou.
+   */
+  nearOffset?: number;
+  /**
    * Piny, které má krok spojit — plocha je zvýrazní. Jen u `connect`.
    *
    * Je to `from` a `to` za sebou. Zvýraznění mezi nimi nerozlišuje, ale
@@ -140,6 +152,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
             : `Polož na desku: ${label}`,
         detail: getComponentSpec(type).intro?.what,
         place: type,
+        ...nearPin(spec, type, i),
         pins: [],
         from: [],
         to: [],
@@ -297,6 +310,47 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
   return steps;
 }
 
+/**
+ * Pin Arduina, ke kterému povede i-tá součástka daného typu.
+ *
+ * Koncová součástka (LED, tlačítko, bzučák) se hledá ve spojích podle své
+ * role; zem se bere jen tehdy, když jiný pin není — k zemi vede kdeco.
+ * Mezičlánek (rezistor) koncem žádného spoje není, a tak dostane pin
+ * i-tého spoje, který přes něj vede.
+ */
+function nearPin(
+  spec: WiringSpec,
+  type: ComponentType,
+  index: number,
+): { near?: string; nearOffset?: number } {
+  const arduinoRoles = new Set(
+    spec.parts.filter((p) => p.type === "arduino-uno").map((p) => p.role),
+  );
+  const arduinoPinOf = (conn: ConnectionSpec): string | undefined =>
+    arduinoRoles.has(conn.from.role)
+      ? conn.from.pin
+      : arduinoRoles.has(conn.to.role)
+        ? conn.to.pin
+        : undefined;
+
+  const role = spec.parts.filter((p) => p.type === type)[index]?.role;
+  const touching = spec.connections.filter(
+    (c) => c.from.role === role || c.to.role === role,
+  );
+
+  if (touching.length > 0) {
+    const main =
+      touching.find((c) => !arduinoPinOf(c)?.startsWith("GND") && arduinoPinOf(c)) ??
+      touching.find((c) => arduinoPinOf(c));
+    if (!main) return {};
+    /* Rezistor (4 rozteče) + volný sloupec + nožička LED. */
+    return { near: arduinoPinOf(main), nearOffset: main.through?.length ? -6 : 0 };
+  }
+
+  const via = spec.connections.filter((c) => c.through?.includes(type))[index];
+  return via ? { near: arduinoPinOf(via), nearOffset: 0 } : {};
+}
+
 /** GND pin Arduina → všechny jeho GND piny. Ostatní piny beze změny. */
 function expandGround(part: PartSpec, pin: PinRef): PinRef[] {
   if (part.type !== "arduino-uno" || !pin.pinName.startsWith("GND")) return [pin];
@@ -347,8 +401,22 @@ function pickBridge(
   const pins = getComponentSpec(type).pins;
   const touchesFrom = (id: string) =>
     pins.some((pin) => nets.connected(pinKey(id, pin.name), pinKey(from.compId, from.pinName)));
+  /* Volný = žádná nožička nesdílí síť s jinou součástkou. Dřív se to
+     poznávalo podle drátků vedoucích PŘÍMO na nožičky; „zapoj to za mě"
+     ale vede drátky do dírek vedle nich, takže každý rezistor vypadal
+     volně — a v semaforu dostaly D2 i D3 tentýž, tedy zkrat. */
+  const board = new Set(
+    circuit.comps.filter((c) => c.type === "breadboard-half").map((c) => c.id),
+  );
   const isFree = (id: string) =>
-    !circuit.wires.some((w) => w.from.compId === id || w.to.compId === id);
+    pins.every((pin) =>
+      nets
+        .members(nets.netOf(pinKey(id, pin.name)))
+        .every((key) => {
+          const owner = key.slice(0, key.indexOf("#"));
+          return owner === id || board.has(owner);
+        }),
+    );
 
   return (
     candidates.find((c) => touchesFrom(c.id))?.id ??
