@@ -74,7 +74,7 @@ export function CertificateCard({
           <TextField
             name="jmeno"
             label="Jméno na certifikátu"
-            hint="Nepovinné. Místo přezdívky třeba celé jméno — nikam ho neukládáme, jde jen do tohohle PDF."
+            hint="Místo přezdívky třeba celé jméno — nikam ho neukládáme, jde jen do tohohle PDF."
             maxLength={MAX_CERTIFICATE_NAME}
             autoComplete="off"
           />
