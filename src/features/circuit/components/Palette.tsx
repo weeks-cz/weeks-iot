@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { getComponentSpec } from "../components";
 import { PITCH } from "../constants";
 import type { BuilderAction } from "./state";
@@ -61,15 +62,48 @@ function ComponentPreview({ type }: { type: ComponentType }) {
  * součástek znamená říct mu, že dvacet devět z nich je špatně — a nechat
  * ho, ať na to přijde samo.
  *
- * ── Klepnutí, ne tažení ────────────────────────────────────────────────────
+ * ── Klepnutí i tažení ──────────────────────────────────────────────────────
  * Stará verze uměla jen HTML5 drag-and-drop, který na dotykových displejích
- * neexistuje. Tady se součástka klepnutím „vezme do ruky" a druhým klepnutím
- * položí. Myš i prst dělají totéž a nikdo se nemusí učit dvě ovládání.
+ * neexistuje. Pak se tu dalo jen klepnout („vezmi do ruky") a klepnout znovu
+ * do plochy („polož") — jenže každý, kdo kdy něco skládal na obrazovce,
+ * součástku chytne a táhne, a nestalo se nic. Teď jde obojí. Tažení je
+ * na pointer events, takže funguje i prstem; pustí ho plocha (`Plane`).
  */
 export function Palette({ palette, armed, dispatch, ready, suggested, disabled }: Props) {
+  /** Tah, který právě běží — ať po něm `click` kartičku znovu nepřepne. */
+  const dragged = useRef(false);
+
+  const onPointerDown = (type: ComponentType) => (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled || e.button !== 0) return;
+    dragged.current = false;
+    const start = { x: e.clientX, y: e.clientY };
+
+    /* Dotyk si prvek, na kterém začal, „přivlastní" a pohyb by pak plocha
+       vůbec neviděla. Uvolnit, ať ukazatel nad plochou hlásí, kde je. */
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
+    const move = (ev: PointerEvent) => {
+      if (dragged.current) return;
+      if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+      dragged.current = true;
+      dispatch({ type: "ARM", kind: type, drag: true });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
   return (
     <div className="flex gap-2 overflow-x-auto p-2 sm:h-full sm:w-40 sm:shrink-0 sm:flex-col sm:overflow-y-auto sm:border-r sm:border-ink/10">
-      <p className="hidden px-1 pb-1 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-ink-300 sm:block">
+      <p className="hidden px-1 pb-1 font-mono text-xs uppercase tracking-[0.18em] text-ink-500 sm:block">
         Součástky
       </p>
 
@@ -86,8 +120,17 @@ export function Palette({ palette, armed, dispatch, ready, suggested, disabled }
             type="button"
             disabled={disabled}
             aria-pressed={isArmed}
-            onClick={() => dispatch({ type: "ARM", kind: isArmed ? null : type })}
-            className={`relative flex w-24 shrink-0 flex-col items-center gap-1 rounded-md border p-2 text-center transition sm:w-full ${
+            onPointerDown={onPointerDown(type)}
+            onClick={() => {
+              if (dragged.current) {
+                dragged.current = false;
+                return;
+              }
+              dispatch({ type: "ARM", kind: isArmed ? null : type });
+            }}
+            /* Na mobilu je paleta vodorovný pás: do strany se roluje, dolů
+               se táhne do plochy. Na širší obrazovce naopak. */
+            className={`relative flex w-24 shrink-0 cursor-grab touch-pan-x flex-col items-center gap-1 rounded-md border p-2 text-center transition active:cursor-grabbing sm:w-full sm:touch-pan-y ${
               isArmed
                 ? "border-primary-600 bg-primary-50 shadow-hard"
                 : isSuggested
@@ -106,13 +149,13 @@ export function Palette({ palette, armed, dispatch, ready, suggested, disabled }
             ) : (
               <span aria-hidden="true" style={ICON_BOX} />
             )}
-            <span className="text-[0.7rem] leading-tight text-ink-500">{spec.label}</span>
+            <span className="text-sm font-medium leading-tight text-ink">{spec.label}</span>
           </button>
         );
       })}
 
       {armed && (
-        <p className="hidden px-1 pt-2 text-[0.7rem] leading-snug text-primary-700 sm:block">
+        <p className="hidden px-1 pt-2 text-sm font-medium leading-snug text-primary-700 sm:block">
           Klepni do plochy a součástka se tam položí.
         </p>
       )}

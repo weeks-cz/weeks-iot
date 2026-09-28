@@ -7,7 +7,9 @@ import type { Circuit, CircuitComponent, ComponentType, PinRef, Wire } from "../
  *
  * Přenesené z CAD builderu staré aplikace. Beze změny zůstala mechanika
  * (drátek se kreslí ze dvou kliknutí na piny, součástka se táhne po mřížce);
- * přibyla „nachystaná" součástka z palety, protože na tabletu se táhnout nedá.
+ * přibyla „nachystaná" součástka z palety. Z palety jde táhnout i klepnout:
+ * táhnout čeká každý, kdo kdy skládal cokoli na obrazovce, klepnutí je
+ * pohodlnější na tabletu.
  */
 
 export type Selection = { kind: "component"; id: string } | { kind: "wire"; id: string } | null;
@@ -21,6 +23,8 @@ export interface BuilderState {
   cursor: { x: number; y: number } | null;
   /** Součástka vybraná v paletě, čekající na klepnutí do plochy. */
   armed: ComponentType | null;
+  /** Táhne se právě z palety? Pak se položí tam, kde dítě pustí. */
+  dragging: boolean;
   zoom: number;
   pan: { x: number; y: number };
 }
@@ -35,7 +39,7 @@ export type BuilderAction =
   | { type: "DELETE_WIRE"; id: string }
   | { type: "SELECT"; target: Selection }
   | { type: "SET_CURSOR"; pos: { x: number; y: number } | null }
-  | { type: "ARM"; kind: ComponentType | null }
+  | { type: "ARM"; kind: ComponentType | null; drag?: boolean }
   | { type: "SET_ZOOM"; zoom: number }
   | { type: "SET_PAN"; pan: { x: number; y: number } }
   | { type: "RESET"; circuit: Circuit };
@@ -47,6 +51,7 @@ export function initBuilderState(circuit: Circuit): BuilderState {
     wireFrom: null,
     cursor: null,
     armed: null,
+    dragging: false,
     zoom: ZOOM_DEFAULT,
     pan: DEFAULT_PAN,
   };
@@ -65,7 +70,7 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
       const occupied = state.circuit.comps.some(
         (c) => c.type === action.comp.type && c.x === action.comp.x && c.y === action.comp.y,
       );
-      if (occupied) return { ...state, armed: null };
+      if (occupied) return { ...state, armed: null, dragging: false };
 
       return {
         ...state,
@@ -74,6 +79,7 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
            ale nechtěné rozsypání součástek při každém dalším doteku je horší
            chyba než jedno klepnutí navíc. */
         armed: null,
+        dragging: false,
         selection: { kind: "component", id: action.comp.id },
       };
     }
@@ -150,7 +156,13 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
       return { ...state, cursor: action.pos };
 
     case "ARM":
-      return { ...state, armed: action.kind, wireFrom: null, cursor: null };
+      return {
+        ...state,
+        armed: action.kind,
+        dragging: Boolean(action.kind && action.drag),
+        wireFrom: null,
+        cursor: null,
+      };
 
     case "SET_ZOOM":
       return { ...state, zoom: action.zoom };

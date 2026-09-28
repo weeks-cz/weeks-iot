@@ -53,6 +53,8 @@ interface Props {
   onPress?: (compId: string, down: boolean) => void;
   readOnly?: boolean;
   zoom: number;
+  /** Kam součástka během tahu opravdu padne — magnet nad deskou. */
+  resolveMove?: (compId: string, raw: { x: number; y: number }) => { x: number; y: number };
 }
 
 export function PlacedComponent({
@@ -71,6 +73,7 @@ export function PlacedComponent({
   onPress,
   readOnly,
   zoom,
+  resolveMove,
 }: Props) {
   const spec = getComponentSpec(comp.type);
   const elementRef = useRef<HTMLElement>(null);
@@ -126,25 +129,23 @@ export function PlacedComponent({
         originY: comp.y,
       };
 
+      const rawAt = (ev: PointerEvent) => ({
+        x: drag.current.originX + (ev.clientX - drag.current.startX) / zoom,
+        y: drag.current.originY + (ev.clientY - drag.current.startY) / zoom,
+      });
+
+      /* Nad deskou přicvakne do dírek už během tahu (`resolveMove`), mimo
+         ni jede plynule. Dřív se zarovnávalo až po puštění a nožičky LED
+         do té doby visely mezi dírkami — dítě mířilo naslepo. */
       const move = (ev: PointerEvent) => {
         if (!drag.current.active) return;
-        dispatch({
-          type: "MOVE",
-          id: comp.id,
-          x: drag.current.originX + (ev.clientX - drag.current.startX) / zoom,
-          y: drag.current.originY + (ev.clientY - drag.current.startY) / zoom,
-        });
+        const at = resolveMove ? resolveMove(comp.id, rawAt(ev)) : rawAt(ev);
+        dispatch({ type: "MOVE", id: comp.id, x: at.x, y: at.y });
       };
 
       const up = (ev: PointerEvent) => {
-        /* Zarovnání na mřížku až při puštění. Během tahu by součástka
-           poskakovala po šestnácti pixelech a hůř by se mířilo. */
-        dispatch({
-          type: "MOVE",
-          id: comp.id,
-          x: snapToGrid(drag.current.originX + (ev.clientX - drag.current.startX) / zoom),
-          y: snapToGrid(drag.current.originY + (ev.clientY - drag.current.startY) / zoom),
-        });
+        const at = resolveMove ? resolveMove(comp.id, rawAt(ev)) : rawAt(ev);
+        dispatch({ type: "MOVE", id: comp.id, x: snapToGrid(at.x), y: snapToGrid(at.y) });
         drag.current.active = false;
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
@@ -155,7 +156,7 @@ export function PlacedComponent({
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     },
-    [comp.id, comp.x, comp.y, dispatch, holdable, onPress, readOnly, zoom],
+    [comp.id, comp.x, comp.y, dispatch, holdable, onPress, readOnly, resolveMove, zoom],
   );
 
   /* Custom element se v TSX chová jako komponenta. React 19 předá `ref`

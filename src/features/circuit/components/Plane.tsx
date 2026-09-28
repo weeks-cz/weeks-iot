@@ -5,7 +5,8 @@ import { PlacedComponent } from "./PlacedComponent";
 import { WireLayer } from "./WireLayer";
 import { getComponentSpec, pinLabel } from "../components";
 import { GRID_DOT_OPACITY, GRID_DOT_SIZE, PITCH, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
-import { componentAt, pinAt, pluggedPoints, wouldPlugIn } from "../hit-test";
+import { componentAt, pinAt, pluggedPoints } from "../hit-test";
+import { grabAnchor, landing } from "../placement";
 import { snapToGrid, type BuilderAction, type BuilderState } from "./state";
 import type { ComponentType, PinRef } from "../types";
 
@@ -126,6 +127,10 @@ export function Plane({
     return () => window.removeEventListener("keydown", onKey);
   }, [state.wireFrom, state.armed, state.selection, dispatch, onEscape, readOnly]);
 
+  /** Poslední puštění bylo z palety — `click`, který po něm prohlížeč
+      pošle, nesmí začít drátek ani nic vybrat. */
+  const justDropped = useRef(false);
+
   const planePoint = useCallback(
     (clientX: number, clientY: number) => {
       const plane = planeRef.current;
@@ -134,6 +139,73 @@ export function Plane({
       return { x: (clientX - rect.left) / state.zoom, y: (clientY - rect.top) / state.zoom };
     },
     [state.zoom],
+  );
+
+  /** Kam padne nachystaná součástka, když je ukazatel v bodě `pos`.
+      Drží se za střed, ne za levý horní roh. */
+  const armedLanding = useCallback(
+    (type: ComponentType, pos: { x: number; y: number }) => {
+      const anchor = grabAnchor(type);
+      return landing(state.circuit, type, { x: pos.x - anchor.x, y: pos.y - anchor.y });
+    },
+    [state.circuit],
+  );
+
+  const placeArmed = useCallback(
+    (type: ComponentType, pos: { x: number; y: number }) => {
+      const { at } = armedLanding(type, pos);
+      dispatch({
+        type: "PLACE",
+        comp: {
+          id: crypto.randomUUID(),
+          type,
+          x: snapToGrid(at.x),
+          y: snapToGrid(at.y),
+          rotation: 0,
+        },
+      });
+    },
+    [armedLanding, dispatch],
+  );
+
+  /* Tah z palety končí puštěním. Poslouchá se na okně, protože tah začal
+     mimo plochu — v paletě. Pustí-li dítě mimo plochu, rozmyslelo si to. */
+  useEffect(() => {
+    if (!state.dragging || !state.armed) return;
+    const type = state.armed;
+
+    const onUp = (e: PointerEvent) => {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      const inside =
+        rect &&
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom;
+      const pos = inside ? planePoint(e.clientX, e.clientY) : null;
+
+      if (pos) {
+        justDropped.current = true;
+        placeArmed(type, pos);
+      } else {
+        dispatch({ type: "ARM", kind: null });
+      }
+    };
+
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [state.dragging, state.armed, planePoint, placeArmed, dispatch]);
+
+  /** Magnet pro součástku, se kterou se hýbe. */
+  const resolveMove = useCallback(
+    (compId: string, raw: { x: number; y: number }) => {
+      const comp = state.circuit.comps.find((c) => c.id === compId);
+      if (!comp) return raw;
+      return landing(state.circuit, comp.type, raw, { excludeId: compId }).at;
+    },
+    [state.circuit],
   );
 
   /* Zachytává se v capture fázi, takže sem dorazí i gesta začatá na
@@ -178,10 +250,19 @@ export function Plane({
       const pos = planePoint(e.clientX, e.clientY);
       if (!pos) return;
 
+      /* Se zmáčknutým tlačítkem se táhne součástka (nebo výřez). Bublina
+         s popisem pinu by pak visela nad tím, co dítě posouvá, a ukazovala
+         na nožičku, kterou zrovna drží. Nachystaná součástka z palety
+         naopak náhled potřebuje právě během tahu. */
+      if (e.buttons !== 0 && !state.armed) {
+        setHover(null);
+        return;
+      }
+
       setHover(pos);
       if (state.wireFrom) dispatch({ type: "SET_CURSOR", pos });
     },
-    [dispatch, planePoint, state.wireFrom],
+    [dispatch, planePoint, state.armed, state.wireFrom],
   );
 
   const endGesture = useCallback((e: React.PointerEvent) => {
@@ -213,6 +294,11 @@ export function Plane({
     (e: React.MouseEvent) => {
       if (readOnly) return;
 
+      if (justDropped.current) {
+        justDropped.current = false;
+        return;
+      }
+
       /* Konec tahu prohlížeč hlásí i jako kliknutí. Bez tohohle by
          posouvání součástek po desce samo od sebe vyrábělo drátky. */
       if (gesture.current.dragged) {
@@ -225,16 +311,7 @@ export function Plane({
 
       /* Nachystaná součástka z palety se položí tam, kam dítě kleplo. */
       if (state.armed) {
-        dispatch({
-          type: "PLACE",
-          comp: {
-            id: crypto.randomUUID(),
-            type: state.armed as ComponentType,
-            x: snapToGrid(pos.x),
-            y: snapToGrid(pos.y),
-            rotation: 0,
-          },
-        });
+        placeArmed(state.armed, pos);
         return;
       }
 
@@ -257,7 +334,7 @@ export function Plane({
         target: compId ? { kind: "component", id: compId } : null,
       });
     },
-    [dispatch, onPinAction, planePoint, readOnly, state.armed, state.circuit, state.wireFrom],
+    [dispatch, onPinAction, placeArmed, planePoint, readOnly, state.armed, state.circuit, state.wireFrom],
   );
 
   /* Pin pod ukazatelem. Zvýrazní se, takže je dopředu vidět, co se chytne —
@@ -285,14 +362,21 @@ export function Plane({
   /* Zapíchnuté nožičky. Přepočítávat je při každém renderu je levné
      (desítky pinů) a odpadá tím další memo závislé na obvodu. */
   const plugged = pluggedPoints(state.circuit);
+  /* Dvě nožičky v jedné dírce: na skutečné desce to nejde, tak to svítí
+     červeně. */
+  const pluggedCount = new Map<string, number>();
+  for (const pt of plugged) {
+    const key = `${pt.x},${pt.y}`;
+    pluggedCount.set(key, (pluggedCount.get(key) ?? 0) + 1);
+  }
 
   /* Náhled nachystané součástky. Tinkercad ukazuje, co se položí a kam,
      ještě než se klepne — bez toho dítě kliká naslepo. */
   const ghost = state.armed ? getComponentSpec(state.armed) : null;
-  const ghostAt = hover ? { x: snapToGrid(hover.x), y: snapToGrid(hover.y) } : null;
+  const ghostLanding = state.armed && hover ? armedLanding(state.armed, hover) : null;
+  const ghostAt = ghostLanding?.at ?? null;
   /* A rovnou i to, jestli se tam součástka zapíchne, nebo jen položí. */
-  const ghostPlugs =
-    state.armed && ghostAt ? wouldPlugIn(state.circuit, state.armed, ghostAt) : false;
+  const ghostPlugs = ghostLanding?.snapped ?? false;
   const GhostTag = ghost
     ? (ghost.wokwiTag as unknown as React.FC<Record<string, unknown>>)
     : null;
@@ -344,6 +428,7 @@ export function Plane({
               .filter((p) => p.compId === comp.id)
               .map((p) => p.pinName)}
             nearestPin={nearest?.compId === comp.id ? nearest.pinName : null}
+            resolveMove={resolveMove}
             showPins={showPins}
             readOnly={readOnly}
             zoom={state.zoom}
@@ -354,20 +439,17 @@ export function Plane({
             zpětná vazba jako v Tinkercadu — bez ní se „zapíchnuto" nedá
             odlišit od „leží o pixel vedle". */}
         {plugged.map((pt, i) => (
-          <div
+          <PlugRing
             key={`plug-${i}`}
-            aria-hidden="true"
-            className="pointer-events-none absolute rounded-full"
-            style={{
-              left: pt.x - 6,
-              top: pt.y - 6,
-              width: 12,
-              height: 12,
-              border: "2.5px solid var(--color-trust-500)",
-              background: "color-mix(in srgb, var(--color-trust-500) 18%, transparent)",
-              zIndex: 12,
-            }}
+            x={pt.x}
+            y={pt.y}
+            ok={(pluggedCount.get(`${pt.x},${pt.y}`) ?? 0) < 2}
           />
+        ))}
+
+        {/* Dírky, do kterých by nachystaná součástka padla. */}
+        {ghostLanding?.points.map((pt, i) => (
+          <PlugRing key={`ghost-plug-${i}`} x={pt.x} y={pt.y} ok={pt.ok} />
         ))}
 
         {GhostTag && ghost && ghostAt && (
@@ -416,5 +498,26 @@ export function Plane({
         </div>
       )}
     </div>
+  );
+}
+
+/** Kroužek kolem dírky: zelený = nožička je v ní, červený = dírka je už
+    obsazená. */
+function PlugRing({ x, y, ok }: { x: number; y: number; ok: boolean }) {
+  const color = ok ? "var(--color-trust-500)" : "var(--color-danger-500)";
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute rounded-full"
+      style={{
+        left: x - 7,
+        top: y - 7,
+        width: 14,
+        height: 14,
+        border: `2.5px solid ${color}`,
+        background: `color-mix(in srgb, ${color} 22%, transparent)`,
+        zIndex: 12,
+      }}
+    />
   );
 }
