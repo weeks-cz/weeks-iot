@@ -33,6 +33,46 @@ export const SEQUENCE: SequenceStep[] = [
   { id: "camp", afterDays: 7, requiresMarketingConsent: true },
 ];
 
+/**
+ * Kolik dní smí krok zaváhat, než se z něj stane prošvihnutý.
+ *
+ * Cron na Vercelu běží jen v produkci. Když neběží — preview, výpadek,
+ * nasazení v půlce měsíce — splatné kroky se hromadí, a první běh pak
+ * pošle rodiči uvítání, připomenutí i pozvánku naráz. Připomenutí „první
+ * lekce pořád čeká" týden po registraci už navíc nedává smysl.
+ */
+export const SEQUENCE_TOLERANCE_DAYS = 2;
+
+export interface SequencePlan {
+  /** Krok, který se má v tomhle běhu odeslat. Nejvýš jeden. */
+  send: SequenceStep["id"] | null;
+  /** Kroky zpožděné přes toleranci: zapíšou se do logu, neodešlou. */
+  missed: SequenceStep["id"][];
+}
+
+/**
+ * Co s jedním účtem v tomhle běhu cronu.
+ *
+ * Čistá funkce, aby šla otestovat bez databáze a bez odesílání — cron,
+ * který jde vyzkoušet jen naostro, se naostro i zkouší.
+ */
+export function planSequence(ageDays: number, sent: ReadonlySet<string>): SequencePlan {
+  const missed: SequenceStep["id"][] = [];
+  let send: SequenceStep["id"] | null = null;
+
+  for (const step of SEQUENCE) {
+    if (sent.has(step.id) || ageDays < step.afterDays) continue;
+
+    if (ageDays - step.afterDays > SEQUENCE_TOLERANCE_DAYS) {
+      missed.push(step.id);
+    } else if (!send) {
+      send = step.id;
+    }
+  }
+
+  return { send, missed };
+}
+
 export interface SequenceContext {
   /** Přezdívka učícího se profilu. */
   nick: string;
@@ -108,11 +148,14 @@ export function campEmail(ctx: SequenceContext): EmailTemplate {
     return {
       subject: "To, co staví v učebně, si u nás postaví naživo",
       content: {
-        preheader: "Příměstský tábor chytrých technologií. Předplatné se odečítá.",
+        preheader: "Příměstský tábor chytrých technologií v Praze a Karlových Varech.",
         heading: "Za aplikací stojí lektor a léto",
         paragraphs: [
           "Weeks pořádá příměstské tábory chytrých technologií v Praze a Karlových Varech. Skutečné Arduino, skutečná 3D tiskárna a lektor u stolu.",
-          "Roční předplatné učebny za 699 Kč se z ceny tábora odečítá.",
+          /* Dřív tu stálo „Roční předplatné učebny za 699 Kč se z ceny
+             tábora odečítá". Předplatné v učebně není a odpočet nemá
+             z čeho vzniknout. Vrátit, až bude obojí skutečné — stejně
+             jako u CampCta. */
         ],
         button: {
           label: "Podívat se na termíny",

@@ -35,7 +35,7 @@ export function SignUpForm() {
         inputMode="email"
         required
         mono
-        hint="Sem vám budeme posílat certifikát a měsíční přehled toho, co dítě dokázalo."
+        hint="Sem vám pošleme certifikát, až dítě dokončí kurz."
         error={state.fieldErrors?.email}
       />
 

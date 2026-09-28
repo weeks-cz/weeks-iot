@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendTemplate } from "@/lib/email/send";
-import { SEQUENCE, buildStep, type SequenceContext } from "@/lib/email/sequence";
+import { SEQUENCE, buildStep, planSequence, type SequenceContext } from "@/lib/email/sequence";
 
 /**
  * Cron sekvence po registraci.
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
 
   const service = createServiceClient();
-  const results = { sent: 0, skipped: 0, failed: 0 };
+  const results = { sent: 0, skipped: 0, failed: 0, missed: 0 };
   /* Do výpisu jde maskovaná adresa, ne skutečná. Na kontrolu „komu by to
      šlo" stačí poznat účet; celý seznam e-mailů registrovaných rodičů je
      osobní údaj a nemá důvod opouštět databázi kvůli diagnostice. */
@@ -114,11 +114,29 @@ export async function GET(request: Request) {
     const completedAt = new Date(parent.onboarding_completed_at!).getTime();
     const ageDays = (now - completedAt) / 86_400_000;
 
-    for (const step of SEQUENCE) {
-      if (results.sent >= BATCH) break;
-      if (already.has(`${parent.id}:${step.id}`)) continue;
-      if (ageDays < step.afterDays) continue;
+    const sentSteps = new Set(
+      SEQUENCE.map((s) => s.id).filter((id) => already.has(`${parent.id}:${id}`)),
+    );
+    const { send, missed } = planSequence(ageDays, sentSteps);
 
+    /* Prošvihnuté kroky se zapíšou, aby se o ně cron už nepokoušel,
+       a neodešlou se. Viz SEQUENCE_TOLERANCE_DAYS. */
+    for (const stepId of missed) {
+      results.missed += 1;
+      if (dryRun) {
+        plan.push({ email: maskEmail(parent.email), step: `${stepId} (prošvihnuto)` });
+        continue;
+      }
+      await service.from("email_log").insert({
+        parent_id: parent.id,
+        step: stepId,
+        ok: false,
+        error: "prošvihnuto — cron neběžel včas",
+      });
+    }
+
+    /* Nejvýš jeden e-mail na účet za běh. */
+    for (const step of SEQUENCE.filter((s) => s.id === send)) {
       if (step.requiresMarketingConsent) {
         const { data: consented } = await service.rpc("has_consent", {
           p_parent: parent.id,
