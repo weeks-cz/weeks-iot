@@ -34,6 +34,17 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  /* Certifikát (src/features/certificates/pdf.tsx) čte písmo z disku.
+     Trasování souborů ho samo nenajde — cesta se skládá za běhu — takže
+     bez tohohle by PDF lokálně fungovalo a na Vercelu spadlo. Vystavuje
+     se z více cest (zápis lekce, registrace, účet), proto všude; jsou to
+     dva soubory po 90 kB. */
+  outputFileTracingIncludes: {
+    "/**": ["./src/features/certificates/fonts/**"],
+  },
+  /* react-pdf a jeho fontkit se nemají bundlovat — sahají na Node API
+     a v bundlu se rozbíjí jejich dynamické načítání. */
+  serverExternalPackages: ["@react-pdf/renderer"],
   trailingSlash: true,
   async headers() {
     return [

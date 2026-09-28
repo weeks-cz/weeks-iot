@@ -30,7 +30,16 @@ export interface SendResult {
   error?: string;
 }
 
-export async function sendTemplate(to: string, template: EmailTemplate): Promise<SendResult> {
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+}
+
+export async function sendTemplate(
+  to: string,
+  template: EmailTemplate,
+  attachments: EmailAttachment[] = [],
+): Promise<SendResult> {
   try {
     const { error } = await resend().emails.send({
       from: sender(),
@@ -40,6 +49,7 @@ export async function sendTemplate(to: string, template: EmailTemplate): Promise
       /* Textová verze není zdvořilost: bez ní hodnotí část filtrů zprávu
          jako podezřelou a přihlašovací odkaz skončí ve spamu. */
       text: renderEmailText(template.content),
+      ...(attachments.length > 0 ? { attachments } : {}),
       headers: {
         /* Transakční e-mail nemá být ve vlákně s předchozím. Bez toho je
            Gmail sbalí a druhý přihlašovací odkaz se schová pod prvním. */

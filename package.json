@@ -11,6 +11,7 @@
     "test:watch": "cross-env NODE_OPTIONS=--experimental-require-module vitest"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@supabase/ssr": "^0.10.2",

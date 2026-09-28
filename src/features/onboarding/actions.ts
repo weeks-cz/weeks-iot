@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import { SITE } from "@/lib/site";
 import { EVENT } from "@/features/analytics/events";
 import { consentTextsForAge } from "@/features/consent/texts";
 import { writeLessonProgress } from "@/features/progress/write";
+import { issueEarnedCertificates } from "@/features/certificates/issue";
 import { anonSessionSchema, type AnonSession } from "@/features/anon-session/schema";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { needsParentalConsent, onboardingSchema } from "./schema";
@@ -192,6 +194,9 @@ export async function completeOnboardingAction(
   if (anon) {
     try {
       await writeLessonProgress(childId, anon.lessons);
+      /* Kdo prošel celý kurz ještě před registrací, dostane certifikát
+         hned s účtem — s datem, kdy kurz opravdu dokončil. */
+      after(() => issueEarnedCertificates(childId));
     } catch (err) {
       console.error("[onboarding] Přenos anonymního postupu selhal:", err);
     }

@@ -13,6 +13,8 @@ import { getCampCatchment } from "@/features/onboarding/queries";
 import { consentStatuses } from "@/features/consent/logic";
 import { CampCta } from "@/features/onboarding/components/CampCta";
 import { voiceFor } from "@/features/account/voice";
+import { CertificateCard } from "@/features/certificates/components/CertificateCard";
+import { earnedCertificates } from "@/features/certificates/queries";
 
 export const metadata: Metadata = { title: "Přehled" };
 
@@ -46,6 +48,16 @@ export default async function AccountPage({
     catchment,
   );
   const voice = voiceFor(parent?.account_type);
+  /* Certifikáty se počítají z postupu při každém zobrazení — nic se
+     neukládá, takže nemůžou ukázat něco, co dítě neudělalo. */
+  const certificates = (
+    await Promise.all(
+      children.map(async (child) =>
+        (await earnedCertificates(child.id, child.nick)).map((cert) => ({ child, cert })),
+      ),
+    )
+  ).flat();
+
   const outdated = consentStatuses(
     consents ?? [],
     parent?.account_type !== "self",
@@ -121,6 +133,20 @@ export default async function AccountPage({
           </ul>
         )}
       </section>
+
+      {certificates.length > 0 && (
+        <section>
+          <MonoLabel className="mb-2">Hotové kurzy</MonoLabel>
+          <h2 className="heading-2 mb-4">Certifikáty</h2>
+          <ul className="flex flex-col gap-4">
+            {certificates.map(({ child, cert }) => (
+              <li key={`${child.id}:${cert.courseSlug}`}>
+                <CertificateCard childId={child.id} courseSlug={cert.courseSlug} data={cert.data} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <CampCta segment={segment} placement="ucet" />
     </div>

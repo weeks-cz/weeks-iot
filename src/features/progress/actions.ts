@@ -1,8 +1,10 @@
 "use server";
 
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { anonLessonSchema } from "@/features/anon-session/schema";
 import { getActiveChild } from "@/features/children/queries";
+import { issueEarnedCertificates } from "@/features/certificates/issue";
 import { writeLessonProgress } from "./write";
 
 /**
@@ -31,7 +33,12 @@ export async function saveLessonProgressAction(
   if (!active) return { ok: false };
 
   try {
-    return { ok: await writeLessonProgress(active.id, [parsed.data]) };
+    const ok = await writeLessonProgress(active.id, [parsed.data]);
+    /* Certifikát až po odpovědi: PDF a e-mail trvají vteřinu dvě a dítě
+       na ně nemá čekat. Poslední lekce tím nárok založí, ostatní nic. */
+    const childId = active.id;
+    if (ok) after(() => issueEarnedCertificates(childId));
+    return { ok };
   } catch (err) {
     console.error("[progress] Zápis lekce selhal:", err);
     return { ok: false };
