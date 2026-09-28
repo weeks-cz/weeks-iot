@@ -1,4 +1,12 @@
 import { ledFaded, type Lesson } from "../types";
+import {
+  analogWrite,
+  loopValue,
+  pinMode,
+  program,
+  repeat,
+  wait,
+} from "@/features/blocks/program";
 
 /**
  * Lekce 5 — mezi zapnuto a vypnuto.
@@ -99,6 +107,23 @@ void loop() {
 }
 `,
 
+  blocks: {
+    starter: program({ setup: [pinMode(9, "OUTPUT")] }),
+    solution: program({
+      setup: [pinMode(9, "OUTPUT")],
+      loop: [
+        repeat(0, 255, [analogWrite(9, loopValue()), wait(5)]),
+        repeat(255, 0, [analogWrite(9, loopValue()), wait(5)]),
+      ],
+    }),
+    hints: [
+      "Vezmi blok „opakuj od 0 do 255 nahoru“ a dej ho do „pak pořád dokola“.",
+      "Dovnitř opakování dej „jas pinu 9 na“ a do jeho okénka vlož „hodnota z opakování“. Pod to „počkej 5 ms“.",
+      "Pro zhasínání přidej pod něj druhé opakování od 255 do 0, dolů — se stejnými bloky uvnitř.",
+      "Zkus si čekání změnit. Menší číslo znamená rychlejší přechod.",
+    ],
+  },
+
   checks: [
     {
       label: "LED mění jas plynule, ne skokem",
@@ -110,6 +135,8 @@ void loop() {
       hint:
         "Jas se zatím mění jen skokem. Potřebuješ analogWrite (ne digitalWrite) " +
         "a smyčku for, která projede hodnoty mezi 0 a 255.",
+      blockHint:
+        "Jas se zatím mění jen skokem. Potřebuješ „jas pinu 9 na“ (ne „pošli HIGH“) uvnitř opakování, které projede hodnoty mezi 0 a 255 — a v okénku „hodnota z opakování“.",
     },
     {
       label: "Přechod trvá, není okamžitý",
@@ -118,6 +145,8 @@ void loop() {
       hint:
         "Bez delay() uvnitř smyčky proběhne přechod tak rychle, že ho nikdo neuvidí. " +
         "Přidej delay(5).",
+      blockHint:
+        "Bez bloku „počkej“ uvnitř opakování proběhne přechod tak rychle, že ho nikdo neuvidí. Přidej „počkej 5 ms“.",
     },
   ],
 };

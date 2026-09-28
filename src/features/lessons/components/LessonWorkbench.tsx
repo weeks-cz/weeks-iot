@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Circle, Eye, Hand, Lightbulb, Play, Square, Wand2 } from "lucide-react";
+import { Braces, Check, Circle, Eye, Hand, Lightbulb, Play, Puzzle, Square, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel, Stepper } from "@/components/ui/Surface";
+import { BlockEditor } from "@/features/blocks/components/BlockEditor";
+import { loadEditorMode, saveEditorMode, type EditorMode } from "@/features/blocks/mode";
+import { blocksToArduino, paletteFor, type WorkspaceState } from "@/features/blocks/program";
 import { CircuitBuilder } from "@/features/circuit/components/CircuitBuilder";
 import { useWokwiElements } from "@/features/circuit/components/useWokwiElements";
 import { checkWiring } from "@/features/circuit/wiring-check";
@@ -64,6 +67,17 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   const [step, setStep] = useState(0);
   const [circuit, setCircuit] = useState<Circuit>(seed);
   const [code, setCode] = useState(lesson.starterCode);
+  /* Bloky, nebo kód. Bloky jsou výchozí: mladší děti syntaxe zastaví
+     dřív, než pochopí, co program dělá. Obojí se překládá do téhož
+     Arduino C a jde do téže kontroly. */
+  const [mode, setMode] = useState<EditorMode>("blocks");
+  const [blocks, setBlocks] = useState<WorkspaceState>(lesson.blocks.starter);
+  const [pushedBlocks, setPushedBlocks] = useState<WorkspaceState | null>(null);
+  /* Kód vzniklý z bloků při posledním přepnutí. Když ho dítě upraví,
+     přepnutí zpátky na bloky ty úpravy zahodí — bloky kód číst neumí —
+     a na to se musí zeptat dřív, než se to stane. */
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [confirmBlocks, setConfirmBlocks] = useState(false);
   const [wiringChecked, setWiringChecked] = useState(false);
   const [hints, setHints] = useState({ wiring: 0, code: 0 });
   /* Úniková cesta z obou kroků. Zaseknout se doteď znamenalo konec lekce:
@@ -109,6 +123,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
        serveru není, takže dřív to načíst nejde. */
     setCode(draft.code);
     setCircuit(draft.circuit);
+    if (draft.blocks) setBlocks(draft.blocks);
     setHasDraft(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [lesson.slug]);
@@ -116,9 +131,45 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   useEffect(() => {
     /* Netknutá lekce se neukládá — jinak by se konceptem stalo i to, že
        ji dítě jen otevřelo a zavřelo. */
-    if (!restored.current && code === lesson.starterCode && circuit === seed) return;
-    saveDraft(lesson.slug, { code, circuit });
-  }, [lesson.slug, lesson.starterCode, code, circuit, seed]);
+    const untouched =
+      code === lesson.starterCode && circuit === seed && blocks === lesson.blocks.starter;
+    if (!restored.current && untouched) return;
+    saveDraft(lesson.slug, { code, circuit, blocks });
+  }, [lesson.slug, lesson.starterCode, lesson.blocks.starter, code, circuit, blocks, seed]);
+
+  /* Režim si prohlížeč pamatuje napříč lekcemi. Číst se dá až po
+     připojení, ze stejného důvodu jako koncept výš. */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorázové přečtení localStorage
+    setMode(loadEditorMode());
+  }, []);
+
+  const generated = useMemo(() => blocksToArduino(blocks), [blocks]);
+  const blockPalette = useMemo(() => paletteFor(lesson.blocks.solution), [lesson.blocks.solution]);
+  /* To, co se opravdu spustí. */
+  const source = mode === "blocks" ? generated.code : code;
+  const codeHints = mode === "blocks" ? lesson.blocks.hints : lesson.codeHints;
+
+  function switchToCode() {
+    setGeneratedCode(generated.code);
+    setCode(generated.code);
+    setMode("code");
+    saveEditorMode("code");
+    setConfirmBlocks(false);
+    setRun(null);
+  }
+
+  function switchToBlocks(confirmed = false) {
+    const edited = generatedCode === null ? code !== lesson.starterCode : code !== generatedCode;
+    if (edited && !confirmed) {
+      setConfirmBlocks(true);
+      return;
+    }
+    setConfirmBlocks(false);
+    setMode("blocks");
+    saveEditorMode("blocks");
+    setRun(null);
+  }
 
   /* Po přepnutí kroku se fokus přesune na jeho nadpis. Bez toho zůstane
      na tlačítku, které zmizelo, a kdo jede klávesnicí, se ztratí.
@@ -206,16 +257,16 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
   function revealSolution() {
     setShowSolution(true);
-    markAssist("code", lesson.codeHints.length);
+    markAssist("code", codeHints.length);
   }
 
   /* Přepočet běhu, když dítě zmáčkne nebo pustí tlačítko. Program se
      pustí znovu s novým stavem obvodu — jinak by stisk nic neudělal. */
   const rerun = useCallback(
     (held: Set<string>) => {
-      setRun((prev) => (prev ? runLessonChecks(lesson, circuit, code, held) : prev));
+      setRun((prev) => (prev ? runLessonChecks(lesson, circuit, source, held) : prev));
     },
-    [lesson, circuit, code],
+    [lesson, circuit, source],
   );
 
   const handlePress = useCallback(
@@ -242,7 +293,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
       /* Přehrávání spustí sám přehrávač, jakmile dostane nové snímky.
          Volat to odsud by znamenalo sáhnout na stav, který se v tomhle
          renderu ještě nezměnil. */
-      const result = runLessonChecks(lesson, circuit, code, pressed);
+      const result = runLessonChecks(lesson, circuit, source, pressed);
       setRun(result);
       setRunning(false);
 
@@ -472,13 +523,70 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
       {step === STEP.CODE && (
         <section className="flex flex-col gap-4">
-          <h2 ref={stepHeading} tabIndex={-1} className="heading-3 outline-none">
-            Napiš program
-          </h2>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2 ref={stepHeading} tabIndex={-1} className="heading-3 outline-none">
+              {mode === "blocks" ? "Poskládej program" : "Napiš program"}
+            </h2>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Přepínač je vidět vždycky. Kdo bloky nepotřebuje, nemá je
+                hledat v nastavení; kdo s kódem nezvládá, má kam utéct. */}
+            <div
+              role="group"
+              aria-label="Jak chceš programovat"
+              className="inline-flex rounded-md border border-ink bg-paper p-1"
+            >
+              <button
+                type="button"
+                aria-pressed={mode === "blocks"}
+                onClick={() => mode !== "blocks" && switchToBlocks()}
+                className={`inline-flex min-h-11 items-center gap-2 rounded px-4 font-semibold transition-colors ${
+                  mode === "blocks" ? "bg-ink text-paper" : "text-ink-500 hover:text-ink"
+                }`}
+              >
+                <Puzzle className="h-4 w-4" aria-hidden="true" />
+                Bloky
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === "code"}
+                onClick={() => mode !== "code" && switchToCode()}
+                className={`inline-flex min-h-11 items-center gap-2 rounded px-4 font-semibold transition-colors ${
+                  mode === "code" ? "bg-ink text-paper" : "text-ink-500 hover:text-ink"
+                }`}
+              >
+                <Braces className="h-4 w-4" aria-hidden="true" />
+                Kód
+              </button>
+            </div>
+          </div>
+
+          {confirmBlocks && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-cta-600 bg-cta-50 px-4 py-3"
+            >
+              <p className="max-w-prose leading-relaxed text-ink">
+                Kód, který jsi napsal, bloky přečíst neumí. V blocích budeš pokračovat tam, kde
+                jsi je nechal, a tvoje úpravy kódu se ztratí.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setConfirmBlocks(false)}>
+                  Zůstat u kódu
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => switchToBlocks(true)}>
+                  Přepnout na bloky
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`grid gap-4 ${
+              mode === "blocks" ? "lg:grid-cols-[minmax(0,1fr)_22rem]" : "lg:grid-cols-2"
+            }`}
+          >
             <div className="flex flex-col gap-3">
-              {vocabulary.length > 0 && (
+              {mode === "code" && vocabulary.length > 0 && (
                 <div className="rounded-md border border-ink/15 bg-paper-soft p-4">
                   <p className="mb-3 font-display text-lg font-semibold">
                     Tahák — příkazy téhle lekce
@@ -520,7 +628,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                   </Button>
                 )}
 
-                {hints.code < lesson.codeHints.length && (
+                {hints.code < codeHints.length && (
                   <Button size="sm" variant="outline" onClick={() => revealHint("code")}>
                     <Lightbulb className="h-4 w-4" aria-hidden="true" />
                     {hints.code === 0 ? "Nevím si rady" : "Poradit víc"}
@@ -529,7 +637,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
                 {/* Poslední východisko. Do téhle chvíle dítě prošlo všechny
                     nápovědy — teprve teď je to opravdu slepá ulička. */}
-                {hints.code >= lesson.codeHints.length && !showSolution && (
+                {hints.code >= codeHints.length && !showSolution && (
                   <Button size="sm" variant="outline" onClick={revealSolution}>
                     <Eye className="h-4 w-4" aria-hidden="true" />
                     Ukázat řešení
@@ -537,20 +645,82 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 )}
               </div>
 
-              <CodeEditor
-                value={code}
-                onChange={(next) => {
-                  setCode(next);
-                  setRun(null);
-                }}
-                /* Chyba překladu i příkaz schovaný v komentáři ukazují na
-                   řádek. Bez toho musí dítě hledat „řádek 6" očima. */
-                markedLine={run?.error?.line ?? run?.silent?.line ?? null}
-              />
+              {mode === "blocks" ? (
+                <>
+                  <BlockEditor
+                    initial={blocks}
+                    palette={blockPalette}
+                    pushState={pushedBlocks}
+                    onChange={(next) => {
+                      setBlocks(next);
+                      setRun(null);
+                    }}
+                    height={480}
+                  />
 
-              {hints.code > 0 && <HintList hints={lesson.codeHints.slice(0, hints.code)} />}
+                  {/* Bloky mimo program nic nedělají — a dítě, které je
+                      nechalo ležet vedle, nechápe, proč se nic neděje. */}
+                  {generated.loose > 0 && (
+                    <p className="rounded-md border-l-4 border-cta-600 bg-cta-50 px-3 py-2 leading-relaxed text-ink-700">
+                      {generated.loose === 1 ? "Jeden blok leží" : "Některé bloky leží"} mimo
+                      program, takže nic {generated.loose === 1 ? "nedělá" : "nedělají"}. Připoj{" "}
+                      {generated.loose === 1 ? "ho" : "je"} do „na začátku jednou“ nebo „pak
+                      pořád dokola“.
+                    </p>
+                  )}
 
-              {showSolution && (
+                  {/* Most ke kódu. Dítě vidí, co jeho bloky znamenají, a až
+                      přepne na kód, nebude to skok do neznáma. */}
+                  <details className="group rounded-md border border-ink/15 bg-paper">
+                    <summary className="flex min-h-11 cursor-pointer items-center px-4 font-semibold text-ink-700">
+                      Takhle to vypadá v kódu
+                    </summary>
+                    <div className="border-t border-ink/10 p-3">
+                      <CodeView code={generated.code} />
+                    </div>
+                  </details>
+                </>
+              ) : (
+                <CodeEditor
+                  value={code}
+                  onChange={(next) => {
+                    setCode(next);
+                    setRun(null);
+                  }}
+                  /* Chyba překladu i příkaz schovaný v komentáři ukazují na
+                     řádek. Bez toho musí dítě hledat „řádek 6" očima. */
+                  markedLine={run?.error?.line ?? run?.silent?.line ?? null}
+                />
+              )}
+
+              {hints.code > 0 && <HintList hints={codeHints.slice(0, hints.code)} />}
+
+              {showSolution && mode === "blocks" && (
+                <Card className="p-4">
+                  <MonoLabel className="mb-3">Řešení</MonoLabel>
+                  <p className="leading-relaxed text-ink-700">
+                    Řešení ti poskládáme do bloků. Spustit ho musíš sám — a mrkni, čím se liší
+                    od toho, co jsi měl.
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        /* Nový objekt pokaždé — editor porovnává reference. */
+                        const next = structuredClone(lesson.blocks.solution);
+                        setBlocks(next);
+                        setPushedBlocks(next);
+                        setRun(null);
+                      }}
+                    >
+                      Poskládat řešení do bloků
+                    </Button>
+                  </div>
+                </Card>
+              )}
+
+              {showSolution && mode === "code" && (
                 <Card className="p-4">
                   <MonoLabel className="mb-3">Řešení</MonoLabel>
 
@@ -608,7 +778,14 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
               )}
 
               {run?.error && (
-                <Alert tone="danger" title={`Chyba na řádku ${run.error.line}`}>
+                <Alert
+                  tone="danger"
+                  title={
+                    mode === "blocks"
+                      ? "Program z bloků se nepodařilo spustit"
+                      : `Chyba na řádku ${run.error.line}`
+                  }
+                >
                   {run.error.message}
                 </Alert>
               )}
@@ -619,7 +796,9 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                   zakomentovanou na obrazovce před sebou. */}
               {run?.silent && (
                 <Alert tone="warning" title="Program zatím nic nedělá">
-                  {run.silent.message}
+                  {mode === "blocks"
+                    ? "Přetáhni bloky zleva do „na začátku jednou“ a „pak pořád dokola“ — co leží jinde, nic nedělá."
+                    : run.silent.message}
                 </Alert>
               )}
 
@@ -653,7 +832,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
                   {firstUnmet && !run.silent && (
                     <p className="mt-3 border-t border-ink/10 pt-3 leading-relaxed text-ink-700">
-                      {firstUnmet.hint}
+                      {mode === "blocks" ? (firstUnmet.blockHint ?? firstUnmet.hint) : firstUnmet.hint}
                     </p>
                   )}
                 </Card>

@@ -1,4 +1,16 @@
 import { ledEverOn, ledNeverOn, type Lesson } from "../types";
+import {
+  analogRead,
+  compare,
+  digitalWrite,
+  ifElse,
+  num,
+  pinMode,
+  program,
+  serialBegin,
+  serialPrintln,
+  wait,
+} from "@/features/blocks/program";
 
 /**
  * Lekce 7 — závěrečný projekt.
@@ -137,6 +149,28 @@ void loop() {
 }
 `,
 
+  blocks: {
+    starter: program({ setup: [pinMode(9, "OUTPUT"), serialBegin()] }),
+    solution: program({
+      setup: [pinMode(9, "OUTPUT"), serialBegin()],
+      loop: [
+        serialPrintln(analogRead("A0")),
+        ifElse(
+          compare(analogRead("A0"), "<", num(400)),
+          [digitalWrite(9, "HIGH")],
+          [digitalWrite(9, "LOW")],
+        ),
+        wait(200),
+      ],
+    }),
+    hints: [
+      "Do „pak pořád dokola“ dej „vypiš“ a do okénka „přečti analogový pin A0“. Uvidíš, jaká čísla senzor posílá.",
+      "Pod to dej „když … udělej … jinak“ s porovnáním „přečti analogový pin A0“ < 400.",
+      "Do „udělej“ rozsviť LED na pinu 9, do „jinak“ ji zhasni. Nakonec „počkej 200 ms“, ať výpis neletí moc rychle.",
+      "Hranici si uprav podle toho, jaká čísla ti chodí. Neexistuje jedno správné.",
+    ],
+  },
+
   checks: [
     {
       label: "Ve tmě se LED rozsvítí",
@@ -147,6 +181,8 @@ void loop() {
       hint:
         "Ve tmě LED nesvítí. Čteš hodnotu přes analogRead a porovnáváš ji s hranicí? " +
         "Ve tmě je hodnota MALÁ, takže podmínka má být „menší než“.",
+      blockHint:
+        "Ve tmě LED nesvítí. Porovnáváš „přečti analogový pin A0“ s hranicí? Ve tmě je hodnota MALÁ, takže porovnání má být „menší než“ (<).",
     },
     {
       label: "Ve světle LED zhasne",
@@ -156,6 +192,8 @@ void loop() {
       hint:
         "Ve světle LED pořád svítí. Chybí ti větev else, která ji zhasne — " +
         "nebo máš podmínku otočenou.",
+      blockHint:
+        "Ve světle LED pořád svítí. V části „jinak“ ji zhasni — nebo máš porovnání otočené.",
     },
     {
       label: "Hranice je někde mezi tmou a světlem",

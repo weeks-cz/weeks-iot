@@ -17,6 +17,8 @@ export interface CheckOutcome {
   passed: boolean;
   /** Nápověda, když bod neprošel. */
   hint: string;
+  /** Totéž pro režim bloků, když nápověda diktuje kód. */
+  blockHint?: string;
   /** Snímky běhu — z prvního neprošlého bodu se dá ukázat, co se dělo. */
   frames: SimulationFrame[];
 }
@@ -91,6 +93,7 @@ export function runLessonChecks(
       label: check.label,
       passed: check.verify(run.frames, ctx),
       hint: check.hint,
+      blockHint: check.blockHint,
       frames: run.frames,
     });
   }

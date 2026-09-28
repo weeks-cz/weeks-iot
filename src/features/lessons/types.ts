@@ -1,6 +1,7 @@
 import type { ComponentType } from "@/features/circuit/types";
 import type { SimulationFrame } from "@/features/circuit/simulate";
 import type { WiringSpec } from "@/features/circuit/wiring-check";
+import type { WorkspaceState } from "@/features/blocks/program";
 
 /**
  * Tvar lekce.
@@ -51,6 +52,12 @@ export interface LessonCheck {
   verify: (frames: SimulationFrame[], ctx: CheckContext) => boolean;
   /** Co dítě uvidí, když tenhle bod neprojde. */
   hint: string;
+  /**
+   * Totéž v režimu bloků. Jen tam, kde `hint` diktuje kód („napiš
+   * digitalWrite(led, HIGH)") — v blocích by dítě hledalo příkaz, který
+   * nikde nevidí.
+   */
+  blockHint?: string;
 }
 
 export interface Lesson {
@@ -82,6 +89,20 @@ export interface Lesson {
   solution: string;
 
   checks: LessonCheck[];
+
+  /**
+   * Tatáž úloha v blocích.
+   *
+   * Bloky se překládají do Arduino C a kontrolují stejnými `checks` —
+   * lekce tím nedostává druhé zadání, jen druhý způsob, jak ho napsat.
+   * Paleta bloků se odvozuje z `solution` (`paletteFor`).
+   */
+  blocks: {
+    starter: WorkspaceState;
+    solution: WorkspaceState;
+    /** Nápovědy v řeči bloků, odkrývané po jedné jako `codeHints`. */
+    hints: string[];
+  };
 
   /** Reference na obrázek v /public/task-images, když existuje. */
   imageKey?: string;

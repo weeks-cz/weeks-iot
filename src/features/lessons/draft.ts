@@ -1,4 +1,5 @@
 import type { Circuit } from "@/features/circuit/types";
+import type { WorkspaceState } from "@/features/blocks/program";
 
 /**
  * Rozpracovaná lekce v prohlížeči.
@@ -16,6 +17,8 @@ const KEY_PREFIX = "weeks.lesson-draft.v1.";
 export interface LessonDraft {
   code: string;
   circuit: Circuit;
+  /** Rozdělané bloky. Chybí u konceptů uložených před zavedením bloků. */
+  blocks?: WorkspaceState;
 }
 
 export function loadDraft(slug: string): LessonDraft | null {

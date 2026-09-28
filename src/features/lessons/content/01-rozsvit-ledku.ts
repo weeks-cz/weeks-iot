@@ -1,4 +1,9 @@
 import { ledEverOn, ledNeverOn, type Lesson } from "../types";
+import {
+  digitalWrite,
+  pinMode,
+  program,
+} from "@/features/blocks/program";
 
 /**
  * Lekce 1 — první kontakt.
@@ -99,6 +104,19 @@ void loop() {
 }
 `,
 
+  blocks: {
+    starter: program({}),
+    solution: program({
+      setup: [pinMode(8, "OUTPUT")],
+      loop: [digitalWrite(8, "HIGH")],
+    }),
+    hints: [
+      "Do části „na začátku jednou“ přetáhni blok „nastav pin 8 jako výstup“. Říká: pin 8 bude něco ovládat, ne poslouchat.",
+      "Do části „pak pořád dokola“ přetáhni blok „na pin 8 pošli HIGH“. To je ten příkaz, co LED rozsvítí.",
+      "HIGH znamená zapnuto, LOW vypnuto. Zkus si to v bloku přepnout a uvidíš rozdíl.",
+    ],
+  },
+
   checks: [
     {
       label: "LED svítí",
@@ -107,6 +125,8 @@ void loop() {
       hint:
         "LED zatím nesvítí. Do loop() patří digitalWrite(led, HIGH) — a v setup() " +
         "musí být pinMode(led, OUTPUT), jinak Arduino neví, že má pin ovládat.",
+      blockHint:
+        "LED zatím nesvítí. Do „pak pořád dokola“ patří „na pin 8 pošli HIGH“ — a do „na začátku jednou“ blok „nastav pin 8 jako výstup“, jinak Arduino neví, že má pin ovládat.",
     },
     {
       label: "Program řídí pin 8",

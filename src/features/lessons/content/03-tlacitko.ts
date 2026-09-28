@@ -1,4 +1,13 @@
 import { ledEverOn, ledNeverOn, type Lesson } from "../types";
+import {
+  compare,
+  digitalRead,
+  digitalWrite,
+  ifElse,
+  level,
+  pinMode,
+  program,
+} from "@/features/blocks/program";
 
 /**
  * Lekce 3 — vstup.
@@ -120,6 +129,26 @@ void loop() {
   /* Kontroly MAČKAJÍ skutečné tlačítko v obvodu (pressed), nevnucují
      pinu hodnotu. Vnucená hodnota by pustila i špatně zapojené tlačítko —
      třeba obvod, kde je pin uzemněný natrvalo a stisk nic nemění. */
+  blocks: {
+    starter: program({ setup: [pinMode(8, "OUTPUT"), pinMode(7, "INPUT_PULLUP")] }),
+    solution: program({
+      setup: [pinMode(8, "OUTPUT"), pinMode(7, "INPUT_PULLUP")],
+      loop: [
+        ifElse(
+          compare(digitalRead(7), "==", level("LOW")),
+          [digitalWrite(8, "HIGH")],
+          [digitalWrite(8, "LOW")],
+        ),
+      ],
+    }),
+    hints: [
+      "Tlačítko už je nastavené jako vstup — v části „na začátku jednou“ to máš hotové.",
+      "Do „pak pořád dokola“ dej blok „když … udělej … jinak“.",
+      "Do okénka za „když“ vlož porovnání a do něj „přečti pin 7“ = LOW.",
+      "Pozor: zmáčknuté tlačítko je LOW, ne HIGH. Proto se ptáš na LOW.",
+    ],
+  },
+
   checks: [
     {
       label: "Když tlačítko držíš, LED svítí",
@@ -129,6 +158,8 @@ void loop() {
       hint:
         "Se stisknutým tlačítkem LED nesvítí. Zmáčknuté tlačítko čte LOW — " +
         "zkontroluj, jestli se ptáš na LOW, a ne na HIGH.",
+      blockHint:
+        "Se stisknutým tlačítkem LED nesvítí. Zmáčknuté tlačítko čte LOW — zkontroluj, jestli se v porovnání ptáš na LOW, a ne na HIGH.",
     },
     {
       label: "Když tlačítko pustíš, LED zhasne",
@@ -138,6 +169,8 @@ void loop() {
       hint:
         "S puštěným tlačítkem LED pořád svítí. Chybí ti větev else, která ji zhasne — " +
         "nebo v ní není digitalWrite(led, LOW).",
+      blockHint:
+        "S puštěným tlačítkem LED pořád svítí. Do části „jinak“ patří „na pin 8 pošli LOW“.",
     },
   ],
 };

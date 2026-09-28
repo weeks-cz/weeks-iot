@@ -1,4 +1,10 @@
 import { ledBlinked, type Lesson } from "../types";
+import {
+  digitalWrite,
+  pinMode,
+  program,
+  wait,
+} from "@/features/blocks/program";
 
 /**
  * Lekce 2 — čas.
@@ -95,6 +101,19 @@ void loop() {
 }
 `,
 
+  blocks: {
+    starter: program({ setup: [pinMode(8, "OUTPUT")] }),
+    solution: program({
+      setup: [pinMode(8, "OUTPUT")],
+      loop: [digitalWrite(8, "HIGH"), wait(500), digitalWrite(8, "LOW"), wait(500)],
+    }),
+    hints: [
+      "Čtyři bloky pod sebou: pošli HIGH, počkej, pošli LOW, počkej.",
+      "Číslo v bloku „počkej“ jsou milisekundy. 1000 je jedna vteřina, 500 půl.",
+      "Zkus si čísla změnit. Co udělá 50? A co 2000?",
+    ],
+  },
+
   checks: [
     {
       label: "LED bliká — střídá svícení a tmu",
@@ -105,6 +124,8 @@ void loop() {
       hint:
         "LED se zatím nestřídá. Potřebuješ v loop() obojí: digitalWrite(led, HIGH) " +
         "i digitalWrite(led, LOW), a mezi nimi delay().",
+      blockHint:
+        "LED se zatím nestřídá. V „pak pořád dokola“ potřebuješ obojí: „pošli HIGH“ i „pošli LOW“, a mezi nimi blok „počkej“.",
     },
     {
       label: "Mezi změnami je pauza",
@@ -113,6 +134,8 @@ void loop() {
       hint:
         "Bez delay() by LED blikala tisíckrát za vteřinu a vypadala by, že jen svítí. " +
         "Přidej delay() mezi rozsvícení a zhasnutí.",
+      blockHint:
+        "Bez bloku „počkej“ by LED blikala tisíckrát za vteřinu a vypadala by, že jen svítí. Přidej „počkej“ mezi rozsvícení a zhasnutí.",
     },
   ],
 };

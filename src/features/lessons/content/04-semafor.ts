@@ -1,4 +1,10 @@
 import { ledBlinked, type Lesson } from "../types";
+import {
+  digitalWrite,
+  pinMode,
+  program,
+  wait,
+} from "@/features/blocks/program";
 
 /**
  * Lekce 4 — pořadí.
@@ -136,12 +142,38 @@ void loop() {
 }
 `,
 
+  blocks: {
+    starter: program({}),
+    solution: program({
+      setup: [pinMode(2, "OUTPUT"), pinMode(3, "OUTPUT"), pinMode(4, "OUTPUT")],
+      loop: [
+        digitalWrite(4, "HIGH"),
+        wait(2000),
+        digitalWrite(4, "LOW"),
+        digitalWrite(3, "HIGH"),
+        wait(700),
+        digitalWrite(3, "LOW"),
+        digitalWrite(2, "HIGH"),
+        wait(2000),
+        digitalWrite(2, "LOW"),
+      ],
+    }),
+    hints: [
+      "Do „na začátku jednou“ potřebuješ tři bloky „nastav pin jako výstup“ — pro piny 2, 3 a 4.",
+      "V „pak pořád dokola“ vždycky jednu LED rozsviť, počkej, a zase ji zhasni, než rozsvítíš další.",
+      "Když zapomeneš předchozí zhasnout, budou svítit všechny naráz.",
+      "Zkus žluté dát kratší čekání než zelené a červené — jako na skutečné křižovatce.",
+    ],
+  },
+
   checks: [
     {
       label: "Červená se rozsvěcí a zhasíná",
       iterations: 4,
       verify: (frames, ctx) => ledBlinked(frames, ctx.comp("cervena")),
       hint: "Červená LED se nestřídá. Zkontroluj, že ji v loop() rozsvěcíš i zhasínáš.",
+      blockHint:
+        "Červená LED se nestřídá. Zkontroluj, že ji v „pak pořád dokola“ rozsvěcíš i zhasínáš.",
     },
     {
       label: "Žlutá se rozsvěcí a zhasíná",
@@ -162,6 +194,8 @@ void loop() {
       hint:
         "Bez delay() by se barvy střídaly tak rychle, že by to vypadalo jako " +
         "svítící všechno naráz. Přidej pauzu za každou barvu.",
+      blockHint:
+        "Bez bloku „počkej“ by se barvy střídaly tak rychle, že by to vypadalo, že svítí všechny naráz. Přidej „počkej“ za každou barvu.",
     },
   ],
 };

@@ -1,4 +1,14 @@
 import { buzzerSounded, type Lesson } from "../types";
+import {
+  compare,
+  digitalRead,
+  ifElse,
+  level,
+  noTone,
+  pinMode,
+  program,
+  tone,
+} from "@/features/blocks/program";
 
 /**
  * Lekce 6 — výstup, který není vidět.
@@ -110,6 +120,22 @@ void loop() {
   /* Kontroly MAČKAJÍ skutečné tlačítko v obvodu (pressed), nevnucují
      pinu hodnotu. Vnucená hodnota by pustila i špatně zapojené tlačítko —
      třeba obvod, kde je pin uzemněný natrvalo a stisk nic nemění. */
+  blocks: {
+    starter: program({ setup: [pinMode(8, "OUTPUT"), pinMode(7, "INPUT_PULLUP")] }),
+    solution: program({
+      setup: [pinMode(8, "OUTPUT"), pinMode(7, "INPUT_PULLUP")],
+      loop: [
+        ifElse(compare(digitalRead(7), "==", level("LOW")), [tone(8, 440)], [noTone(8)]),
+      ],
+    }),
+    hints: [
+      "Do „pak pořád dokola“ dej blok „když … udělej … jinak“ a do okénka porovnání „přečti pin 7“ = LOW.",
+      "Do „udělej“ dej „tón na pinu 8 440 Hz“.",
+      "Do „jinak“ patří „ztiš pin 8“ — jinak bude pípat pořád.",
+      "Zkus jiné frekvence. 262 je C, 330 je E, 392 je G — dá se z toho složit akord.",
+    ],
+  },
+
   checks: [
     {
       label: "Se zmáčknutým tlačítkem se ozve tón",
@@ -119,6 +145,8 @@ void loop() {
       hint:
         "Bzučák mlčí. Použil jsi tone(bzucak, 440)? A ptáš se na LOW — " +
         "zmáčknuté tlačítko je LOW, ne HIGH.",
+      blockHint:
+        "Bzučák mlčí. Máš v „udělej“ blok „tón na pinu 8“? A ptáš se na LOW — zmáčknuté tlačítko je LOW, ne HIGH.",
     },
     {
       label: "S puštěným tlačítkem je ticho",
@@ -128,6 +156,8 @@ void loop() {
       hint:
         "Bzučák pípá i bez stisku. Chybí ti noTone(bzucak) ve větvi else — " +
         "tone jednou spuštěný hraje dál, dokud ho nevypneš.",
+      blockHint:
+        "Bzučák pípá i bez stisku. Chybí ti „ztiš pin 8“ v části „jinak“ — jednou spuštěný tón hraje dál, dokud ho nevypneš.",
     },
   ],
 };
