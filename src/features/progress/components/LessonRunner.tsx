@@ -11,6 +11,7 @@ import { EVENT, track, trackOnce } from "@/features/analytics/track";
 import { LessonWorkbench } from "@/features/lessons/components/LessonWorkbench";
 import { lessonBySlug } from "@/features/lessons/content";
 import { saveLessonProgressAction } from "@/features/progress/actions";
+import type { EditorMode } from "@/features/blocks/mode";
 
 /**
  * Průchod lekcí.
@@ -42,6 +43,8 @@ interface Props {
   publishedSlugs: string[];
   /** Co už má dokončené přihlášený uživatel. U anonyma prázdné. */
   completedSlugs: string[];
+  /** Režim editoru uložený u profilu; u anonyma `undefined`. */
+  childEditorMode?: EditorMode | null;
 }
 
 export function LessonRunner({
@@ -53,6 +56,7 @@ export function LessonRunner({
   nextLessonSlug,
   publishedSlugs,
   completedSlugs,
+  childEditorMode,
 }: Props) {
   const [completed, setCompleted] = useState(false);
   const wallRef = useRef<HTMLDivElement>(null);
@@ -251,6 +255,7 @@ export function LessonRunner({
   return (
     <LessonWorkbench
       lesson={lesson}
+      childEditorMode={childEditorMode}
       onSolved={handleSolved}
       onContinue={handleContinue}
       onHint={(kind, index) => {

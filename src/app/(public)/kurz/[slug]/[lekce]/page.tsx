@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SITE } from "@/lib/site";
 import { LessonRunner } from "@/features/progress/components/LessonRunner";
 import { completedLessonSlugs } from "@/features/progress/queries";
+import { activeChildEditorMode } from "@/features/children/editor-mode";
 
 interface Params {
   slug: string;
@@ -88,9 +89,12 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
   /* Co má aktivní profil dokončené. Potřebuje to `course_complete` —
      bez toho by se odvozovalo z „nemám kam dál", což by kurz označilo
      za dokončený i tomu, kdo skočil rovnou na poslední lekci. */
-  const completedSlugs = auth.user
-    ? await completedLessonSlugs(auth.user.id, data.publishedIds)
-    : [];
+  const [completedSlugs, childEditorMode] = auth.user
+    ? await Promise.all([
+        completedLessonSlugs(auth.user.id, data.publishedIds),
+        activeChildEditorMode(auth.user.id),
+      ])
+    : [[], undefined];
 
   return (
     <main className="section-container py-6 sm:py-8">
@@ -131,6 +135,7 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
           nextLessonSlug={data.nextLessonSlug}
           publishedSlugs={data.publishedSlugs}
           completedSlugs={completedSlugs}
+          childEditorMode={childEditorMode}
         />
       </div>
     </main>

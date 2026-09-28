@@ -5,7 +5,13 @@ import { Braces, Check, Circle, Eye, Hand, Lightbulb, Play, Puzzle, Square, Wand
 import { Button } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel, Stepper } from "@/components/ui/Surface";
 import { BlockEditor } from "@/features/blocks/components/BlockEditor";
-import { loadEditorMode, saveEditorMode, type EditorMode } from "@/features/blocks/mode";
+import {
+  readLocalEditorMode,
+  resolveEditorMode,
+  saveEditorMode,
+  type EditorMode,
+} from "@/features/blocks/mode";
+import { saveEditorModeAction } from "@/features/children/editor-mode-action";
 import { blocksToArduino, paletteFor, type WorkspaceState } from "@/features/blocks/program";
 import { CircuitBuilder } from "@/features/circuit/components/CircuitBuilder";
 import { useWokwiElements } from "@/features/circuit/components/useWokwiElements";
@@ -45,6 +51,12 @@ interface Props {
   onContinue: () => void;
   /** Nahlásí vyžádanou nápovědu — z toho se pozná, kde lekce drhne. */
   onHint?: (kind: "wiring" | "code", index: number) => void;
+  /**
+   * Režim editoru uložený u profilu dítěte. `undefined` = anonym (nebo není
+   * jasné, kdo se učí) — pak platí jen prohlížeč. `null` = profil ještě
+   * nevybral a převezme volbu z prohlížeče.
+   */
+  childEditorMode?: EditorMode | null;
 }
 
 /**
@@ -61,7 +73,13 @@ interface Props {
  * pojmenovanou přesně `svetlo`; kdo napsal `hodnota`, dostal chybu za
  * funkční program.
  */
-export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props) {
+export function LessonWorkbench({
+  lesson,
+  onSolved,
+  onContinue,
+  onHint,
+  childEditorMode,
+}: Props) {
   const seed = useMemo(() => lessonSeedCircuit(lesson), [lesson]);
 
   const [step, setStep] = useState(0);
@@ -70,7 +88,9 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   /* Bloky, nebo kód. Bloky jsou výchozí: mladší děti syntaxe zastaví
      dřív, než pochopí, co program dělá. Obojí se překládá do téhož
      Arduino C a jde do téže kontroly. */
-  const [mode, setMode] = useState<EditorMode>("blocks");
+  /* Uložený režim profilu přichází ze serveru, takže se dá vykreslit
+     rovnou — bez probliknutí bloků u dítěte, které píše kód. */
+  const [mode, setMode] = useState<EditorMode>(childEditorMode ?? "blocks");
   const [blocks, setBlocks] = useState<WorkspaceState>(lesson.blocks.starter);
   const [pushedBlocks, setPushedBlocks] = useState<WorkspaceState | null>(null);
   /* Kód vzniklý z bloků při posledním přepnutí. Když ho dítě upraví,
@@ -137,12 +157,24 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     saveDraft(lesson.slug, { code, circuit, blocks });
   }, [lesson.slug, lesson.starterCode, lesson.blocks.starter, code, circuit, blocks, seed]);
 
-  /* Režim si prohlížeč pamatuje napříč lekcemi. Číst se dá až po
-     připojení, ze stejného důvodu jako koncept výš. */
+  /* Režim napříč lekcemi: u profilu, jinak v prohlížeči (viz
+     `features/blocks/mode.ts`). Prohlížeč se dá číst až po připojení,
+     ze stejného důvodu jako koncept výš. */
   useEffect(() => {
+    const { mode: initial, adopt } = resolveEditorMode(childEditorMode, readLocalEditorMode());
     // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorázové přečtení localStorage
-    setMode(loadEditorMode());
+    setMode(initial);
+    if (adopt) void saveEditorModeAction(adopt);
+    /* Jen po připojení: pozdější přepnutí řeší `rememberMode`, a kdyby se
+       efekt spustil znovu, přepsal by čerstvou volbu tou ze serveru. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function rememberMode(next: EditorMode) {
+    setMode(next);
+    saveEditorMode(next);
+    if (childEditorMode !== undefined) void saveEditorModeAction(next);
+  }
 
   const generated = useMemo(() => blocksToArduino(blocks), [blocks]);
   const blockPalette = useMemo(() => paletteFor(lesson.blocks.solution), [lesson.blocks.solution]);
@@ -153,8 +185,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   function switchToCode() {
     setGeneratedCode(generated.code);
     setCode(generated.code);
-    setMode("code");
-    saveEditorMode("code");
+    rememberMode("code");
     setConfirmBlocks(false);
     setRun(null);
   }
@@ -166,8 +197,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
       return;
     }
     setConfirmBlocks(false);
-    setMode("blocks");
-    saveEditorMode("blocks");
+    rememberMode("blocks");
     setRun(null);
   }
 

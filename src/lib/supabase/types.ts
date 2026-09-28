@@ -70,6 +70,8 @@ export type ChildRow = {
   /** Generovaný z birth_date. Jen ke čtení — zapisuje se birth_date. */
   birth_year: number;
   avatar: string;
+  /** Bloky, nebo kód. NULL = ještě nevybráno. Čte a píše jen server. */
+  editor_mode: "blocks" | "code" | null;
   pin_hash: string | null;
   pin_failed_attempts: number;
   pin_locked_until: string | null;
@@ -81,7 +83,7 @@ export type ChildRow = {
 /** Co smí opustit server. Nikdy neobsahuje hash ani stav zámku. */
 export type ChildPublic = Omit<
   ChildRow,
-  "pin_hash" | "pin_failed_attempts" | "pin_locked_until"
+  "pin_hash" | "pin_failed_attempts" | "pin_locked_until" | "editor_mode"
 >;
 
 export type CourseRow = {
