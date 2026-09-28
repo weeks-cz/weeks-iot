@@ -72,6 +72,19 @@ export function Plane({
   const gesture = useRef({ x: 0, y: 0, dragged: false, panning: false, panX: 0, panY: 0 });
   /** Kde je ukazatel — pro náhled nachystané součástky a zvýraznění pinu. */
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+  /** Šířka výřezu — podle ní se popisek pinu u pravého okraje otočí doleva. */
+  const [viewportWidth, setViewportWidth] = useState(0);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    setViewportWidth(el.clientWidth);
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setViewportWidth(entry.contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   /** Nad kolik pixelů je to tah, ne klepnutí. Prst se vždycky trochu smýkne. */
   const DRAG_THRESHOLD = 5;
@@ -343,6 +356,10 @@ export function Plane({
   const nearest =
     !readOnly && hover && !state.armed ? (pinAt(state.circuit, hover)?.pin ?? null) : null;
 
+  /* Odstup popisku od kurzoru v obou osách. Víc než jedna rozteč mřížky
+     při běžném přiblížení, aby popisek nesahal na sousední dírku. */
+  const TOOLTIP_GAP = 18;
+
   /* Popisek nožičky pod kurzorem — Tinkercad ukazuje „Anoda" a je to
      nejrychlejší způsob, jak se dítě naučí, která nožička je která.
      Vykresluje se MIMO škálovanou plochu, aby se při oddálení nezmenšil
@@ -488,11 +505,23 @@ export function Plane({
         )}
       </div>
 
+      {/* Popisek šikmo nad kurzorem, ne přímo nad ním. Přímo nad kurzorem
+          zakrýval ukazatel i dírky, kam dítě právě míří (hlášeno z testu) —
+          takhle zůstane volný sloupec i řada, na které kurzor stojí. U pravého
+          okraje se otočí doleva, jinak by ho výřez uřízl. */}
       {tooltip && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute z-20 -translate-x-1/2 rounded-md border border-ink/20 bg-ink px-2.5 py-1 font-mono text-xs text-paper shadow-hard-sm"
-          style={{ left: tooltip.x, top: tooltip.y - 34 }}
+          className={`pointer-events-none absolute z-20 -translate-y-full whitespace-nowrap rounded-md border border-ink/20 bg-ink px-2.5 py-1 font-mono text-xs text-paper shadow-hard-sm ${
+            viewportWidth > 0 && tooltip.x > viewportWidth - 240 ? "-translate-x-full" : ""
+          }`}
+          style={{
+            left:
+              viewportWidth > 0 && tooltip.x > viewportWidth - 240
+                ? tooltip.x - TOOLTIP_GAP
+                : tooltip.x + TOOLTIP_GAP,
+            top: tooltip.y - TOOLTIP_GAP,
+          }}
         >
           {tooltip.text}
         </div>
