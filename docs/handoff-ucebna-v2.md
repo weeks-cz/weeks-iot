@@ -24,9 +24,15 @@
    svěřuje data dítěte, to připomíná phishing. Řeší Supabase Custom Domain
    (placený doplněk). Mezitím aspoň vyplnit Branding v Google Auth Platform.
 3. **Obsah lekce 1** včetně videa z HWLabu — úzké hrdlo celého roku.
-4. **Právní revize znění souhlasů** (`src/features/consent/texts.ts`).
-5. **Potvrdit správce údajů** — v kódu Lukáš Kubík, IČO 24878511. Odvozeno
-   z toho, že učebna jede přes vlastní pokladnu; neověřeno.
+4. **Právní revize znění souhlasů** (`src/features/consent/texts.ts`)
+   a nových stránek `/ochrana-udaju` a `/podminky` — obojí je návrh,
+   otevřené otázky jsou v komentáři na začátku stránek.
+5. ~~Potvrdit správce údajů~~ — **vyřešeno 28. 9. 2026**: správcem je
+   Weeks s.r.o. (IČO 29984360), souhlasy povýšené na v2. Platby v učebně
+   zatím nejsou; až přibudou, prodávající musí sedět s Comgate účtem,
+   na který peníze opravdu chodí (s.r.o. zatím vlastní Comgate nemá).
+6. **Finální doména `ucebna.weeks.cz`**, `iot.weeks.cz` na ni přesměrovat
+   (rozhodnuto 28. 9.). Merge do `main` až po průchodu Lukáše a Štěpána.
 
 ## Změny proti Bráně 0, které patří na poradu
 

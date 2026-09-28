@@ -153,6 +153,32 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
   počáteční hodnota. Dovnitř se obvod dostane jedině přes `pushCircuit`, které
   porovnává REFERENCI, takže každé vnucení musí být nový objekt.
 
+## Bloky
+
+Krok Program má přepínač **Bloky | Kód**; výchozí jsou bloky (mladší děti
+zastaví syntaxe dřív, než pochopí, co program dělá).
+
+- **Bloky nemají vlastní pravdu.** `features/blocks/program.ts` je čistá
+  funkce: JSON stavu Blockly → Arduino C. Ten jde do stejné `runLessonChecks`
+  jako kód psaný rukou. Blockly samo je jen editor a načítá se líně
+  (`BlockEditor`), jen v režimu bloků.
+- **Žádné proměnné.** Piny se píšou číslem do bloku, smyčka má blok
+  „hodnota z opakování", senzor se čte tam, kde je potřeba. Proměnná
+  s překlepem nebo háčkem by skončila chybou překladu, kterou v blocích
+  nejde najít.
+- **Paleta se odvozuje z řešení lekce** (`paletteFor`). Nový blok v řešení
+  = nový blok v nabídce; nic se neudržuje ručně.
+- **Nápovědy v blocích nesmí diktovat kód.** Lekce má `blocks.hints`
+  a kontroly, jejichž `hint` jmenuje příkaz, mají `blockHint`. Hlídá to
+  `blocks/__tests__/program.test.ts` — spolu s tím, že řešení z bloků
+  každé lekce projde kontrolami.
+- **Přidáváš lekci?** Přidej i `blocks` (výchozí, řešení, nápovědy).
+- **Mění se text bloku** (`definitions.ts`)? Přepiš i nápovědy, které ho
+  citují v uvozovkách.
+- **Ikony Blockly jsou v `public/blockly/`.** Výchozí CDN CSP nepustí.
+- Kód → bloky neumí převést zpátky: přepínač se zeptá, když dítě kód
+  upravilo, a jeho úpravy pak zahodí.
+
 ## Design
 
 Maker lab — technický výkres, ne dětská grafika. Portováno z
