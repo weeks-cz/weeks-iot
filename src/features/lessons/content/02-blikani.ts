@@ -65,6 +65,8 @@ export const lesson2: Lesson = {
     "Zapojení je stejné jako v první lekci: pin 8 → rezistor → anoda, katoda → GND.",
   ],
 
+  programGoal: "LED na pinu 8 má blikat — rozsvítit se, zhasnout a zase dokola.",
+
   starterCode: `int led = 8;
 
 void setup() {
@@ -107,6 +109,10 @@ void loop() {
       setup: [pinMode(8, "OUTPUT")],
       loop: [digitalWrite(8, "HIGH"), wait(500), digitalWrite(8, "LOW"), wait(500)],
     }),
+    steps: [
+      "Pin 8 už je nastavený jako výstup, to máš hotové.",
+      "Do „pak pořád dokola“ dej čtyři kroky: rozsviť, počkej, zhasni, počkej.",
+    ],
     hints: [
       "Čtyři bloky pod sebou: pošli HIGH, počkej, pošli LOW, počkej.",
       "Číslo v bloku „počkej“ jsou milisekundy. 1000 je jedna vteřina, 500 půl.",

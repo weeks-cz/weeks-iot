@@ -77,6 +77,8 @@ export const lesson6: Lesson = {
     "Tlačítko zapoj stejně jako v lekci 3: pin 7 a GND.",
   ],
 
+  programGoal: "Když držíš tlačítko, bzučák hraje. Když ho pustíš, je ticho.",
+
   starterCode: `int bzucak = 8;
 int tlacitko = 7;
 
@@ -128,6 +130,10 @@ void loop() {
         ifElse(compare(digitalRead(7), "==", level("LOW")), [tone(8, 440)], [noTone(8)]),
       ],
     }),
+    steps: [
+      "Piny už jsou nastavené: bzučák je na pinu 8, tlačítko na pinu 7.",
+      "Když je tlačítko zmáčknuté (LOW), pusť tón. Jinak bzučák ztiš.",
+    ],
     hints: [
       "Do „pak pořád dokola“ dej blok „když … udělej … jinak“ a do okénka porovnání „přečti pin 7“ = LOW.",
       "Do „udělej“ dej „tón na pinu 8 440 Hz“.",

@@ -95,6 +95,8 @@ export const lesson4: Lesson = {
     "Katody všech tří LED vedou do stejné lišty.",
   ],
 
+  programGoal: "Postav semafor: zelená, žlutá, červená — a zase dokola.",
+
   starterCode: `int cervena = 2;
 int zluta = 3;
 int zelena = 4;
@@ -158,6 +160,11 @@ void loop() {
         digitalWrite(2, "LOW"),
       ],
     }),
+    steps: [
+      "Nastav piny 2, 3 a 4 jako výstup. Červená je na 2, žlutá na 3, zelená na 4.",
+      "Rozsviť zelenou, chvíli počkej a zhasni ji.",
+      "Totéž udělej se žlutou a pak s červenou.",
+    ],
     hints: [
       "Do „na začátku jednou“ potřebuješ tři bloky „nastav pin jako výstup“ — pro piny 2, 3 a 4.",
       "V „pak pořád dokola“ vždycky jednu LED rozsviť, počkej, a zase ji zhasni, než rozsvítíš další.",

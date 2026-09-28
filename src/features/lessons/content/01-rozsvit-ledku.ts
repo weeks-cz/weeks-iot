@@ -73,6 +73,8 @@ export const lesson1: Lesson = {
     "Nožičky LED nejsou stejné. Delší je anoda (kladná), kratší katoda.",
   ],
 
+  programGoal: "Rozsviť LED na pinu 8 a nech ji svítit.",
+
   starterCode: `// Číslo pinu, na kterém máš LED.
 int led = 8;
 
@@ -110,6 +112,10 @@ void loop() {
       setup: [pinMode(8, "OUTPUT")],
       loop: [digitalWrite(8, "HIGH")],
     }),
+    steps: [
+      "Řekni Arduinu, že pin 8 bude LED ovládat. To patří do „na začátku jednou“.",
+      "Rozsviť LED: pošli na pin 8 HIGH. To patří do „pak pořád dokola“.",
+    ],
     hints: [
       "Do části „na začátku jednou“ přetáhni blok „nastav pin 8 jako výstup“. Říká: pin 8 bude něco ovládat, ne poslouchat.",
       "Do části „pak pořád dokola“ přetáhni blok „na pin 8 pošli HIGH“. To je ten příkaz, co LED rozsvítí.",

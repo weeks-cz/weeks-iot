@@ -97,6 +97,8 @@ export const lesson7: Lesson = {
     "Až budeš mít hotovo, spusť program a podívej se do sériového monitoru, jaká čísla chodí.",
   ],
 
+  programGoal: "Noční světlo: ve tmě se LED na pinu 9 rozsvítí, ve světle zhasne.",
+
   starterCode: `int senzor = A0;
 int led = 9;
 
@@ -163,6 +165,11 @@ void loop() {
         wait(200),
       ],
     }),
+    steps: [
+      "Přečti světelný senzor na pinu A0 a vypiš si, jaká čísla posílá.",
+      "Když je číslo menší než 400 (tma), rozsviť LED. Jinak ji zhasni.",
+      "Na konci chvilku počkej, ať výpis neletí moc rychle.",
+    ],
     hints: [
       "Do „pak pořád dokola“ dej „vypiš“ a do okénka „přečti analogový pin A0“. Uvidíš, jaká čísla senzor posílá.",
       "Pod to dej „když … udělej … jinak“ s porovnáním „přečti analogový pin A0“ < 400.",

@@ -580,12 +580,19 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
             </div>
           )}
 
+          {/* Úkol vpravo nad náhledem, editor vlevo přes oba řádky. Nad
+              editorem by karta odsunula bloky pod okraj obrazovky; na
+              mobilu (jeden sloupec) zůstává úkol první, jak má. */}
           <div
-            className={`grid gap-4 ${
+            className={`grid gap-4 lg:items-start ${
               mode === "blocks" ? "lg:grid-cols-[minmax(0,1fr)_22rem]" : "lg:grid-cols-2"
             }`}
           >
-            <div className="flex flex-col gap-3">
+            <div className="lg:col-start-2 lg:row-start-1">
+              <TaskCard lesson={lesson} mode={mode} />
+            </div>
+
+            <div className="flex flex-col gap-3 lg:col-start-1 lg:row-span-2 lg:row-start-1">
               {mode === "code" && vocabulary.length > 0 && (
                 <div className="rounded-md border border-ink/15 bg-paper-soft p-4">
                   <p className="mb-3 font-display text-lg font-semibold">
@@ -747,7 +754,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
               )}
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
               {/* Tady se obvod už jen ukazuje. Kdo potřebuje zapojení
                   změnit, vrátí se o krok zpátky — jinak by se dalo
                   nedopatřením přetáhnout drátek při sledování běhu. */}
@@ -898,5 +905,52 @@ function HintList({ hints }: { hints: string[] }) {
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * Co má program dělat.
+ *
+ * V kódu nese úkol i výchozí kód (komentáře „ÚKOL 1"). V blocích žádné
+ * komentáře nejsou — dítě vidělo prázdný program, paletu bloků a nikde
+ * větu, co z nich má postavit. Cíl je proto nad editorem v obou režimech,
+ * v blocích i s kroky. Nová věc z úvodu lekce je tu znovu po ruce: na ni
+ * nápovědy odkazují a dítě ji mezitím zapomnělo.
+ */
+function TaskCard({ lesson, mode }: { lesson: Lesson; mode: EditorMode }) {
+  return (
+    <div className="rounded-md border border-ink bg-paper p-4 shadow-hard-sm sm:p-5">
+      <p className="mb-1 font-display text-base font-semibold text-primary-700">
+        Tvůj úkol
+      </p>
+      <p className="font-display text-xl font-semibold leading-snug text-ink">
+        {lesson.programGoal}
+      </p>
+
+      {mode === "blocks" && (
+        <ol className="mt-3 flex flex-col gap-2 leading-snug text-ink-700">
+          {lesson.blocks.steps.map((step, i) => (
+            <li key={step} className="flex gap-3">
+              <span
+                aria-hidden="true"
+                className="grid size-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-xs text-paper"
+              >
+                {i + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {lesson.concept && (
+        <details className="mt-3 border-t border-ink/10 pt-2">
+          <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-primary-700">
+            Připomeň mi: {lesson.concept.title}
+          </summary>
+          <p className="lesson-body max-w-prose pb-1 text-ink-500">{lesson.concept.body}</p>
+        </details>
+      )}
+    </div>
   );
 }

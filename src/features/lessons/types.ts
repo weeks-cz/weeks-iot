@@ -81,6 +81,14 @@ export interface Lesson {
   /** Nápověda ke kroku se zapojováním, když si dítě neví rady. */
   wiringHints: string[];
 
+  /**
+   * Co má program dělat — jedna věta nad editorem, v blocích i v kódu.
+   *
+   * V kódu nese úkol i výchozí kód (komentáře „ÚKOL 1"). V blocích žádné
+   * komentáře nejsou: dítě vidělo prázdný program a nevědělo, co postavit.
+   */
+  programGoal: string;
+
   /** Kód, se kterým lekce začíná. Nikdy prázdný — prázdno je paralyzující. */
   starterCode: string;
   /** Nápovědy ke kódu, odkrývané po jedné. */
@@ -100,6 +108,8 @@ export interface Lesson {
   blocks: {
     starter: WorkspaceState;
     solution: WorkspaceState;
+    /** Úkol po krocích — v blocích místo komentářů „ÚKOL" z výchozího kódu. */
+    steps: string[];
     /** Nápovědy v řeči bloků, odkrývané po jedné jako `codeHints`. */
     hints: string[];
   };

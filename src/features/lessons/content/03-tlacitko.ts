@@ -83,6 +83,8 @@ export const lesson3: Lesson = {
     "Jedna strana tlačítka jde na pin 7, druhá na GND.",
   ],
 
+  programGoal: "Když držíš tlačítko, LED svítí. Když ho pustíš, zhasne.",
+
   starterCode: `int led = 8;
 int tlacitko = 7;
 
@@ -141,6 +143,11 @@ void loop() {
         ),
       ],
     }),
+    steps: [
+      "Piny už jsou nastavené: LED je na pinu 8, tlačítko na pinu 7.",
+      "Pořád dokola se ptej, jestli je tlačítko zmáčknuté. Zmáčknuté tlačítko čte LOW.",
+      "Když je, rozsviť LED. Jinak ji zhasni.",
+    ],
     hints: [
       "Tlačítko už je nastavené jako vstup — v části „na začátku jednou“ to máš hotové.",
       "Do „pak pořád dokola“ dej blok „když … udělej … jinak“.",

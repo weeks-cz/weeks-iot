@@ -67,6 +67,8 @@ export const lesson5: Lesson = {
     "Pin 9 má na desce vedle čísla vlnovku (~). To znamená, že umí PWM.",
   ],
 
+  programGoal: "LED na pinu 9 se má plynule rozsvěcet a zase zhasínat.",
+
   starterCode: `int led = 9;
 
 void setup() {
@@ -116,6 +118,10 @@ void loop() {
         repeat(255, 0, [analogWrite(9, loopValue()), wait(5)]),
       ],
     }),
+    steps: [
+      "Projeď jas od 0 do 255, s krátkým čekáním mezi kroky.",
+      "Pak ho projeď zpátky od 255 do 0.",
+    ],
     hints: [
       "Vezmi blok „opakuj od 0 do 255 nahoru“ a dej ho do „pak pořád dokola“.",
       "Dovnitř opakování dej „jas pinu 9 na“ a do jeho okénka vlož „hodnota z opakování“. Pod to „počkej 5 ms“.",

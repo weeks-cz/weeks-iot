@@ -148,7 +148,11 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))("bloky lekce %s",
     expect(runLessonChecks(lesson, circuit, code).passed).toBe(false);
   });
 
-  it("má nápovědy v řeči bloků a paletu", () => {
+  it("má nápovědy, úkol po krocích a paletu", () => {
+    /* Bez kroků vidí dítě v blocích prázdný program a nikde větu, co
+       z nich má postavit — v kódu to nesou komentáře ÚKOL, tady nic. */
+    expect(lesson.programGoal.length).toBeGreaterThan(0);
+    expect(lesson.blocks.steps.length).toBeGreaterThan(0);
     expect(lesson.blocks.hints.length).toBeGreaterThan(0);
     expect(paletteFor(lesson.blocks.solution).length).toBeGreaterThan(0);
   });
@@ -159,6 +163,8 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))("bloky lekce %s",
     const code = /\b(digitalWrite|pinMode|analogWrite|delay|tone|noTone|Serial|for|loop|setup)\s*\(|;|\belse\b/;
     const texts = [
       ...lesson.blocks.hints,
+      ...lesson.blocks.steps,
+      lesson.programGoal,
       ...lesson.checks.map((c) => c.blockHint ?? c.hint),
     ];
     for (const text of texts) expect(text).not.toMatch(code);
