@@ -67,7 +67,7 @@ export default function PrivacyPage() {
         <h2>Údaje dítěte</h2>
         <ul>
           <li>přezdívka, kterou dítěti zvolíte (nemusí to být skutečné jméno),</li>
-          <li>rok narození (ne přesné datum),</li>
+          <li>datum narození — podle něj poznáme, kdy dítěti bude 15 let,</li>
           <li>zvolený avatar,</li>
           <li>postup v lekcích — kdy lekci začalo, dokončilo a jak dlouho mu trvala,</li>
           <li>projekty, které v učebně vytvoří (zapojení obvodu, program).</li>

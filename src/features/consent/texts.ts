@@ -37,7 +37,9 @@ export interface ConsentText {
 }
 
 /* v2 (28. 9. 2026): správcem je Weeks s.r.o. místo Lukáše Kubíka (OSVČ)
-   a zásady leží v učebně, ne na weeks.cz/gdpr, které učebnu nepopisovalo. */
+   a zásady leží v učebně, ne na weeks.cz/gdpr, které učebnu nepopisovalo.
+   v3 (parental, self): texty tvrdily „rok narození, ne přesné datum",
+   jenže od migrace 006 se ukládá přesné datum. */
 const CONTROLLER_LINE = `${CONTROLLER.name}, IČO ${CONTROLLER.ico}, se sídlem ${CONTROLLER.address}, ${CONTROLLER.email}`;
 
 export const TERMS_TEXT: ConsentText = {
@@ -64,7 +66,7 @@ jejich postup i uložené projekty.`,
 
 export const PARENTAL_TEXT: ConsentText = {
   kind: "parental",
-  version: "parental-v2",
+  version: "parental-v3",
   required: true,
   label:
     "Jsem zákonný zástupce dítěte a souhlasím se zpracováním jeho údajů " +
@@ -80,14 +82,15 @@ jsem oprávněn/a udělit tento souhlas.
 
 2. JAKÉ ÚDAJE DÍTĚTE ZPRACOVÁVÁME
   • přezdívku, kterou dítěti zvolíte (nemusí to být skutečné jméno),
-  • rok narození dítěte (nikoli přesné datum),
+  • datum narození dítěte,
   • zvolený avatar,
   • postup v lekcích: kdy dítě lekci začalo, kdy ji dokončilo a jak dlouho mu to trvalo,
   • projekty, které dítě v učebně vytvoří (zapojení obvodů, 3D modely, kód).
 
 Záměrně nesbíráme jméno a příjmení dítěte, jeho adresu, fotografii ani
-zdravotní údaje. Rok narození místo data narození je zvolený proto, že
-na věkové pásmo stačí a je to méně údajů.
+zdravotní údaje. Datum narození potřebujeme přesné: podle něj se pozná,
+kdy dítěti bude 15 let a souhlas za sebe může dát samo (§ 7 zákona
+č. 110/2019 Sb.).
 
 3. K ČEMU ÚDAJE POUŽÍVÁME
   • abychom dítěti mohli zobrazit jeho vlastní postup a uložit jeho projekty,
@@ -143,7 +146,7 @@ jako doklad o tom, že souhlas byl udělen.`,
 
 export const SELF_TEXT: ConsentText = {
   kind: "self",
-  version: "self-v2",
+  version: "self-v3",
   required: true,
   label: "Souhlasím se zpracováním svých údajů pro provoz učebny.",
   full: `SOUHLAS SE ZPRACOVÁNÍM OSOBNÍCH ÚDAJŮ
@@ -158,7 +161,7 @@ každý od 15 let věku; do té doby musí souhlas dát zákonný zástupce.
 2. JAKÉ ÚDAJE ZPRACOVÁVÁME
   • e-mailovou adresu, kterou sis zaregistroval/a,
   • přezdívku (nemusí to být tvé skutečné jméno),
-  • rok narození (nikoli přesné datum),
+  • datum narození,
   • kraj, ve kterém bydlíš,
   • zvolený avatar,
   • postup v lekcích: kdy jsi lekci začal/a, kdy dokončil/a a jak dlouho ti trvala,
