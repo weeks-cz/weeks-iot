@@ -1,28 +1,34 @@
 # Učebna v2 — stav nasazení
 
-> **Spuštěno 29. 8. 2026 na https://ucebna.weeks.cz** — kroky 1 až 8 hotové
-> a ověřené naostro. Tenhle dokument teď slouží jako záznam konfigurace
-> a jako seznam toho, co zbývá před bránou 19. 10.
+> **Spuštěno 29. 8. 2026 na https://ucebna.weeks.cz** jako preview,
+> **v produkci od 29. 9. 2026**: `main` = učebna v2, `iot.weeks.cz`
+> přesměrovává 308 na `ucebna.weeks.cz`. Tenhle dokument slouží jako
+> záznam konfigurace a jako seznam toho, co zbývá před bránou 19. 10.
 
 ## Hotová konfigurace
 
 | Věc | Stav |
 |---|---|
-| Supabase projekt | `zvfmgizjqozaypyasjru`, Frankfurt, 7 migrací |
-| Doména | `ucebna.weeks.cz`, Preview → větev `feat/ucebna-v2` |
-| Proměnné | 8, navázané na větev; produkce nedotčená |
-| Google OAuth | zapnuto, ověřeno registrací |
+| Supabase projekt | `zvfmgizjqozaypyasjru`, Frankfurt, 11 migrací |
+| Produkce | `main` (od 29. 9. = učebna v2); stará aplikace je ve větvi `archive/iot-v1` |
+| Domény | `ucebna.weeks.cz` → Production; `iot.weeks.cz` → 308 na `ucebna.weeks.cz`; `klicenka.weeks.cz` beze změny (vlastní větev `klicenka`) |
+| Proměnné | Production and Preview; `NEXT_PUBLIC_*` jako typ Config (Vercel je jako Secret neuloží). `NEXT_PUBLIC_SITE_URL` jen Production |
+| Google OAuth | zapnuto; aplikace publikovaná (29. 9., dřív byla „Testing" s 0 testery = Google login nešel nikomu), branding s odkazy na zásady a podmínky, bez loga (logo = ověření u Googlu) |
 | Resend + Auth Hook | zapnuto, magic link ověřen |
-| Stará aplikace | `iot.weeks.cz` beze změny |
+| Indexace | `noindex` z `vercel.json` pryč (29. 9.); preview nasazení ho dostávají od Vercelu sama |
+
+**Pozor na anon klíč:** při přepnutí se do Vercelu omylem dostal
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` z `.env.local` webu weeks.cz (jiný Supabase
+projekt) — produkce pak vracela 404 na všem, co čte databázi. Správný klíč
+je z `.env.local` TOHOTO repa. `NEXT_PUBLIC_*` se zapéká při buildu, po
+opravě je potřeba redeploy.
 
 ## Co ZBÝVÁ před bránou 19. 10.
 
-1. **Web je `noindex`.** Vercel to přidává všem Preview nasazením, tedy
-   i vlastní doméně. Teď je to správně (obsah lekcí je zástupný), ale před
-   spuštěním reklamy musí větev do produkce — jinak akvizice nemá kam ústit.
+1. ~~Web je `noindex`~~ — **vyřešeno 29. 9. 2026** přepnutím do produkce.
 2. **Google ukazuje `zvfmgizjqozaypyasjru.supabase.co`.** Rodiči, který
    svěřuje data dítěte, to připomíná phishing. Řeší Supabase Custom Domain
-   (placený doplněk). Mezitím aspoň vyplnit Branding v Google Auth Platform.
+   (placený doplněk). Branding v Google Auth Platform vyplněn 29. 9.
 3. **Obsah lekce 1** včetně videa z HWLabu — úzké hrdlo celého roku.
 4. **Právní revize znění souhlasů** (`src/features/consent/texts.ts`)
    a nových stránek `/ochrana-udaju` a `/podminky` — obojí je návrh,
@@ -31,8 +37,10 @@
    Weeks s.r.o. (IČO 29984360), souhlasy povýšené na v2. Platby v učebně
    zatím nejsou; až přibudou, prodávající musí sedět s Comgate účtem,
    na který peníze opravdu chodí (s.r.o. zatím vlastní Comgate nemá).
-6. **Finální doména `ucebna.weeks.cz`**, `iot.weeks.cz` na ni přesměrovat
-   (rozhodnuto 28. 9.). Merge do `main` až po průchodu Lukáše a Štěpána.
+6. ~~Finální doména `ucebna.weeks.cz`~~ — **hotovo 29. 9. 2026**, viz tabulka
+   nahoře. Štěpánův feedback se zapracovává až na produkci.
+7. **Zalomení drátků** (waypointy u `Wire`) — Lukáš by je v budoucnu chtěl,
+   teď se neřeší. Šikmé drátky přes desku řeší umístění u „Zapoj za mě".
 
 ## Změny proti Bráně 0, které patří na poradu
 

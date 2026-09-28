@@ -156,7 +156,7 @@ Tohle pusť **vždycky**, než commitneš. V tomhle pořadí:
 ## 5. Kam se koukat na preview + produkci
 
 - **Preview (každý push na `dev`):** `https://weeks-iot-git-dev-<team>.vercel.app` — link najdeš v GitHubu u commitu (viz krok 6 výše). URL je stabilní, můžeš si ji uložit.
-- **Produkce:** `https://iot.weeks.cz` (případně `https://weeks-iot.vercel.app`, pokud custom doména ještě není napojená). Aktualizuje se **jen při mergi do `main`** — to dělám já (Lukáš) přes pull request.
+- **Produkce:** `https://ucebna.weeks.cz` (od 29. 9. 2026; `iot.weeks.cz` na ni přesměrovává 308). Aktualizuje se **jen při mergi do `main`** — to dělám já (Lukáš).
 
 Workflow do produkce: `dev` → otevřu PR → review → merge do `main` → ~30 s a je to nahoře.
 
