@@ -26,20 +26,27 @@ export const SITE = {
 } as const;
 
 /**
- * Správce osobních údajů.
+ * Správce osobních údajů a provozovatel učebny.
  *
- * POZOR — tohle je jediný právní údaj v projektu, který je odvozený, ne ověřený.
- * Existující zásady Weeks mají dva správce: DDM Praha 6 pro pražské tábory
- * a Lukáše Kubíka (IČO 24878511) pro Karlovy Vary. Učebna je celostátní produkt
- * s vlastní pokladnou, což podle auditu (M8) znamená druhou entitu.
+ * Od 28. 9. 2026 Weeks s.r.o. — stejná firma, která pořádá tábory na
+ * weeks.cz. Dřív tu stál Lukáš Kubík jako OSVČ (odvozené z karlovarských
+ * táborů, nikdy neověřené) a zásady odkazovaly na weeks.cz/gdpr, které
+ * o učebně neříká ani slovo. Učebna proto má vlastní zásady a podmínky
+ * (`/ochrana-udaju`, `/podminky`) — žijí vedle textů souhlasů a mění se
+ * s nimi.
  *
- * Ověřit před spuštěním registrace. Změna je úprava téhle konstanty
- * a bump verze souhlasu (viz features/consent/texts.ts).
+ * Platby tu zatím nejsou. Až přibudou, prodávající musí sedět s tím, kdo
+ * peníze opravdu přijímá (Comgate účet s.r.o.) — neměnit jen tenhle text.
+ *
+ * Změna je úprava téhle konstanty a bump verze souhlasů
+ * (viz features/consent/texts.ts).
  */
 export const CONTROLLER = {
-  name: "Lukáš Kubík",
-  ico: "24878511",
+  name: "Weeks s.r.o.",
+  ico: "29984360",
+  address: "Arbesovo náměstí 70/4, Smíchov, 150 00 Praha 5",
+  court: "Městský soud v Praze, sp. zn. C 455169",
   email: "info@weeks.cz",
-  privacyUrl: "https://weeks.cz/karlovy-vary/gdpr",
-  termsUrl: "https://weeks.cz/podminky",
+  privacyUrl: `${SITE.url}/ochrana-udaju`,
+  termsUrl: `${SITE.url}/podminky`,
 } as const;

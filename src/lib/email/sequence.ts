@@ -116,7 +116,7 @@ export function campEmail(ctx: SequenceContext): EmailTemplate {
         ],
         button: {
           label: "Podívat se na termíny",
-          url: `https://weeks.cz/karlovy-vary?${utm("email-camp")}`,
+          url: `https://weeks.cz/tabory?${utm("email-camp")}`,
         },
         footnote:
           "Tohle je obchodní sdělení. Odhlásíte se jedním tlačítkem v sekci Účet → Souhlasy.",

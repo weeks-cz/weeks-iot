@@ -37,18 +37,15 @@ export function PublicFooter() {
         </div>
 
         <nav aria-label="Právní informace" className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-          <a
-            href={CONTROLLER.termsUrl}
-            className="text-ink-500 underline underline-offset-4 hover:text-ink"
-          >
+          <Link href="/podminky" className="text-ink-500 underline underline-offset-4 hover:text-ink">
             Podmínky užití
-          </a>
-          <a
-            href={CONTROLLER.privacyUrl}
+          </Link>
+          <Link
+            href="/ochrana-udaju"
             className="text-ink-500 underline underline-offset-4 hover:text-ink"
           >
             Ochrana údajů
-          </a>
+          </Link>
           <a
             href={`mailto:${SITE.supportEmail}`}
             className="text-ink-500 underline underline-offset-4 hover:text-ink"

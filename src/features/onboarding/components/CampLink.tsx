@@ -2,7 +2,9 @@
 
 import { EVENT, track } from "@/features/analytics/track";
 
-const CAMP_BASE = "https://weeks.cz/karlovy-vary";
+/* /tabory ukazuje oba spády (Praha i Karlovy Vary) — dřívější
+   /karlovy-vary je od přestavby webu jen přesměrování. */
+const CAMP_BASE = "https://weeks.cz/tabory";
 
 /**
  * Odkaz na registraci tábora.

@@ -36,11 +36,13 @@ export interface ConsentText {
   required: boolean;
 }
 
-const CONTROLLER_LINE = `${CONTROLLER.name}, IČO ${CONTROLLER.ico}, ${CONTROLLER.email}`;
+/* v2 (28. 9. 2026): správcem je Weeks s.r.o. místo Lukáše Kubíka (OSVČ)
+   a zásady leží v učebně, ne na weeks.cz/gdpr, které učebnu nepopisovalo. */
+const CONTROLLER_LINE = `${CONTROLLER.name}, IČO ${CONTROLLER.ico}, se sídlem ${CONTROLLER.address}, ${CONTROLLER.email}`;
 
 export const TERMS_TEXT: ConsentText = {
   kind: "terms",
-  version: "terms-v1",
+  version: "terms-v2",
   required: true,
   label: "Přečetl/a jsem si podmínky užití a zásady ochrany osobních údajů.",
   full: `PODMÍNKY UŽITÍ A ZÁSADY OCHRANY OSOBNÍCH ÚDAJŮ
@@ -49,8 +51,8 @@ Správce osobních údajů: ${CONTROLLER_LINE}
 Služba: ${SITE.name} (${SITE.url})
 
 Vytvořením účtu potvrzujete, že jste se seznámil/a s podmínkami užití služby
-a se zásadami ochrany osobních údajů dostupnými na ${CONTROLLER.termsUrl}
-a ${CONTROLLER.privacyUrl}.
+(${CONTROLLER.termsUrl}) a se zásadami ochrany osobních údajů
+(${CONTROLLER.privacyUrl}).
 
 Vaše údaje jako uživatele účtu (e-mailová adresa, kraj) zpracováváme na
 právním základě plnění smlouvy podle čl. 6 odst. 1 písm. b) GDPR — bez nich
@@ -62,7 +64,7 @@ jejich postup i uložené projekty.`,
 
 export const PARENTAL_TEXT: ConsentText = {
   kind: "parental",
-  version: "parental-v1",
+  version: "parental-v2",
   required: true,
   label:
     "Jsem zákonný zástupce dítěte a souhlasím se zpracováním jeho údajů " +
@@ -141,7 +143,7 @@ jako doklad o tom, že souhlas byl udělen.`,
 
 export const SELF_TEXT: ConsentText = {
   kind: "self",
-  version: "self-v1",
+  version: "self-v2",
   required: true,
   label: "Souhlasím se zpracováním svých údajů pro provoz učebny.",
   full: `SOUHLAS SE ZPRACOVÁNÍM OSOBNÍCH ÚDAJŮ
@@ -218,7 +220,7 @@ jako doklad o tom, že souhlas byl udělen.`,
 
 export const MARKETING_TEXT: ConsentText = {
   kind: "marketing",
-  version: "marketing-v1",
+  version: "marketing-v2",
   required: false,
   label: "Chci e-mailem novinky o učebně, nových kurzech a letních táborech.",
   full: `SOUHLAS SE ZASÍLÁNÍM OBCHODNÍCH SDĚLENÍ
