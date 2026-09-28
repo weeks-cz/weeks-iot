@@ -88,7 +88,9 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
   /* Co má aktivní profil dokončené. Potřebuje to `course_complete` —
      bez toho by se odvozovalo z „nemám kam dál", což by kurz označilo
      za dokončený i tomu, kdo skočil rovnou na poslední lekci. */
-  const completedSlugs = auth.user ? await completedLessonSlugs(data.publishedIds) : [];
+  const completedSlugs = auth.user
+    ? await completedLessonSlugs(auth.user.id, data.publishedIds)
+    : [];
 
   return (
     <main className="section-container py-6 sm:py-8">

@@ -1,5 +1,8 @@
+import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { ChildPublic } from "@/lib/supabase/types";
+import { pickActiveChild } from "./active";
+import { ACTIVE_CHILD_COOKIE } from "./constants";
 
 export interface ChildSummary extends ChildPublic {
   hasPin: boolean;
@@ -65,3 +68,19 @@ export async function getChildren(parentId: string): Promise<ChildSummary[]> {
   }));
 }
 
+
+/**
+ * Profil, který se právě učí, včetně ostatních profilů účtu.
+ *
+ * Pravidlo výběru je v `pickActiveChild`; tady se k němu jen dotáhnou
+ * profily a cookie. `active` je null, když není jasné, kdo se učí —
+ * volající pak nabídne výběr profilu, nebo postup nezapíše.
+ */
+export async function getActiveChild(
+  parentId: string,
+): Promise<{ active: ChildSummary | null; children: ChildSummary[] }> {
+  const children = await getChildren(parentId);
+  const cookieStore = await cookies();
+  const active = pickActiveChild(children, cookieStore.get(ACTIVE_CHILD_COOKIE)?.value);
+  return { active, children };
+}

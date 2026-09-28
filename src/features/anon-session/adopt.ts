@@ -80,7 +80,10 @@ function isMoreComplete(candidate: AnonLesson, current: AnonLesson): boolean {
   return Date.parse(candidate.startedAt) < Date.parse(current.startedAt);
 }
 
-export function adoptSession(session: AnonSession, options: AdoptOptions): AdoptResult {
+export function adoptSession(
+  session: Pick<AnonSession, "lessons">,
+  options: AdoptOptions,
+): AdoptResult {
   const now = options.now ?? new Date();
 
   /* Nejdřív sloučit duplicity, teprve pak převádět. Kdyby se převádělo
@@ -143,7 +146,10 @@ export function adoptSession(session: AnonSession, options: AdoptOptions): Adopt
  */
 export function mergeWithExisting(
   incoming: ProgressUpsert,
-  existing: Pick<ProgressUpsert, "status" | "started_at" | "completed_at"> | null,
+  existing:
+    | (Pick<ProgressUpsert, "status" | "started_at" | "completed_at"> &
+        Partial<Pick<ProgressUpsert, "duration_s" | "hints_used">>)
+    | null,
 ): ProgressUpsert {
   if (!existing) return incoming;
 
@@ -160,8 +166,18 @@ export function mergeWithExisting(
       ? completedCandidates.reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b))
       : null;
 
+  /* Doba a nápovědy patří k prvnímu dokončení — to měří metrika brány.
+     Když ho drží existující řádek, opakovaný průchod ho nepřepíše. */
+  const keepExisting = Boolean(existing.completed_at) && completedAt === existing.completed_at;
+
   return {
     ...incoming,
+    ...(keepExisting
+      ? {
+          duration_s: existing.duration_s ?? incoming.duration_s,
+          hints_used: existing.hints_used ?? incoming.hints_used,
+        }
+      : {}),
     started_at: startedAt,
     completed_at: completedAt,
     status: completedAt ? "completed" : "started",

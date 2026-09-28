@@ -9,7 +9,7 @@ import { buildFbc, sendMetaEvent } from "@/lib/meta-capi";
 import { SITE } from "@/lib/site";
 import { EVENT } from "@/features/analytics/events";
 import { consentTextsForAge } from "@/features/consent/texts";
-import { adoptSession, lessonKey, mergeWithExisting } from "@/features/anon-session/adopt";
+import { writeLessonProgress } from "@/features/progress/write";
 import { anonSessionSchema, type AnonSession } from "@/features/anon-session/schema";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { needsParentalConsent, onboardingSchema } from "./schema";
@@ -121,9 +121,16 @@ export async function completeOnboardingAction(
 
   /* ── 2. Rodič ────────────────────────────────────────────────────────
      UTM se přepisují jen tehdy, když je relace opravdu nese. Prázdné
-     hodnoty by přepsaly to, co už na řádku je. */
+     hodnoty by přepsaly to, co už na řádku je.
+
+     Servisní klient schválně. `account_type` klient měnit nesmí (grant
+     z migrace 007 — typ účtu určuje podepsaný souhlas, ne prohlížeč),
+     a dokud se zapisoval klientskou rolí, padal na „permission denied"
+     celý onboarding: od 29. 8. nešla dokončit jediná registrace. Hodnotu
+     tu počítá server z data narození, stejně jako druh souhlasu výše,
+     a zapisuje se jen do řádku přihlášeného účtu. */
   const attribution = anon?.attribution ?? {};
-  const { error: parentError } = await supabase
+  const { error: parentError } = await createServiceClient()
     .from("parents")
     .update({
       region_code: input.regionCode,
@@ -184,7 +191,7 @@ export async function completeOnboardingAction(
      z těch dvou. Proto se chyba jen loguje. */
   if (anon) {
     try {
-      await adoptAnonymousProgress(anon, childId);
+      await writeLessonProgress(childId, anon.lessons);
     } catch (err) {
       console.error("[onboarding] Přenos anonymního postupu selhal:", err);
     }
@@ -240,81 +247,6 @@ export async function completeOnboardingAction(
   });
 
   redirect("/ucet?vitejte=1");
-}
-
-/**
- * Přenos anonymního postupu do profilu dítěte.
- *
- * Servisní klient schválně: potřebuje číst tabulku `lessons` včetně
- * nepublikovaných řádků, aby se postup neztratil jen proto, že lekci
- * mezitím někdo skryl.
- */
-async function adoptAnonymousProgress(session: AnonSession, childId: string): Promise<void> {
-  if (session.lessons.length === 0) return;
-
-  const service = createServiceClient();
-
-  const courseSlugs = [...new Set(session.lessons.map((l) => l.courseSlug))];
-
-  /* Dva dotazy místo jednoho s joinem. Vnořený select `courses!inner(slug)`
-     se opírá o metadata vztahů, která ručně psané typy nenesou — a obcházet
-     to přetypováním přes `unknown` by znamenalo vypnout kontrolu právě tam,
-     kde se rozhoduje, komu se připíše postup. */
-  const { data: courses } = await service
-    .from("courses")
-    .select("id, slug")
-    .in("slug", courseSlugs);
-
-  if (!courses?.length) return;
-
-  const courseSlugById = new Map(courses.map((c) => [c.id, c.slug] as const));
-
-  const { data: lessons } = await service
-    .from("lessons")
-    .select("id, slug, course_id")
-    .in("course_id", [...courseSlugById.keys()]);
-
-  if (!lessons?.length) return;
-
-  const lessonIdBySlug = new Map<string, string>();
-  for (const row of lessons) {
-    const courseSlug = courseSlugById.get(row.course_id);
-    if (courseSlug) lessonIdBySlug.set(lessonKey(courseSlug, row.slug), row.id);
-  }
-
-  const { rows, skipped } = adoptSession(session, { lessonIdBySlug });
-  if (skipped.length > 0) {
-    console.warn("[onboarding] Přeskočené lekce (neexistují):", skipped.join(", "));
-  }
-  if (rows.length === 0) return;
-
-  /* Existující postup se načte kvůli sloučení. Samotný unique index
-     duplicitu ošetří, ale nezabrání tomu, aby zastaralá relace vrátila
-     hotovou lekci zpět do stavu „rozdělaná". */
-  const { data: existing } = await service
-    .from("progress")
-    .select("lesson_id, status, started_at, completed_at")
-    .eq("child_id", childId)
-    .in("lesson_id", rows.map((r) => r.lesson_id));
-
-  const existingByLesson = new Map(
-    (existing ?? []).map((row) => [row.lesson_id, row] as const),
-  );
-
-  const merged = rows.map((row) =>
-    mergeWithExisting(row, existingByLesson.get(row.lesson_id) ?? null),
-  );
-
-  const { error } = await service
-    .from("progress")
-    .upsert(
-      merged.map((row) => ({ ...row, child_id: childId })),
-      { onConflict: "child_id,lesson_id" },
-    );
-
-  if (error) {
-    console.error("[onboarding] Zápis postupu selhal:", error.message);
-  }
 }
 
 /* ── Čekačka na město ──────────────────────────────────────────────────── */

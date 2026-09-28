@@ -208,6 +208,34 @@ describe("mergeWithExisting — idempotence", () => {
     const existing = { status: "completed" as const, started_at: "2026-08-01T10:00:00Z", completed_at: "2026-08-01T10:20:00Z" };
     expect(mergeWithExisting(incoming, existing).completed_at).toBe("2026-08-01T10:20:00Z");
   });
+
+  it("dobu a nápovědy bere z prvního dokončení, ne z opakování", () => {
+    // Dítě lekci dokončilo, pak ji na jiném zařízení prošlo znovu. Metrika
+    // brány měří PRVNÍ dokončení — opakování ho nesmí přepsat.
+    const existing = {
+      status: "completed" as const,
+      started_at: "2026-08-01T10:00:00Z",
+      completed_at: "2026-08-01T10:20:00Z",
+      duration_s: 600,
+      hints_used: 2,
+    };
+    const merged = mergeWithExisting(incoming, existing);
+    expect(merged.duration_s).toBe(600);
+    expect(merged.hints_used).toBe(2);
+  });
+
+  it("dobu a nápovědy bere z nového zápisu, když ten dokončil dřív", () => {
+    const existing = {
+      status: "started" as const,
+      started_at: "2026-08-01T10:00:00Z",
+      completed_at: null,
+      duration_s: null,
+      hints_used: 5,
+    };
+    const merged = mergeWithExisting(incoming, existing);
+    expect(merged.duration_s).toBe(1200);
+    expect(merged.hints_used).toBe(0);
+  });
 });
 
 describe("anonSessionSchema", () => {

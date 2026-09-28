@@ -10,6 +10,7 @@ import {
 import { EVENT, track, trackOnce } from "@/features/analytics/track";
 import { LessonWorkbench } from "@/features/lessons/components/LessonWorkbench";
 import { lessonBySlug } from "@/features/lessons/content";
+import { saveLessonProgressAction } from "@/features/progress/actions";
 
 /**
  * Průchod lekcí.
@@ -94,6 +95,20 @@ export function LessonRunner({
    */
   function handleSolved(hintsUsed: number) {
     const session = markLessonCompleted(courseSlug, lessonSlug, hintsUsed);
+
+    /* Přihlášenému dítěti se postup zapisuje i do účtu. Bez toho zůstal
+       jen v prohlížeči: přehled v účtu se zastavil na čísle z registrace
+       a dokončení kurzu (certifikát) se nedalo zjistit. */
+    if (isAuthenticated) {
+      const record = session.lessons.find(
+        (l) => l.courseSlug === courseSlug && l.lessonSlug === lessonSlug,
+      );
+      if (record) {
+        void saveLessonProgressAction(record).then((res) => {
+          if (!res.ok) console.warn("[lekce] Postup se do účtu nezapsal");
+        });
+      }
+    }
 
     void track(EVENT.LESSON_COMPLETE, {
       course: courseSlug,

@@ -1,26 +1,28 @@
 import "server-only";
-import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { ACTIVE_CHILD_COOKIE } from "@/features/children/constants";
+import { getActiveChild } from "@/features/children/queries";
 
 /**
  * Co má aktivní profil hotové.
  *
- * Cookie s profilem je jen volba, ne oprávnění — RLS pustí jen postup dětí
- * přihlášeného účtu, takže podvržené id nic nevrátí.
+ * Aktivní profil se vybírá stejným pravidlem jako na přehledu `/ucim-se`
+ * (`pickActiveChild`) — dřív se tu četla jen cookie, takže jediné dítě bez
+ * PINu, které cookie nikdy nenastaví, tu mělo vždycky prázdno.
  */
-export async function completedLessonSlugs(lessonIds: string[]): Promise<string[]> {
+export async function completedLessonSlugs(
+  parentId: string,
+  lessonIds: string[],
+): Promise<string[]> {
   if (lessonIds.length === 0) return [];
 
-  const cookieStore = await cookies();
-  const childId = cookieStore.get(ACTIVE_CHILD_COOKIE)?.value;
-  if (!childId) return [];
+  const { active } = await getActiveChild(parentId);
+  if (!active) return [];
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("progress")
     .select("lesson_id, lessons(slug)")
-    .eq("child_id", childId)
+    .eq("child_id", active.id)
     .eq("status", "completed")
     .in("lesson_id", lessonIds);
 

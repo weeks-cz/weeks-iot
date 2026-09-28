@@ -47,7 +47,10 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   const serverCompleted = auth.user
-    ? await completedLessonSlugs(outline.lessons.filter((l) => l.isPublished).map((l) => l.id))
+    ? await completedLessonSlugs(
+        auth.user.id,
+        outline.lessons.filter((l) => l.isPublished).map((l) => l.id),
+      )
     : [];
 
   return (

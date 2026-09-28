@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, MonoLabel } from "@/components/ui/Surface";
 import { Logo } from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabase/server";
-import { ACTIVE_CHILD_COOKIE } from "@/features/children/constants";
 import { ProfileSwitcher } from "@/features/children/components/ProfileSwitcher";
 import { Avatar } from "@/features/children/avatars";
-import { getChildren } from "@/features/children/queries";
+import { getActiveChild } from "@/features/children/queries";
 
 export const metadata: Metadata = {
   title: "Učím se",
@@ -21,22 +19,11 @@ export default async function LearnPage() {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/prihlaseni?next=%2Fucim-se");
 
-  const children = await getChildren(auth.user.id);
+  /* Cookie je jen volba, ne oprávnění — profil se vždycky dohledává
+     v seznamu profilů TOHOTO účtu. Jediný profil bez PINu se vybírat
+     nemusí; pravidlo je v `pickActiveChild` a sdílí ho i zápis postupu. */
+  const { active, children } = await getActiveChild(auth.user.id);
   if (children.length === 0) redirect("/ucet/deti");
-
-  const cookieStore = await cookies();
-  const activeId = cookieStore.get(ACTIVE_CHILD_COOKIE)?.value;
-
-  /* Cookie je jen volba, ne oprávnění — proto se profil vždycky dohledává
-     v seznamu profilů TOHOTO účtu. Podvržené id tak nikam nevede. */
-  let active = children.find((c) => c.id === activeId);
-
-  /* Jediný profil bez PINu vybírat nemá co. Obrazovka „Kdo se dneska učí?"
-     dává smysl u rodiny se dvěma dětmi, ne u někoho, kdo se učí sám —
-     ten by jen klikal navíc při každém příchodu. */
-  if (!active && children.length === 1 && !children[0]!.hasPin) {
-    active = children[0];
-  }
 
   if (!active) {
     return (
