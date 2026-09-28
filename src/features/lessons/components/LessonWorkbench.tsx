@@ -90,6 +90,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
   const partsReady = useWokwiElements();
 
   const stepHeading = useRef<HTMLHeadingElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
   const firstStep = useRef(true);
 
@@ -132,8 +133,26 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
     }
 
     stepHeading.current?.focus({ preventScroll: true });
-    stepHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    /* Až po vykreslení nového kroku. Hned po přepnutí měla stránka ještě
+       výšku toho starého, rolovalo se na špatné místo a nadpis kroku
+       skončil schovaný pod lepivou hlavičkou. */
+    const id = requestAnimationFrame(() =>
+      stepHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+    return () => cancelAnimationFrame(id);
   }, [step]);
+
+  /* Úspěch a „Mám hotovo" jsou v pravém sloupci pod náhledem a kontrolou,
+     na notebooku pod okrajem. Dítě by vidělo konfety, ale ne tlačítko,
+     které vede dál. */
+  const passed = Boolean(run?.passed);
+  useEffect(() => {
+    if (!passed) return;
+    const id = requestAnimationFrame(() =>
+      successRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+    return () => cancelAnimationFrame(id);
+  }, [passed]);
 
   const wiring = useMemo(() => checkWiring(circuit, lesson.wiring), [circuit, lesson.wiring]);
 
@@ -351,85 +370,102 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
               mezi tím, CO má udělat, a tím, KDE to má udělat. */}
           <CurrentStep steps={steps} current={step2} />
 
-          <CircuitBuilder
-            palette={lesson.palette}
-            initialCircuit={circuit}
-            onChange={onCircuitChange}
-            flagged={flagged}
-            /* Piny aktuálního kroku blikají, takže je vidět, kam kliknout.
-               Bez toho je plocha les stejných teček. */
-            highlightPins={step2?.pins}
-            /* Krok „polož součástku" rozsvítí tu správnou kartičku
-               v paletě, ať ji dítě nehledá podle názvu. */
-            suggested={step2?.place ?? null}
-            showPins
-            /* Vyšší než jinde: v tomhle kroku se do plochy míří prstem
-               a čím větší je, tím větší jsou rozestupy mezi nožičkami.
-               Kdo chce ještě víc místa, roztáhne si ji přes celou
-               obrazovku — návod pojede s ním. */
-            height={560}
-            toolbar={<CurrentStep steps={steps} current={step2} />}
-            pushCircuit={pushed}
-            resetTo={seed}
-            onReset={() => {
-              setWiringChecked(false);
-              setRun(null);
-            }}
-          />
+          {/* Na širší obrazovce postup a tlačítka vedle plochy, ne pod ní.
+              Na notebooku s výškou 750 px byl pod 560px plochou schovaný
+              celý postup i jediné tlačítko, které vede dál — dítě
+              zapojilo obvod a nevidělo, co teď. */}
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+            <CircuitBuilder
+              palette={lesson.palette}
+              initialCircuit={circuit}
+              onChange={onCircuitChange}
+              flagged={flagged}
+              /* Piny aktuálního kroku blikají, takže je vidět, kam kliknout.
+                 Bez toho je plocha les stejných teček. */
+              highlightPins={step2?.pins}
+              /* Krok „polož součástku" rozsvítí tu správnou kartičku
+                 v paletě, ať ji dítě nehledá podle názvu. */
+              suggested={step2?.place ?? null}
+              showPins
+              /* Vyšší než jinde: v tomhle kroku se do plochy míří prstem
+                 a čím větší je, tím větší jsou rozestupy mezi nožičkami.
+                 Kdo chce ještě víc místa, roztáhne si ji přes celou
+                 obrazovku — návod pojede s ním. */
+              height={520}
+              toolbar={<CurrentStep steps={steps} current={step2} />}
+              pushCircuit={pushed}
+              resetTo={seed}
+              onReset={() => {
+                setWiringChecked(false);
+                setRun(null);
+              }}
+            />
 
-          <StepList steps={steps} current={step2} />
+            <div className="flex flex-col gap-4">
+              {/* Jedno amber tlačítko, a to to, které vede dál. Dokud obvod
+                  nesedí, je to kontrola; jakmile sedí, „Napsat program". Dvě
+                  amber tlačítka vedle sebe dítěti neříkají, kam kliknout. */}
+              {wiring.ok ? (
+                <Button
+                  size="lg"
+                  fullWidth
+                  className="animate-glow"
+                  onClick={() => setStep(STEP.CODE)}
+                >
+                  Napsat program →
+                </Button>
+              ) : (
+                /* Dokud zbývají kroky, není kontrola to hlavní — hlavní je
+                   další krok návodu (amber kartička v paletě, blikající
+                   piny). Amber dostane, až dítě projde všechny kroky
+                   a obvod pořád nesedí. */
+                <Button
+                  size="lg"
+                  fullWidth
+                  variant={step2 ? "outline" : "primary"}
+                  onClick={() => setWiringChecked(true)}
+                >
+                  Zkontrolovat zapojení
+                </Button>
+              )}
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => setWiringChecked(true)}>Zkontrolovat zapojení</Button>
+              {wiringChecked && !wiring.ok && wiring.issues[0] && (
+                /* Jedna hláška, ne seznam. Pět chyb naráz je pro dítě totéž
+                   jako „všechno je špatně". */
+                <Alert tone="warning" title="Ještě něco chybí">
+                  {wiring.issues[0].hint}
+                </Alert>
+              )}
 
-            {hints.wiring < lesson.wiringHints.length && (
-              <Button size="sm" variant="outline" onClick={() => revealHint("wiring")}>
-                <Lightbulb className="h-4 w-4" aria-hidden="true" />
-                {hints.wiring === 0 ? "Poradit" : "Poradit víc"}
-              </Button>
-            )}
+              {hints.wiring > 0 && (
+                <HintList hints={lesson.wiringHints.slice(0, hints.wiring)} />
+              )}
 
-            {/* Nápovědy došly. Bez tohohle končí lekce tady: tlačítko
-                „Napsat program" se objeví teprve, když zapojení sedí. */}
-            {hints.wiring >= lesson.wiringHints.length && step2 && (
-              <Button size="sm" variant="outline" onClick={assistWiring}>
-                <Wand2 className="h-4 w-4" aria-hidden="true" />
-                Zapoj tenhle krok za mě
-              </Button>
-            )}
+              {hints.wiring < lesson.wiringHints.length && (
+                <Button variant="outline" onClick={() => revealHint("wiring")}>
+                  <Lightbulb className="h-4 w-4" aria-hidden="true" />
+                  {hints.wiring === 0 ? "Nevím si rady" : "Poradit víc"}
+                </Button>
+              )}
+
+              {/* Nápovědy došly. Bez tohohle končí lekce tady: tlačítko
+                  „Napsat program" se objeví teprve, když zapojení sedí. */}
+              {hints.wiring >= lesson.wiringHints.length && step2 && (
+                <Button variant="outline" onClick={assistWiring}>
+                  <Wand2 className="h-4 w-4" aria-hidden="true" />
+                  Zapoj tenhle krok za mě
+                </Button>
+              )}
+
+              <StepList steps={steps} current={step2} />
+
+            </div>
           </div>
 
-          {hints.wiring > 0 && (
-            <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-ink-500">
-              {lesson.wiringHints.slice(0, hints.wiring).map((hint) => (
-                <li key={hint}>{hint}</li>
-              ))}
-            </ul>
-          )}
-
-          {wiringChecked && wiring.ok && (
-            <Alert tone="success" title="Zapojení sedí">
-              Obvod je hotový. Teď mu řekneš, co má dělat.
-            </Alert>
-          )}
-
-          {wiringChecked && !wiring.ok && wiring.issues[0] && (
-            /* Jedna hláška, ne seznam. Pět chyb naráz je pro dítě totéž
-               jako „všechno je špatně". */
-            <Alert tone="warning" title="Ještě něco chybí">
-              {wiring.issues[0].hint}
-            </Alert>
-          )}
-
-          <div className="flex flex-wrap gap-3">
+          <div>
             <Button variant="ghost" onClick={() => setStep(STEP.PARTS)}>
               ← Zpátky k součástkám
             </Button>
-            {wiring.ok && (
-              <Button size="lg" onClick={() => setStep(STEP.CODE)}>
-                Napsat program →
-              </Button>
-            )}
           </div>
         </section>
       )}
@@ -443,12 +479,14 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="flex flex-col gap-3">
               {vocabulary.length > 0 && (
-                <div className="rounded-md border border-ink/15 bg-paper-soft p-3">
-                  <p className="mono-label mb-2">Tahák — příkazy téhle lekce</p>
-                  <dl className="flex flex-col gap-2">
+                <div className="rounded-md border border-ink/15 bg-paper-soft p-4">
+                  <p className="mb-3 font-display text-lg font-semibold">
+                    Tahák — příkazy téhle lekce
+                  </p>
+                  <dl className="flex flex-col gap-3">
                     {vocabulary.map((entry) => (
-                      <div key={entry.needle} className="text-sm leading-snug">
-                        <dt className="inline rounded-sm bg-ink px-1.5 py-0.5 font-mono text-[0.8rem] text-paper">
+                      <div key={entry.needle} className="leading-snug">
+                        <dt className="inline rounded-sm bg-ink px-1.5 py-0.5 font-mono text-sm text-paper">
                           {entry.syntax}
                         </dt>{" "}
                         <dd className="mt-1 inline text-ink-500">{entry.what}</dd>
@@ -458,21 +496,21 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 </div>
               )}
 
-              <CodeEditor
-                value={code}
-                onChange={(next) => {
-                  setCode(next);
-                  setRun(null);
-                }}
-                /* Chyba překladu i příkaz schovaný v komentáři ukazují na
-                   řádek. Bez toho musí dítě hledat „řádek 6" očima. */
-                markedLine={run?.error?.line ?? run?.silent?.line ?? null}
-              />
-
+              {/* Spustit nad editorem, ne pod ním: pod dlouhým programem
+                 bylo tlačítko za okrajem obrazovky a dítě psalo, ale nevědělo,
+                 čím to pustit. */}
               <div className="flex flex-wrap items-center gap-3">
-                <Button onClick={handleRun} loading={running} disabled={running}>
-                  {!running && <Play className="h-4 w-4" aria-hidden="true" />}
-                  {running ? "Spouštím…" : "Spustit"}
+                {/* Po úspěchu přebírá amber „Mám hotovo" — spustit znovu jde
+                    pořád, ale už to není to hlavní, co má dítě udělat. */}
+                <Button
+                  size="lg"
+                  variant={run?.passed ? "outline" : "primary"}
+                  onClick={handleRun}
+                  loading={running}
+                  disabled={running}
+                >
+                  {!running && <Play className="h-5 w-5" aria-hidden="true" />}
+                  {running ? "Spouštím…" : run?.passed ? "Spustit znovu" : "Spustit"}
                 </Button>
 
                 {player.playing && (
@@ -485,7 +523,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 {hints.code < lesson.codeHints.length && (
                   <Button size="sm" variant="outline" onClick={() => revealHint("code")}>
                     <Lightbulb className="h-4 w-4" aria-hidden="true" />
-                    {hints.code === 0 ? "Poradit" : "Poradit víc"}
+                    {hints.code === 0 ? "Nevím si rady" : "Poradit víc"}
                   </Button>
                 )}
 
@@ -499,13 +537,18 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                 )}
               </div>
 
-              {hints.code > 0 && (
-                <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-ink-500">
-                  {lesson.codeHints.slice(0, hints.code).map((hint) => (
-                    <li key={hint}>{hint}</li>
-                  ))}
-                </ul>
-              )}
+              <CodeEditor
+                value={code}
+                onChange={(next) => {
+                  setCode(next);
+                  setRun(null);
+                }}
+                /* Chyba překladu i příkaz schovaný v komentáři ukazují na
+                   řádek. Bez toho musí dítě hledat „řádek 6" očima. */
+                markedLine={run?.error?.line ?? run?.silent?.line ?? null}
+              />
+
+              {hints.code > 0 && <HintList hints={lesson.codeHints.slice(0, hints.code)} />}
 
               {showSolution && (
                 <Card className="p-4">
@@ -586,15 +629,15 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
 
                   <ul className="flex flex-col gap-2">
                     {run.outcomes.map((outcome) => (
-                      <li key={outcome.label} className="flex items-start gap-2 text-sm">
+                      <li key={outcome.label} className="flex items-start gap-2.5 leading-snug">
                         {outcome.passed ? (
                           <Check
-                            className="mt-0.5 h-4 w-4 shrink-0 text-trust-600"
+                            className="mt-0.5 h-5 w-5 shrink-0 text-trust-600"
                             aria-hidden="true"
                           />
                         ) : (
                           <Circle
-                            className="mt-0.5 h-4 w-4 shrink-0 text-ink-300"
+                            className="mt-0.5 h-5 w-5 shrink-0 text-ink-300"
                             aria-hidden="true"
                           />
                         )}
@@ -609,7 +652,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                   </ul>
 
                   {firstUnmet && !run.silent && (
-                    <p className="mt-3 border-t border-ink/10 pt-3 text-sm leading-relaxed text-ink-500">
+                    <p className="mt-3 border-t border-ink/10 pt-3 leading-relaxed text-ink-700">
                       {firstUnmet.hint}
                     </p>
                   )}
@@ -617,7 +660,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
               )}
 
               {run?.passed && (
-                <>
+                <div ref={successRef} className="flex flex-col gap-3">
                   <div className="animate-pop">
                     <Alert tone="success" title="Funguje to!">
                       Program dělá přesně to, co měl. Podívej se, jak obvod běží —
@@ -630,7 +673,7 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
                       Mám hotovo →
                     </Button>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -643,5 +686,38 @@ export function LessonWorkbench({ lesson, onSolved, onContinue, onHint }: Props)
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Vyžádané nápovědy.
+ *
+ * Dřív drobný šedý seznam pod tlačítky — přesně ve chvíli, kdy si dítě
+ * řeklo o pomoc, dostalo nejhůř čitelný text na obrazovce. Nejnovější
+ * nápověda je proto zvýrazněná a velká jako text lekce.
+ */
+function HintList({ hints }: { hints: string[] }) {
+  return (
+    <ol className="flex flex-col gap-2">
+      {hints.map((hint, i) => {
+        const latest = i === hints.length - 1;
+        return (
+          <li
+            key={hint}
+            className={`lesson-body flex gap-3 rounded-md border px-4 py-3 ${
+              latest
+                ? "animate-slide-in border-primary-600 bg-primary-50 text-ink"
+                : "border-ink/10 bg-paper text-ink-500"
+            }`}
+          >
+            <Lightbulb
+              className={`mt-1 h-5 w-5 shrink-0 ${latest ? "text-primary-600" : "text-ink-300"}`}
+              aria-hidden="true"
+            />
+            <span>{hint}</span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

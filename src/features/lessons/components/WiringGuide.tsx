@@ -64,9 +64,9 @@ export function CurrentStep({ steps, current }: Props) {
         <MonoLabel>
           Krok {index + 1} z {steps.length}
         </MonoLabel>
-        <span className="font-mono text-xs text-ink-300">
+        <span className="text-right text-sm font-medium text-ink-500">
           {current.kind === "place"
-            ? "vyber v paletě a klepni do plochy"
+            ? "přetáhni ji z nabídky vlevo do plochy"
             : "klepni na jednu blikající tečku a pak na druhou"}
         </span>
       </div>
@@ -133,11 +133,11 @@ export function StepList({ steps, current }: Props) {
             <li
               key={`${step.kind}-${i}-${step.instruction}`}
               aria-current={isCurrent ? "step" : undefined}
-              className={`flex items-start gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors ${
+              className={`flex items-start gap-2 rounded-sm px-2 py-1.5 transition-colors ${
                 isCurrent ? "bg-primary-50 text-ink" : step.done ? "text-ink-300" : "text-ink-500"
               }`}
             >
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
+              <span className="mt-1 flex size-4 shrink-0 items-center justify-center">
                 {step.done ? (
                   <Check className="animate-check h-4 w-4 text-trust-600" aria-hidden="true" />
                 ) : (

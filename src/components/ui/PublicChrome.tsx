@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ButtonLink } from "./Button";
+import { HeaderCta } from "./HeaderCta";
 import { Logo } from "./Logo";
 import { CONTROLLER, SITE } from "@/lib/site";
 
@@ -16,9 +16,7 @@ export function PublicHeader() {
           >
             Přihlásit
           </Link>
-          <ButtonLink href="/kurz/iot" size="sm">
-            Zkusit zdarma
-          </ButtonLink>
+          <HeaderCta />
         </nav>
       </div>
     </header>

@@ -34,7 +34,13 @@ export interface Fit {
   pan: { x: number; y: number };
 }
 
-export function fitCircuit(circuit: Circuit, viewport: Viewport): Fit | null {
+export function fitCircuit(
+  circuit: Circuit,
+  viewport: Viewport,
+  /* Náhled, do kterého se jen kouká, smí oddálit víc: nikdo tam nemíří
+     prstem a usekaná LED je horší než malá. */
+  options: { minZoom?: number } = {},
+): Fit | null {
   if (circuit.comps.length === 0) return null;
   if (viewport.width <= 0 || viewport.height <= 0) return null;
 
@@ -57,7 +63,7 @@ export function fitCircuit(circuit: Circuit, viewport: Viewport): Fit | null {
   /* Nikdy se nezvětšuje nad sto procent. Rozmazané Arduino přes celou
      obrazovku vypadá jako chyba, ne jako přiblížení. */
   const zoom = Math.max(
-    MIN_FIT_ZOOM,
+    options.minZoom ?? MIN_FIT_ZOOM,
     Math.min(1, (viewport.width - 2 * PADDING) / width, (viewport.height - 2 * PADDING) / height),
   );
 

@@ -106,13 +106,17 @@ export function CircuitBuilder({
       if (!el) return;
 
       const rect = el.getBoundingClientRect();
-      const next = fitCircuit(circuit, { width: rect.width, height: rect.height });
+      const next = fitCircuit(
+        circuit,
+        { width: rect.width, height: rect.height },
+        { minZoom: readOnly ? 0.4 : undefined },
+      );
       if (!next) return;
 
       dispatch({ type: "SET_ZOOM", zoom: next.zoom });
       dispatch({ type: "SET_PAN", pan: next.pan });
     },
-    [dispatch],
+    [dispatch, readOnly],
   );
 
   /* Výřez se jednou nastaví tak, aby byla vidět celá deska.
@@ -281,9 +285,9 @@ export function CircuitBuilder({
                         : { type: "DELETE_WIRE", id: state.selection!.id },
                     )
                   }
-                  className="flex items-center gap-1.5 rounded-md border border-ink/20 bg-paper px-2.5 py-1.5 text-xs text-ink shadow-sm hover:border-ink/40"
+                  className="flex min-h-11 items-center gap-2 rounded-md border border-ink bg-paper px-3.5 text-sm font-semibold text-ink shadow-hard-sm hover:bg-danger-50"
                 >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Trash2 className="h-4 w-4 text-danger-600" aria-hidden="true" />
                   Smazat {selectedLabel}
                 </button>
               )}
@@ -298,22 +302,22 @@ export function CircuitBuilder({
                     requestAnimationFrame(() => fit(resetTo));
                     onReset?.();
                   }}
-                  className="flex items-center gap-1.5 rounded-md border border-ink/20 bg-paper px-2.5 py-1.5 text-xs text-ink-500 shadow-sm hover:border-ink/40 hover:text-ink"
+                  className="flex min-h-11 items-center gap-2 rounded-md border border-ink/30 bg-paper px-3.5 text-sm font-medium text-ink-500 hover:border-ink hover:text-ink"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
                   Začít znovu
                 </button>
               )}
             </div>
 
-            <div className="pointer-events-auto flex items-center gap-1 rounded-md border border-ink/20 bg-paper p-0.5 shadow-sm">
+            <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border border-ink bg-paper p-0.5 shadow-hard-sm">
               <button
                 type="button"
                 onClick={() => setZoom(state.zoom - ZOOM_STEP)}
-                className="rounded p-1.5 text-ink-500 hover:bg-ink/5 hover:text-ink"
+                className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
                 aria-label="Oddálit"
               >
-                <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                <Minus className="h-5 w-5" aria-hidden="true" />
               </button>
 
               {/* Ne „zpět na sto procent", ale „ukaž mi všechno". Kdo se
@@ -321,7 +325,7 @@ export function CircuitBuilder({
               <button
                 type="button"
                 onClick={() => fit(state.circuit)}
-                className="px-1.5 py-1 font-mono text-[0.7rem] tabular-nums text-ink-500 hover:text-ink"
+                className="min-h-11 px-2 font-mono text-sm tabular-nums text-ink-500 hover:text-ink"
                 aria-label="Ukázat celý obvod"
               >
                 {Math.round(state.zoom * 100)} %
@@ -330,23 +334,23 @@ export function CircuitBuilder({
               <button
                 type="button"
                 onClick={() => setZoom(state.zoom + ZOOM_STEP)}
-                className="rounded p-1.5 text-ink-500 hover:bg-ink/5 hover:text-ink"
+                className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
                 aria-label="Přiblížit"
               >
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                <Plus className="h-5 w-5" aria-hidden="true" />
               </button>
 
               {!readOnly && (
                 <button
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
-                  className="rounded p-1.5 text-ink-500 hover:bg-ink/5 hover:text-ink"
+                  className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
                   aria-label={expanded ? "Zmenšit plochu" : "Roztáhnout na celou obrazovku"}
                 >
                   {expanded ? (
-                    <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Minimize2 className="h-5 w-5" aria-hidden="true" />
                   ) : (
-                    <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Maximize2 className="h-5 w-5" aria-hidden="true" />
                   )}
                 </button>
               )}
@@ -356,10 +360,11 @@ export function CircuitBuilder({
       </div>
 
       {!readOnly && !expanded && (
-        <p className="border-t border-ink/10 bg-paper-soft px-3 py-2 text-[0.7rem] leading-snug text-ink-300">
-          Součástku vyber vlevo a klepni do plochy. Drátek natáhneš klepnutím na
-          jednu tečku a pak na druhou — nemusíš se trefit přesně, chytne se
-          nejbližší. Tahem po prázdné ploše se rozhlédneš.
+        <p className="border-t border-ink/10 bg-paper-soft px-4 py-2.5 text-sm leading-snug text-ink-500">
+          <strong className="font-semibold text-ink">Součástku</strong> přetáhni z nabídky do
+          plochy. <strong className="font-semibold text-ink">Drátek</strong> natáhneš klepnutím
+          na jednu tečku a pak na druhou — chytne se ta nejbližší. Tahem po prázdné ploše se
+          rozhlédneš.
         </p>
       )}
     </div>
