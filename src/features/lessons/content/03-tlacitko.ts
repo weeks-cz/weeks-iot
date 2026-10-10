@@ -37,10 +37,9 @@ export const lesson3: Lesson = {
   concept: {
     title: "Proč tlačítko čte LOW, když ho zmáčkneš",
     body:
-      "Zní to obráceně, ale dává to smysl. INPUT_PULLUP drží pin nahoře (HIGH), " +
-      "dokud ho něco nestáhne dolů. Tlačítko ho stiskem spojí se zemí — takže " +
-      "zmáčknuto = LOW, puštěno = HIGH. Ušetří to jeden rezistor a pin nikdy " +
-      "nečte náhodu.",
+      "Pin je normálně HIGH. Stisk tlačítka ho stáhne na zem (GND), takže čteš LOW. " +
+      "Proto ti stačí dva drátky: jeden na pin, druhý na zem. Rezistor navíc " +
+      "nepotřebuješ, protože vstup (pull-up) drží pin nahoře sám.",
   },
 
   palette: ["breadboard-half", "led-red", "resistor-220", "pushbutton"],

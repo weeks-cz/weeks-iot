@@ -27,7 +27,9 @@ const ENTRIES: VocabularyEntry[] = [
   {
     needle: "pinMode",
     syntax: "pinMode(pin, OUTPUT)",
-    what: "Řekne Arduinu, co pin dělá. OUTPUT = ovládá, INPUT_PULLUP = poslouchá tlačítko.",
+    what:
+      "Řekne Arduinu, co pin dělá. OUTPUT = ovládá (LED, bzučák). INPUT_PULLUP = vstup (pull-up): " +
+      "pin je normálně HIGH a tlačítko ho stáhne na zem.",
   },
   {
     needle: "digitalWrite",
