@@ -54,6 +54,18 @@ export async function completeOnboardingAction(
     redirect("/prihlaseni?next=%2Fregistrace%2Fonboarding");
   }
 
+  /* Dokončený onboarding se nepřepisuje. Druhé odeslání (obnovená stránka,
+     zpětné tlačítko) by jinak zapsalo souhlasy znovu a u dalšího dítěte
+     by mohlo založit duplicitní profil. Kontrola je před jakýmkoli zápisem. */
+  const { data: done } = await supabase
+    .from("parents")
+    .select("onboarding_completed_at")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  if (done?.onboarding_completed_at) {
+    redirect("/ucet");
+  }
+
   const requestHeaders = await headers();
   const ip = clientIp(requestHeaders);
   const userAgent = requestHeaders.get("user-agent")?.slice(0, 500) ?? null;
@@ -191,6 +203,7 @@ export async function completeOnboardingAction(
      Krok 6 z M2: „Nic se neztratí." Selhání přenosu ale nesmí shodit
      dokončenou registraci — účet je hotový a postup je to méně důležité
      z těch dvou. Proto se chyba jen loguje. */
+  let progressTransferFailed = false;
   if (anon) {
     try {
       await writeLessonProgress(childId, anon.lessons);
@@ -198,6 +211,7 @@ export async function completeOnboardingAction(
          hned s účtem — s datem, kdy kurz opravdu dokončil. */
       after(() => issueEarnedCertificates(childId));
     } catch (err) {
+      progressTransferFailed = true;
       console.error("[onboarding] Přenos anonymního postupu selhal:", err);
     }
   }
@@ -253,7 +267,9 @@ export async function completeOnboardingAction(
     });
   }
 
-  redirect("/ucet?vitejte=1");
+  /* Při neúspěšném přenosu se lokální postup nemaže (ClearAnonSession ho
+     nechává být) — jinak by o něj dítě přišlo. */
+  redirect(progressTransferFailed ? "/ucet?vitejte=1&postup=chyba" : "/ucet?vitejte=1");
 }
 
 /* ── Čekačka na město ──────────────────────────────────────────────────── */

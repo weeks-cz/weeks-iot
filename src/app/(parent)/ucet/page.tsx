@@ -16,13 +16,14 @@ import { voiceFor } from "@/features/account/voice";
 import { CertificateCard } from "@/features/certificates/components/CertificateCard";
 import { earnedCertificates } from "@/features/certificates/queries";
 import { RegistrationPixel } from "@/features/cookies/RegistrationPixel";
+import { ClearAnonSession } from "@/features/anon-session/components/ClearAnonSession";
 
 export const metadata: Metadata = { title: "Přehled" };
 
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vitejte?: string; heslo?: string }>;
+  searchParams: Promise<{ vitejte?: string; heslo?: string; postup?: string }>;
 }) {
   const params = await searchParams;
 
@@ -67,6 +68,7 @@ export default async function AccountPage({
   return (
     <div className="flex flex-col gap-8">
       {params.vitejte === "1" && <RegistrationPixel userId={session.userId} />}
+      {params.vitejte === "1" && params.postup !== "chyba" && <ClearAnonSession />}
       {params.vitejte && (
         <Alert tone="success" title="Účet je hotový">
           Profil dítěte je připravený. Můžete rovnou začít první lekcí.
