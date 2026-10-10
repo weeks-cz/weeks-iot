@@ -49,6 +49,9 @@ tabulku, přidej i RLS politiku a sloupcové granty do migrace.
 **Souhlasy jsou append-only.** Odvolání je nový řádek s `granted = false`,
 nikdy update. Kdo mění znění v `src/features/consent/texts.ts`, MUSÍ zvýšit
 `version` — jinak vzniknou dva různé souhlasy pod stejným označením.
+Smazání účtu ledger nemaže: `consents.parent_id` se odpojí (`on delete set
+null`, migrace 013) a řádek zůstane jako doklad. Záznam souhlasu zákonného
+zástupce se váže na dítě (`consents.child_id`, migrace 014).
 
 **Anonymní relace nesmí nic poslat na server.** Do okamžiku, kdy rodič odešle
 registraci, žije postup výhradně v `localStorage`. Je to právní stav, ne

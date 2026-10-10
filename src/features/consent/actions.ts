@@ -108,9 +108,9 @@ export async function deleteAccountAction(
   const userId = auth.user.id;
   const requestHeaders = await headers();
 
-  /* Odvolání souhlasu se zapisuje i tak, přestože ho kaskáda za chvíli
-     smaže. Má to smysl: kdyby smazání níž selhalo, zůstane účet naživu
-     a odvolaný souhlas v něm platí — tedy stav, který rodič chtěl. */
+  /* Odvolání souhlasu se zapisuje i tak, přestože účet za chvíli zmizí.
+     Kdyby smazání níž selhalo, zůstane účet naživu a odvolaný souhlas
+     v něm platí — tedy stav, který rodič chtěl. */
   const parentalText = consentTextFor("parental");
   await supabase.rpc("record_consent", {
     p_kind: "parental",
@@ -133,14 +133,11 @@ export async function deleteAccountAction(
 
   const service = createServiceClient();
 
-  /* Smazání uživatele v auth.users strhne kaskádou parents a odtud
-     children, progress, projects i ledger souhlasů.
-
-     Ledger tedy odchází s rodičem, a je to tak správně: držet záznamy
-     o souhlasu navázané na člověka, jehož ostatní údaje jsme na žádost
-     smazali, by znamenalo uchovávat osobní údaje bez právního základu.
-     Prokazovat souhlas ke zpracování, které už neexistuje, po nás nikdo
-     chtít nemůže. */
+  /* Smazání uživatele v auth.users strhne kaskádou parents a odtud děti,
+     postup a projekty. Ledger souhlasů se NEMAŽE: migrace 013 nastavuje
+     consents.parent_id na `on delete set null`, takže řádky zůstanou jako
+     doklad (druh, verze, plné znění, čas, IP, UA) a odpojí se od osoby.
+     Stejně to říká /ochrana-udaju a text souhlasu zákonného zástupce. */
   const { error } = await service.auth.admin.deleteUser(userId);
 
   if (error) {

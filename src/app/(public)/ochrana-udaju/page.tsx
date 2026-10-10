@@ -116,8 +116,9 @@ export default function PrivacyPage() {
         <p>
           Ke každému udělenému i odvolanému souhlasu ukládáme datum a čas, verzi a plné znění
           textu, IP adresu a údaj o prohlížeči. Je to doklad, že jsme souhlas měli a že jsme
-          ho respektovali (oprávněný zájem, čl. 6 odst. 1 písm. f) GDPR). Tento záznam
-          uchováváme i po zrušení účtu.
+          ho respektovali (oprávněný zájem, čl. 6 odst. 1 písm. f) GDPR). Záznam
+          uchováváme i po zrušení účtu, ale už odpojený od vaší osoby: nejdéle 3 roky od
+          smazání účtu, poté ho smažeme.
         </p>
       </section>
 
@@ -151,7 +152,8 @@ export default function PrivacyPage() {
         <h2>Jak dlouho údaje máme</h2>
         <p>
           Po dobu trvání účtu. Po jeho zrušení nebo po odvolání souhlasu údaje dítěte
-          smažeme nejpozději do 30 dnů. Výjimkou je záznam o souhlasu popsaný výše.
+          smažeme nejpozději do 30 dnů. Výjimkou je záznam o souhlasu popsaný výše — ten
+          uchováváme nejdéle 3 roky od smazání účtu.
         </p>
       </section>
 
