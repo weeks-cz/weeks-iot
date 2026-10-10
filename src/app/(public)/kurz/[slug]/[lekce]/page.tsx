@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MonoLabel } from "@/components/ui/Surface";
+import { Avatar } from "@/features/children/avatars";
 import { createClient } from "@/lib/supabase/server";
 import { SITE } from "@/lib/site";
 import { LessonRunner } from "@/features/progress/components/LessonRunner";
@@ -118,6 +119,25 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
           {data.lesson.estimated_minutes ? ` · ${data.lesson.estimated_minutes} min` : ""}
         </MonoLabel>
       </div>
+
+      {/* Kdo se právě učí. Dítě i rodič v lekci vědí, čí postup se zapisuje,
+          a jedním kliknutím se dá přepnout. Přepnutí je výběr profilu, ne
+          změna oprávnění — proto odkaz, ne tlačítko s akcí. */}
+      {activeChild && (
+        <div className="mb-4 flex max-w-3xl flex-wrap items-center gap-3 rounded-md border border-ink/15 bg-white px-3 py-2">
+          <Avatar id={activeChild.avatar} className="block size-8 shrink-0 text-ink" />
+          <div className="min-w-0 flex-1">
+            <MonoLabel>Učí se</MonoLabel>
+            <p className="truncate font-semibold text-ink">{activeChild.nick}</p>
+          </div>
+          <Link
+            href="/ucim-se/prepnout"
+            className="inline-flex min-h-11 items-center rounded-sm px-2 text-sm font-semibold text-primary-600 underline underline-offset-4 hover:text-primary-700"
+          >
+            Přepnout
+          </Link>
+        </div>
+      )}
 
       <header className="mb-6 max-w-3xl">
         <h1 className="heading-2 mb-2">{data.lesson.title}</h1>
