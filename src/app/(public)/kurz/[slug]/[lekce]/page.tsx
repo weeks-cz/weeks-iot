@@ -7,6 +7,7 @@ import { SITE } from "@/lib/site";
 import { LessonRunner } from "@/features/progress/components/LessonRunner";
 import { completedLessonSlugs } from "@/features/progress/queries";
 import { activeChildEditorMode } from "@/features/children/editor-mode";
+import { getActiveChild } from "@/features/children/queries";
 
 interface Params {
   slug: string;
@@ -89,12 +90,16 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
   /* Co má aktivní profil dokončené. Potřebuje to `course_complete` —
      bez toho by se odvozovalo z „nemám kam dál", což by kurz označilo
      za dokončený i tomu, kdo skočil rovnou na poslední lekci. */
-  const [completedSlugs, childEditorMode] = auth.user
+  const [completedSlugs, childEditorMode, activeChild] = auth.user
     ? await Promise.all([
         completedLessonSlugs(auth.user.id, data.publishedIds),
         activeChildEditorMode(auth.user.id),
+        getActiveChild(auth.user.id).then((r) => r.active),
       ])
-    : [[], undefined];
+    : [[], undefined, null];
+  /* Přihlášený rodič bez vybraného profilu: postup by se nikam nezapsal.
+     Dřív se to tvářilo jako přihlášené dítě a zápis tiše selhával. */
+  const needsChildProfile = Boolean(auth.user) && !activeChild;
 
   return (
     <main className="section-container py-6 sm:py-8">
@@ -132,6 +137,7 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
           lessonTitle={data.lesson.title}
           lessonOrder={data.lesson.order_index}
           isAuthenticated={Boolean(auth.user)}
+          needsChildProfile={needsChildProfile}
           nextLessonSlug={data.nextLessonSlug}
           publishedSlugs={data.publishedSlugs}
           completedSlugs={completedSlugs}

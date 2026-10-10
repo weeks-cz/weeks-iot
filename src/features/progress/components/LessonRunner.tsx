@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ButtonLink } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel } from "@/components/ui/Surface";
 import {
@@ -38,6 +39,8 @@ interface Props {
   lessonOrder: number;
   /** Přihlášený uživatel zeď nevidí — už ji jednou prošel. */
   isAuthenticated: boolean;
+  /** Přihlášený bez vybraného profilu dítěte: postup se zatím nikam nezapíše. */
+  needsChildProfile?: boolean;
   nextLessonSlug: string | null;
   /** Všechny publikované lekce kurzu, v pořadí. Pro course_complete. */
   publishedSlugs: string[];
@@ -53,6 +56,7 @@ export function LessonRunner({
   lessonTitle,
   lessonOrder,
   isAuthenticated,
+  needsChildProfile = false,
   nextLessonSlug,
   publishedSlugs,
   completedSlugs,
@@ -163,9 +167,18 @@ export function LessonRunner({
           </p>
         </Card>
 
+        {isAuthenticated && needsChildProfile && (
+          <Alert tone="warning" title="Postup se zatím neukládá">
+            Nevybrali jste, kdo se učí. Vyberte profil dítěte, ať se lekce zapíše k němu.{" "}
+            <Link href="/ucim-se" className="font-semibold underline underline-offset-4">
+              Vybrat profil
+            </Link>
+          </Alert>
+        )}
+
         {isAuthenticated ? (
           <div className="flex flex-col gap-4">
-            {!nextLessonSlug && (
+            {!nextLessonSlug && !needsChildProfile && (
               <p className="max-w-prose leading-relaxed text-ink-500">
                 Certifikát za celý kurz je připravený v účtu rodiče, v přehledu dítěte.
               </p>
