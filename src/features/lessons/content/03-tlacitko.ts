@@ -51,18 +51,18 @@ export const lesson3: Lesson = {
       { role: "odpor", type: "resistor-220", label: "rezistor" },
       { role: "tlacitko", type: "pushbutton", label: "tlačítko" },
     ],
-    connections: [
+    series: [
       {
         from: { role: "arduino", pin: "D8" },
-        to: { role: "led", pin: "anode" },
-        through: ["resistor-220"],
-        hint: "Anoda LED na pin 8 přes rezistor.",
-      },
-      {
-        from: { role: "led", pin: "cathode" },
         to: { role: "arduino", pin: "GND-1" },
-        hint: "Katoda LED na GND.",
+        led: { role: "led", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
+        hint:
+          "LED zapoj mezi pin 8 a GND přes rezistor — delší nožičkou (anodou) směrem k pinu. " +
+          "Rezistor může stát na kterékoli straně LED.",
       },
+    ],
+    connections: [
       {
         from: { role: "arduino", pin: "D7" },
         to: { role: "tlacitko", pin: "1a" },
