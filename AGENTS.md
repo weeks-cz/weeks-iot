@@ -240,6 +240,18 @@ zastaví syntaxe dřív, než pochopí, co program dělá).
 - Kód → bloky neumí převést zpátky: přepínač se zeptá, když dítě kód
   upravilo, a jeho úpravy pak zahodí.
 
+## Přihlášení Googlem
+
+- Tlačítko je Google Identity Services (`GoogleSignIn`), účet se ukáže s názvem
+  učebny, ne s adresou `supabase.co`. ID token jde do `signInWithIdToken`,
+  pak `completeGoogleSignInAction` rozhodne cíl přes `afterSignInPath`.
+- Nonce: Google dostává HASH (`hashNonce`), Supabase SUROVÝ. Záměna = chyba
+  při každém přihlášení.
+- Bez `NEXT_PUBLIC_GOOGLE_CLIENT_ID` nebo bez skriptu Googlu (blokátor) zůstává
+  přesměrovací tok (`GoogleButton`). `NEXT_PUBLIC_*` se zapéká při buildu —
+  změna na Vercelu platí až po novém deployi.
+- CSP pro GIS je v `next.config.ts` (`GOOGLE_IDENTITY`).
+
 ## Design
 
 Maker lab — technický výkres, ne dětská grafika. Portováno z

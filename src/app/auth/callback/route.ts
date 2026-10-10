@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeNextPath } from "@/features/auth/safe-path";
+import { afterSignInPath } from "@/features/auth/post-login";
 
 /**
  * Návrat z OAuth, magic linku, potvrzení adresy a obnovy hesla.
@@ -57,9 +58,10 @@ export async function GET(request: Request) {
     .eq("id", auth.user.id)
     .maybeSingle();
 
-  if (!parent?.onboarding_completed_at) {
-    return NextResponse.redirect(`${origin}/registrace/onboarding`);
-  }
-
-  return NextResponse.redirect(`${origin}${next}`);
+  return NextResponse.redirect(
+    `${origin}${afterSignInPath({
+      onboardingDone: Boolean(parent?.onboarding_completed_at),
+      next,
+    })}`,
+  );
 }

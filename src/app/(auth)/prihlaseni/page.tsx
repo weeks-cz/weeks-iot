@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/ui/AuthShell";
 import { Alert } from "@/components/ui/Surface";
-import { GoogleButton } from "@/features/auth/components/GoogleButton";
+import { GoogleSignIn } from "@/features/auth/components/GoogleSignIn";
 import { SignInForm } from "@/features/auth/components/SignInForm";
 import { isSafeNextPath } from "@/features/auth/safe-path";
 import { loginErrorMessage } from "@/features/auth/errors";
@@ -41,7 +41,7 @@ export default async function SignInPage({
       <div className="flex flex-col gap-5">
         {error && <Alert tone="danger">{error}</Alert>}
 
-        <GoogleButton next={next} />
+        <GoogleSignIn next={next} clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? null} />
 
         <div className="flex items-center gap-3" aria-hidden="true">
           <span className="h-px flex-1 bg-ink/15" />
