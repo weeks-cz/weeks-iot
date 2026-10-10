@@ -163,7 +163,7 @@ export function LessonRunner({
           <MonoLabel className="mb-2">Hotovo</MonoLabel>
           <h2 className="heading-3 mb-2">Lekce &bdquo;{lessonTitle}&ldquo; je hotová</h2>
           <p className="lesson-body text-ink-700">
-            {nextLessonSlug ? "Zvládl jsi to. Pojď na další." : "Zvládl jsi celý kurz!"}
+            {nextLessonSlug ? "Máš to! Pojď na další." : "Celý kurz máš za sebou!"}
           </p>
         </Card>
 
@@ -318,8 +318,8 @@ function CourseEndWall({
       <h2 className="heading-3 mb-3">Kurz máš hotový</h2>
       <p className="mb-5 max-w-prose leading-relaxed text-ink-500">
         Certifikát s tvou přezdívkou už na tebe čeká. Rodič ho získá, až založí účet:
-        tvůj postup z tohoto prohlížeče se do něj přenese a certifikát se vystaví s datem,
-        kdy jsi kurz dokončil.
+        tvůj postup z tohoto prohlížeče se do něj přenese a certifikát se vystaví s datem
+        dokončení kurzu.
       </p>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

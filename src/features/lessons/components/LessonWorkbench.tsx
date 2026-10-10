@@ -377,7 +377,7 @@ export function LessonWorkbench({
           {hasDraft && !solved && (
             <div className="animate-slide-in flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-600 bg-primary-50 px-4 py-3">
               <p className="text-sm font-semibold text-primary-800">
-                Minule jsi tu nechal{"\u00a0"}rozdělanou práci.
+                Z minula tu na tebe čeká{"\u00a0"}rozdělaná práce.
               </p>
               <Button size="sm" variant="outline" onClick={() => setStep(STEP.WIRING)}>
                 Pokračovat, kde jsem skončil →
@@ -597,8 +597,8 @@ export function LessonWorkbench({
               className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-cta-600 bg-cta-50 px-4 py-3"
             >
               <p className="max-w-prose leading-relaxed text-ink">
-                Kód, který jsi napsal, bloky přečíst neumí. V blocích budeš pokračovat tam, kde
-                jsi je nechal, a tvoje úpravy kódu se ztratí.
+                Upravený kód bloky přečíst neumí. V blocích budeš pokračovat od toho, co v nich
+                bylo předtím, a úpravy kódu se ztratí.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setConfirmBlocks(false)}>
@@ -737,8 +737,8 @@ export function LessonWorkbench({
                 <Card className="p-4">
                   <MonoLabel className="mb-3">Řešení</MonoLabel>
                   <p className="leading-relaxed text-ink-700">
-                    Řešení ti poskládáme do bloků. Spustit ho musíš sám — a mrkni, čím se liší
-                    od toho, co jsi měl.
+                    Řešení ti poskládáme do bloků. Spustit ho je na tobě — a mrkni, čím se liší
+                    od toho, co máš teď.
                   </p>
                   <div className="mt-3">
                     <Button
@@ -765,8 +765,8 @@ export function LessonWorkbench({
                   <CodeView code={lesson.solution} />
 
                   <p className="mt-3 text-sm leading-relaxed text-ink-500">
-                    Přepiš si to, nebo si to nech vložit. Spustit to musíš sám —
-                    a mrkni, čím se to liší od toho, co jsi měl.
+                    Přepiš si to, nebo si to nech vložit. Spustit to je na tobě —
+                    a mrkni, čím se to liší od toho, co máš teď.
                   </p>
 
                   <div className="mt-3">
@@ -926,7 +926,7 @@ export function LessonWorkbench({
                 <div ref={successRef} className="flex flex-col gap-3">
                   <div className="animate-pop">
                     <Alert tone="success" title="Funguje to!">
-                      Program dělá přesně to, co měl. Podívej se, jak obvod běží —
+                      Program dělá přesně to, co má. Podívej se, jak obvod běží —
                       a až se vynadíváš, pojď dál.
                     </Alert>
                   </div>
