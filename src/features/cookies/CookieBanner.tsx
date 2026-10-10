@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { COOKIE_SETTINGS_EVENT } from "./consent";
 import { readCookieConsent, saveCookieConsent, useCookieConsent } from "./store";
+import { Button } from "@/components/ui/Button";
 
 /**
  * Lišta souhlasu s cookies. Odmítnout je stejně snadné jako přijmout:
@@ -87,38 +88,38 @@ export function CookieBanner() {
         )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <button
+          <Button
             type="button"
             onClick={() => decide({ analytics: false, marketing: false })}
-            className="btn-outline min-h-11"
+            variant="outline" size="sm"
           >
             Odmítnout vše
-          </button>
+          </Button>
           {details ? (
-            <button
+            <Button
               type="button"
               onClick={() => decide({ analytics, marketing })}
-              className="btn-primary min-h-11"
+              variant="primary" size="sm"
             >
               Uložit výběr
-            </button>
+            </Button>
           ) : (
             <>
-              <button
+              <Button
                 type="button"
                 onClick={() => setDetails(true)}
                 aria-expanded={false}
-                className="btn-outline min-h-11"
+                variant="outline" size="sm"
               >
                 Nastavit
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => decide({ analytics: true, marketing: true })}
-                className="btn-outline min-h-11"
+                variant="outline" size="sm"
               >
                 Přijmout vše
-              </button>
+              </Button>
             </>
           )}
         </div>
