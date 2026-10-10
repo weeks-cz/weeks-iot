@@ -2,6 +2,7 @@ import Link from "next/link";
 import { HeaderCta } from "./HeaderCta";
 import { Logo } from "./Logo";
 import { CONTROLLER, SITE } from "@/lib/site";
+import { CookieSettingsButton } from "@/features/cookies/CookieSettingsButton";
 
 export function PublicHeader() {
   return (
@@ -50,6 +51,7 @@ export function PublicFooter() {
           >
             {SITE.supportEmail}
           </a>
+          <CookieSettingsButton />
         </nav>
       </div>
     </footer>

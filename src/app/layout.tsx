@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { SITE } from "@/lib/site";
+import { CookieBanner } from "@/features/cookies/CookieBanner";
+import { VendorScripts } from "@/features/cookies/VendorScripts";
 
 /* Latin-ext je u všech tří povinné — bez něj se rozpadnou české diakritické
    znaky a písmo se pro ně tiše nahradí systémovým fallbackem. */
@@ -53,7 +55,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="cs" className={`${instrument.variable} ${bricolage.variable} ${plexMono.variable}`}>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        {children}
+        <CookieBanner />
+        <VendorScripts />
+      </body>
     </html>
   );
 }

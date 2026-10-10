@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { ensureAnonSession } from "@/features/anon-session/storage";
 import { EVENT, isServerOnlyEvent, type EventName } from "./events";
+import { mirrorToVendors } from "@/features/cookies/vendors";
 
 /**
  * Odesílání událostí z prohlížeče.
@@ -57,6 +58,9 @@ export async function track(name: EventName, props: EventProps = {}): Promise<vo
       parent_id: data.user?.id ?? null,
       props: cleanProps(props),
     });
+    /* Stejnou událost pošli do GA4, pokud na to návštěvník dal souhlas.
+       Bez souhlasu skript není načtený a volání nic neudělá. */
+    mirrorToVendors(name, cleanProps(props) as Record<string, string | number | boolean>);
   } catch {
     /* Měření nesmí shodit lekci. */
   }

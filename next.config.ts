@@ -1,6 +1,18 @@
 import type { NextConfig } from "next";
 
 /**
+ * Měřicí skripty a jejich odesílací adresy (GA4, Meta Pixel). Pouštějí se jen
+ * po souhlasu s cookies (src/features/cookies), ale CSP je musí povolit předem.
+ * GA posílá data na regionální `*.google-analytics.com`, Meta na facebook.com.
+ */
+const MEASUREMENT_HOSTS = {
+  scripts:
+    "https://www.googletagmanager.com https://connect.facebook.net",
+  beacons:
+    "https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com https://www.facebook.com https://connect.facebook.net",
+} as const;
+
+/**
  * Content Security Policy.
  *
  * `unsafe-inline` u stylů je u Tailwindu a next/font nevyhnutelné — obojí
@@ -17,11 +29,11 @@ function buildCsp(): string {
 
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""} ${MEASUREMENT_HOSTS.scripts}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://weeks.cz",
-    `connect-src 'self' ${supabase} ${supabaseWs}`.trim(),
+    `img-src 'self' data: blob: https://weeks.cz ${MEASUREMENT_HOSTS.beacons}`,
+    `connect-src 'self' ${supabase} ${supabaseWs} ${MEASUREMENT_HOSTS.beacons}`.trim(),
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

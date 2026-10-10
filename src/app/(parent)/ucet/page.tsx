@@ -15,6 +15,7 @@ import { CampCta } from "@/features/onboarding/components/CampCta";
 import { voiceFor } from "@/features/account/voice";
 import { CertificateCard } from "@/features/certificates/components/CertificateCard";
 import { earnedCertificates } from "@/features/certificates/queries";
+import { RegistrationPixel } from "@/features/cookies/RegistrationPixel";
 
 export const metadata: Metadata = { title: "Přehled" };
 
@@ -65,6 +66,7 @@ export default async function AccountPage({
 
   return (
     <div className="flex flex-col gap-8">
+      {params.vitejte === "1" && <RegistrationPixel userId={session.userId} />}
       {params.vitejte && (
         <Alert tone="success" title="Účet je hotový">
           Profil dítěte je připravený. Můžete rovnou začít první lekcí.

@@ -24,7 +24,7 @@ export const metadata: Metadata = {
  */
 export default function PrivacyPage() {
   return (
-    <LegalDoc title="Ochrana osobních údajů" updated="28. 9. 2026">
+    <LegalDoc title="Ochrana osobních údajů" updated="10. 10. 2026">
       <section>
         <h2>Kdo údaje zpracovává</h2>
         <p>
@@ -47,6 +47,36 @@ export default function PrivacyPage() {
           víme, které lekce děti dokončují a kde je ztrácíme. Jméno, e-mail ani IP adresu
           k těmto záznamům neukládáme. Právním základem je náš oprávněný zájem na zlepšování
           učebny (čl. 6 odst. 1 písm. f) GDPR).
+        </p>
+      </section>
+
+      <section>
+        <h2>Cookies a měření návštěvnosti</h2>
+        <p>
+          Nezbytné věci (přihlášení, zapamatování vašeho výběru) potřebujeme vždy a
+          nevyžadují souhlas. Dvě měřicí služby se načtou až po vašem souhlasu, který
+          můžete kdykoli změnit odkazem &bdquo;Nastavení cookies&ldquo; v patičce:
+        </p>
+        <ul>
+          <li>
+            <strong>Google Analytics 4</strong> (Google Ireland Limited) — anonymní statistiky,
+            které lekce děti dokončují a kde se ztrácí. Běží na všech stránkách, i v lekcích.
+          </li>
+          <li>
+            <strong>Meta Pixel</strong> (Meta Platforms Ireland Limited) — měření reklam.
+            Běží jen na veřejné části a v rodičovské zóně (registrace, účet), nikdy na
+            dětských obrazovkách a v lekcích.
+          </li>
+        </ul>
+        <p>
+          Pokud dáte souhlas s marketingem při registraci, odesíláme Meta serverem také
+          informaci, že se rodič zaregistroval. Předáme jí e-mail v podobě otisku (hash),
+          IP adresu a údaje o prohlížeči. Bez tohoto souhlasu se nic z toho neposílá.
+          Meta v tomto případě jedná jako samostatný správce údajů, které získá.
+        </p>
+        <p>
+          Právním základem je váš souhlas (čl. 6 odst. 1 písm. a) GDPR). Odmítnutí nemá
+          žádný vliv na používání učebny.
         </p>
       </section>
 
@@ -108,7 +138,9 @@ export default function PrivacyPage() {
           <li>Supabase — databáze a přihlašování (servery v Evropské unii),</li>
           <li>Vercel — provoz aplikace,</li>
           <li>Resend — odesílání e-mailů,</li>
-          <li>Google — jen pokud se přihlašujete účtem Google.</li>
+          <li>Google — jen pokud se přihlašujete účtem Google,</li>
+          <li>Google Analytics 4 a Meta Platforms Ireland Limited (Meta Pixel a serverová
+            konverze) — jen po vašem souhlasu s cookies a marketingem, viz výše.</li>
         </ul>
         <p>
           Údaje nepředáváme mimo Evropský hospodářský prostor bez odpovídajících záruk.
