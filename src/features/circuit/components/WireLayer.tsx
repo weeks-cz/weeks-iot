@@ -7,6 +7,10 @@ import { WIRE_COLOR_DRAFT } from "../constants";
 import type { BuilderAction, BuilderState } from "./state";
 import type { Circuit, Wire } from "../types";
 
+/** Půl strany vrstvy drátů v souřadnicích plátna. Součástky se drží v řádu
+ *  stovek až tisíců pixelů od počátku, rezerva je velká. */
+const WIRE_LAYER_EXTENT = 20000;
+
 interface Props {
   state: BuilderState;
   dispatch: React.Dispatch<BuilderAction>;
@@ -69,9 +73,21 @@ export function WireLayer({ state, readOnly }: Props) {
   const draftFrom = state.wireFrom ? at(state.wireFrom.compId, state.wireFrom.pinName) : null;
 
   return (
+    /* Rodič (plátno) má od mřížky na viewportu nulovou velikost. SVG o šířce
+       0 prohlížeč vůbec nevykreslí — ani s overflow: visible — a dráty by
+       zmizely. Vrstva má proto vlastní, dostatečně velký rozměr kolem počátku
+       a viewBox ve stejných souřadnicích jako plátno. */
     <svg
-      className="pointer-events-none absolute inset-0"
-      style={{ zIndex: 5, width: "100%", height: "100%", overflow: "visible" }}
+      className="pointer-events-none absolute"
+      style={{
+        zIndex: 5,
+        left: -WIRE_LAYER_EXTENT,
+        top: -WIRE_LAYER_EXTENT,
+        width: 2 * WIRE_LAYER_EXTENT,
+        height: 2 * WIRE_LAYER_EXTENT,
+        overflow: "visible",
+      }}
+      viewBox={`${-WIRE_LAYER_EXTENT} ${-WIRE_LAYER_EXTENT} ${2 * WIRE_LAYER_EXTENT} ${2 * WIRE_LAYER_EXTENT}`}
       aria-hidden="true"
     >
       {state.circuit.wires.map((wire) => {

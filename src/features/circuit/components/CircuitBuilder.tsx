@@ -175,9 +175,11 @@ export function CircuitBuilder({
         { width: rect.width, height: rect.height },
         viewRef.current,
       );
-      if (pan) dispatch({ type: "SET_PAN", pan });
+      /* Nová součástka je mimo výřez → srovnat celý obvod, ne jen posunout
+         na ni. Posun na novou součástku odsunul zbytek obvodu za okraj. */
+      if (pan) fit(pushCircuit);
     });
-  }, [pushCircuit, dispatch]);
+  }, [pushCircuit, dispatch, fit]);
 
   /* Zvýrazněné piny musí být vidět. Jinak plocha bliká někam za okraj a
      dítě hledá tečku, která na obrazovce není. Posouvá se jen tehdy, když
