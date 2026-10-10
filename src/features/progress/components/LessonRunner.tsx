@@ -164,7 +164,13 @@ export function LessonRunner({
         </Card>
 
         {isAuthenticated ? (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-4">
+            {!nextLessonSlug && (
+              <p className="max-w-prose leading-relaxed text-ink-500">
+                Certifikát za celý kurz je připravený v účtu rodiče, v přehledu dítěte.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3">
             {nextLessonSlug ? (
               <ButtonLink href={`/kurz/${courseSlug}/${nextLessonSlug}`} size="lg">
                 Další lekce →
@@ -174,7 +180,14 @@ export function LessonRunner({
                 Zpět na přehled
               </ButtonLink>
             )}
+            </div>
           </div>
+        ) : !nextLessonSlug ? (
+          <CourseEndWall
+            courseSlug={courseSlug}
+            lessonSlug={lessonSlug}
+            lessonOrder={lessonOrder}
+          />
         ) : (
           /* Zeď. Přichází po doručené hodnotě — dítě má hotový výsledek
              před sebou a teprve teď se ptáme na e-mail rodiče. */
@@ -267,5 +280,66 @@ export function LessonRunner({
         });
       }}
     />
+  );
+}
+
+/**
+ * Konec kurzu pro dítě bez účtu. Certifikát už na něj čeká, ale vydá se až
+ * přes rodiče — proto je tu zeď s registrací a jemný další krok, ne další lekce.
+ * Amber zůstává jen u registrace; odkaz na tábor je záměrně sekundární.
+ */
+function CourseEndWall({
+  courseSlug,
+  lessonSlug,
+  lessonOrder,
+}: {
+  courseSlug: string;
+  lessonSlug: string;
+  lessonOrder: number;
+}) {
+  const campHref =
+    "https://weeks.cz/tabory?utm_source=ucebna&utm_medium=app&utm_campaign=leto2027&utm_content=konec-kurzu";
+  return (
+    <Card className="border-ink p-6 shadow-hard">
+      <MonoLabel className="mb-3">Certifikát</MonoLabel>
+      <h2 className="heading-3 mb-3">Kurz máš hotový</h2>
+      <p className="mb-5 max-w-prose leading-relaxed text-ink-500">
+        Certifikát s tvou přezdívkou už na tebe čeká. Rodič ho získá, až založí účet:
+        tvůj postup z tohoto prohlížeče se do něj přenese a certifikát se vystaví s datem,
+        kdy jsi kurz dokončil.
+      </p>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <ButtonLink
+          href="/registrace"
+          size="lg"
+          onClick={() => {
+            void track(EVENT.SIGNUP_START, {
+              after_lesson: lessonSlug,
+              order: lessonOrder,
+              course: courseSlug,
+            });
+          }}
+        >
+          Založit účet a získat certifikát
+        </ButtonLink>
+        <ButtonLink
+          href={campHref}
+          variant="outline"
+          size="lg"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => {
+            void track(EVENT.CAMP_CTA_CLICK, { placement: "konec-kurzu", destination: "weeks.cz/tabory" });
+          }}
+        >
+          Co dál: letní tábory Weeks
+        </ButtonLink>
+      </div>
+
+      <p className="mt-5 font-mono text-xs text-ink-300">
+        účet zakládá rodič · e-mail dítěte nepotřebujeme · lekce zůstávají otevřené
+      </p>
+    </Card>
   );
 }

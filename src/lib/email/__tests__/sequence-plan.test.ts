@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planSequence } from "../sequence";
+import { nextUnfinishedLesson, nudgeEmail, planSequence } from "../sequence";
 
 const none = new Set<string>();
 
@@ -38,5 +38,57 @@ describe("planSequence", () => {
 
   it("hranice tolerance: přesně 2 dny zpoždění se ještě posílá", () => {
     expect(planSequence(5, new Set(["welcome"]))).toEqual({ send: "nudge", missed: [] });
+  });
+});
+
+describe("nextUnfinishedLesson", () => {
+  const lessons = [
+    { id: "a", slug: "rozsvit-ledku", orderIndex: 1 },
+    { id: "b", slug: "blikani", orderIndex: 2 },
+    { id: "c", slug: "tlacitko", orderIndex: 3 },
+  ];
+
+  it("bez postupu je první lekce", () => {
+    expect(nextUnfinishedLesson(lessons, new Set())?.slug).toBe("rozsvit-ledku");
+  });
+
+  it("jde na první nedokončenou, ne za poslední dokončenou", () => {
+    // Lekce 2 přeskočená, lekce 1 hotová: vrací se k lekci 2.
+    expect(nextUnfinishedLesson(lessons, new Set(["a"]))?.slug).toBe("blikani");
+    expect(nextUnfinishedLesson(lessons, new Set(["a", "c"]))?.slug).toBe("blikani");
+  });
+
+  it("řadí podle orderIndex, ne podle pořadí v poli", () => {
+    const shuffled = [
+      { id: "c", slug: "tlacitko", orderIndex: 3 },
+      { id: "a", slug: "rozsvit-ledku", orderIndex: 1 },
+      { id: "b", slug: "blikani", orderIndex: 2 },
+    ];
+    expect(nextUnfinishedLesson(shuffled, new Set(["a"]))?.slug).toBe("blikani");
+  });
+
+  it("když je hotovo všechno, vrací null", () => {
+    expect(nextUnfinishedLesson(lessons, new Set(["a", "b", "c"]))).toBeNull();
+  });
+});
+
+describe("nudgeEmail odkaz", () => {
+  const base = { nick: "Tomáš", formal: false, inCatchment: false };
+
+  it("pokračování vede na první nedokončenou lekci", () => {
+    const t = nudgeEmail({ ...base, startedLearning: true, nextLessonSlug: "tlacitko" });
+    expect(t.content.button?.url).toContain("/kurz/iot/tlacitko/?");
+    expect(t.content.button?.label).toBe("Pokračovat");
+  });
+
+  it("kurz hotový → odkaz na kurz, ne na lekci 1", () => {
+    const t = nudgeEmail({ ...base, startedLearning: true, nextLessonSlug: null });
+    expect(t.content.button?.url).toMatch(/\/kurz\/iot\/\?/);
+    expect(t.content.button?.url).not.toContain("rozsvit-ledku");
+  });
+
+  it("bez postupu se zve na první lekci", () => {
+    const t = nudgeEmail({ ...base, startedLearning: false, nextLessonSlug: null });
+    expect(t.content.button?.url).toContain("/kurz/iot/rozsvit-ledku/?");
   });
 });

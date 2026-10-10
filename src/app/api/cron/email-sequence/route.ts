@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendTemplate } from "@/lib/email/send";
-import { SEQUENCE, buildStep, planSequence, type SequenceContext } from "@/lib/email/sequence";
+import {
+  COURSE_SLUG,
+  SEQUENCE,
+  buildStep,
+  nextUnfinishedLesson,
+  planSequence,
+  type LessonRef,
+  type SequenceContext,
+} from "@/lib/email/sequence";
 
 /**
  * Cron sekvence po registraci.
@@ -80,7 +88,13 @@ export async function GET(request: Request) {
 
   const ids = parents.map((p) => p.id);
 
-  const [{ data: sentLog }, { data: children }, { data: catchmentRegions }, { data: progress }] =
+  const [
+    { data: sentLog },
+    { data: children },
+    { data: catchmentRegions },
+    { data: progress },
+    { data: courseLessonRows },
+  ] =
     await Promise.all([
       service.from("email_log").select("parent_id, step").in("parent_id", ids),
       service
@@ -89,12 +103,29 @@ export async function GET(request: Request) {
         .in("parent_id", ids)
         .is("archived_at", null),
       service.from("regions").select("code").eq("is_camp_catchment", true),
-      service.from("progress").select("child_id").eq("status", "completed"),
+      service.from("progress").select("child_id, lesson_id").eq("status", "completed"),
+      service
+        .from("lessons")
+        .select("id, slug, order_index, courses!inner(slug)")
+        .eq("is_published", true)
+        .eq("courses.slug", COURSE_SLUG),
     ]);
 
   const already = new Set((sentLog ?? []).map((r) => `${r.parent_id}:${r.step}`));
   const catchment = new Set((catchmentRegions ?? []).map((r) => r.code));
   const completedChildren = new Set((progress ?? []).map((p) => p.child_id));
+  /* Dokončené lekce po dítěti: nudge má vést k první nedokončené. */
+  const completedByChild = new Map<string, Set<string>>();
+  for (const p of progress ?? []) {
+    const set = completedByChild.get(p.child_id) ?? new Set<string>();
+    set.add(p.lesson_id);
+    completedByChild.set(p.child_id, set);
+  }
+  const courseLessons: LessonRef[] = (courseLessonRows ?? []).map((l) => ({
+    id: l.id,
+    slug: l.slug,
+    orderIndex: l.order_index,
+  }));
 
   const childByParent = new Map<string, { nick: string; id: string }>();
   for (const c of children ?? []) {
@@ -194,6 +225,9 @@ export async function GET(request: Request) {
         formal: parent.account_type !== "self",
         inCatchment: catchment.has(parent.region_code ?? ""),
         startedLearning: completedChildren.has(child.id),
+        nextLessonSlug:
+          nextUnfinishedLesson(courseLessons, completedByChild.get(child.id) ?? new Set())?.slug ??
+          null,
       };
 
       const result = await sendTemplate(parent.email, buildStep(step.id, ctx));

@@ -73,9 +73,35 @@ export function planSequence(ageDays: number, sent: ReadonlySet<string>): Sequen
   return { send, missed };
 }
 
+/** Kurz, na který odkazují e-maily. Osnova je v DB; odkazy jsou napevno. */
+export const COURSE_SLUG = "iot";
+const FIRST_LESSON_SLUG = "rozsvit-ledku";
+
+export interface LessonRef {
+  id: string;
+  slug: string;
+  orderIndex: number;
+}
+
+/**
+ * První lekce v pořadí, kterou dítě nedokončilo. Null, když je hotovo všechno.
+ *
+ * Bere se první nedokončená, ne „za poslední dokončenou": dítě, které přeskočilo
+ * lekci 2, se má vrátit k ní, ne pokračovat dál.
+ */
+export function nextUnfinishedLesson(
+  lessons: readonly LessonRef[],
+  completedLessonIds: ReadonlySet<string>,
+): LessonRef | null {
+  const ordered = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+  return ordered.find((l) => !completedLessonIds.has(l.id)) ?? null;
+}
+
 export interface SequenceContext {
   /** Přezdívka učícího se profilu. */
   nick: string;
+  /** Slug nedokončené lekce, na kterou nudge odkazuje. Null = kurz hotový. */
+  nextLessonSlug: string | null;
   /** Tyká se samostatnému účtu, vyká rodiči. */
   formal: boolean;
   /** Ve spádu se zve na tábor, jinak na čekačku měst. */
@@ -131,10 +157,20 @@ export function nudgeEmail(ctx: SequenceContext): EmailTemplate {
             `Založili jste profil ${ctx.nick}, ale k první lekci se zatím nikdo nedostal.`,
             "Je to dvacet minut a na konci svítí LED, kterou dítě samo zapojilo. Nic se neinstaluje, všechno běží v prohlížeči.",
           ],
-      button: {
-        label: ctx.startedLearning ? "Pokračovat" : "Zkusit první lekci",
-        url: `${SITE.url}/kurz/iot/rozsvit-ledku/?${utm("nudge")}`,
-      },
+      button: ctx.startedLearning
+        ? ctx.nextLessonSlug
+          ? {
+              label: "Pokračovat",
+              url: `${SITE.url}/kurz/${COURSE_SLUG}/${ctx.nextLessonSlug}/?${utm("nudge")}`,
+            }
+          : {
+              label: "Zpátky na kurz",
+              url: `${SITE.url}/kurz/${COURSE_SLUG}/?${utm("nudge")}`,
+            }
+        : {
+            label: "Zkusit první lekci",
+            url: `${SITE.url}/kurz/${COURSE_SLUG}/${FIRST_LESSON_SLUG}/?${utm("nudge")}`,
+          },
       footnote:
         "Tohle je obchodní sdělení. Odhlásíte se jedním tlačítkem v sekci Účet → Souhlasy.",
     },
