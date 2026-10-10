@@ -46,17 +46,14 @@ export const lesson2: Lesson = {
       { role: "led", type: "led-red", label: "červená LED" },
       { role: "odpor", type: "resistor-220", label: "rezistor" },
     ],
-    connections: [
+    connections: [],
+    series: [
       {
         from: { role: "arduino", pin: "D8" },
-        to: { role: "led", pin: "anode" },
-        through: ["resistor-220"],
-        hint: "Anoda LED na pin 8 přes rezistor — stejně jako minule.",
-      },
-      {
-        from: { role: "led", pin: "cathode" },
         to: { role: "arduino", pin: "GND-1" },
-        hint: "Katoda LED na GND, aby se obvod uzavřel.",
+        led: { role: "led", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
+        hint: "Anoda LED na pin 8, rezistor v téže řadě — stejně jako minule.",
       },
     ],
   },

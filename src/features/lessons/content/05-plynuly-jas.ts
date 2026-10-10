@@ -45,19 +45,16 @@ export const lesson5: Lesson = {
       { role: "led", type: "led-red", label: "červená LED" },
       { role: "odpor", type: "resistor-220", label: "rezistor" },
     ],
-    connections: [
+    connections: [],
+    series: [
       {
         from: { role: "arduino", pin: "D9" },
-        to: { role: "led", pin: "anode" },
-        through: ["resistor-220"],
+        to: { role: "arduino", pin: "GND-1" },
+        led: { role: "led", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
         hint:
           "Tentokrát pin 9, ne 8 — jen piny s vlnovkou umí plynulý jas. " +
-          "Rezistor v cestě zůstává.",
-      },
-      {
-        from: { role: "led", pin: "cathode" },
-        to: { role: "arduino", pin: "GND-1" },
-        hint: "Katoda LED na GND.",
+          "Rezistor patří do téže řady jako LED.",
       },
     ],
   },

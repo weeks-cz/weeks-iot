@@ -199,3 +199,80 @@ describe("checkWiring — hlášky", () => {
     expect(PITCH).toBeGreaterThan(0);
   });
 });
+
+/** Stejné zadání jako SPEC, ale rezistor smí být na kterékoli straně LED. */
+const SERIES_SPEC: WiringSpec = {
+  parts: [
+    { role: "arduino", type: "arduino-uno", label: "Arduino" },
+    { role: "led", type: "led-red", label: "červená LED" },
+    { role: "odpor", type: "resistor-220", label: "rezistor" },
+  ],
+  connections: [],
+  series: [
+    {
+      from: { role: "arduino", pin: "D8" },
+      to: { role: "arduino", pin: "GND-1" },
+      led: { role: "led", anode: "anode", cathode: "cathode" },
+      resistor: "resistor-220",
+      hint: "LED s rezistorem v řadě: pin 8 → LED → zem.",
+    },
+  ],
+};
+
+describe("checkWiring — LED v řadě s rezistorem na libovolné straně", () => {
+  it("projde s rezistorem na straně anody", () => {
+    const c: Circuit = {
+      comps: [UNO, LED, RES],
+      wires: [
+        w(["uno", "D8"], ["r", "a"]),
+        w(["r", "b"], ["led", "anode"]),
+        w(["led", "cathode"], ["uno", "GND-1"]),
+      ],
+    };
+    expect(checkWiring(c, SERIES_SPEC).ok).toBe(true);
+  });
+
+  it("projde s rezistorem na straně katody (pin → LED → rezistor → zem)", () => {
+    const c: Circuit = {
+      comps: [UNO, LED, RES],
+      wires: [
+        w(["uno", "D8"], ["led", "anode"]),
+        w(["led", "cathode"], ["r", "a"]),
+        w(["r", "b"], ["uno", "GND-1"]),
+      ],
+    };
+    const r = checkWiring(c, SERIES_SPEC);
+    expect(r.ok).toBe(true);
+    expect(r.connections.some((x) => x.from.pin === "cathode" && x.through?.length)).toBe(true);
+  });
+
+  it("LED bez rezistoru ani na jedné straně neprojde", () => {
+    const c: Circuit = {
+      comps: [UNO, LED, RES],
+      wires: [
+        w(["uno", "D8"], ["led", "anode"]),
+        w(["led", "cathode"], ["uno", "GND-1"]),
+      ],
+    };
+    const r = checkWiring(c, SERIES_SPEC);
+    expect(r.ok).toBe(false);
+    expect(r.issues.length).toBeGreaterThan(0);
+  });
+
+  it("sdílená zem přes napájecí lištu projde i s rezistorem na katodě", () => {
+    // LED katoda → rezistor → lišta; lišta → GND. Bez přímého drátku na Arduino.
+    const bb = comp("bb", "breadboard-half");
+    const c: Circuit = {
+      comps: [UNO, bb, LED, RES],
+      wires: [
+        w(["uno", "D8"], ["bb", "row-A-3"]),
+        w(["bb", "row-D-3"], ["led", "anode"]),
+        w(["led", "cathode"], ["bb", "row-C-9"]),
+        w(["bb", "row-A-9"], ["r", "a"]),
+        w(["r", "b"], ["bb", "bot-−-25"]),
+        w(["bb", "bot-−-1"], ["uno", "GND-1"]),
+      ],
+    };
+    expect(checkWiring(c, SERIES_SPEC).ok).toBe(true);
+  });
+});

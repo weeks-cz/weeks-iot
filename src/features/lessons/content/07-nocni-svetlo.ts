@@ -76,16 +76,14 @@ export const lesson7: Lesson = {
           "Výstup AO (analog out) veď na pin A0. Tudy chodí naměřená hodnota — " +
           "pin DO vedle něj umí jen ano/ne, a to nám nestačí.",
       },
+    ],
+    series: [
       {
         from: { role: "arduino", pin: "D9" },
-        to: { role: "led", pin: "anode" },
-        through: ["resistor-220"],
-        hint: "LED zapoj na pin 9 přes rezistor — jako v lekci o plynulém jasu.",
-      },
-      {
-        from: { role: "led", pin: "cathode" },
         to: { role: "arduino", pin: "GND-1" },
-        hint: "Katoda LED na GND.",
+        led: { role: "led", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
+        hint: "LED zapoj na pin 9, rezistor v téže řadě — jako v lekci o plynulém jasu.",
       },
     ],
   },
