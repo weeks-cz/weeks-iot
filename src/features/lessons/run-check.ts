@@ -64,6 +64,13 @@ export interface PinDiagnosticMessage {
 
 /** Hlášky k diagnostice pinů. Pin je číslo, jak ho dítě vidí v kódu i v blocích. */
 export function pinDiagnosticMessage(d: PinDiagnostic): PinDiagnosticMessage {
+  if (d.kind === "no-pwm") {
+    return {
+      pin: d.pin,
+      message: `Pin ${d.pin} nemá PWM (vlnovku ~), takže analogWrite na něm umí jen zapnout, nebo vypnout. Plynulý jas dá pin s vlnovkou.`,
+      blockMessage: `Pin ${d.pin} nemá PWM (vlnovku ~), takže plynulý jas na něm nepůjde — jen zapnutí a vypnutí.`,
+    };
+  }
   return {
     pin: d.pin,
     message: `Pin ${d.pin} není nastavený jako výstup — přidej do setup() pinMode(${d.pin}, OUTPUT).`,
@@ -109,10 +116,11 @@ export function runLessonChecks(
     };
   }
 
-  const diagnostics = new Map<number, PinDiagnosticMessage>();
+  const diagnostics = new Map<string, PinDiagnosticMessage>();
   const collect = (run: { diagnostics: PinDiagnostic[] }) => {
     for (const d of run.diagnostics) {
-      if (!diagnostics.has(d.pin)) diagnostics.set(d.pin, pinDiagnosticMessage(d));
+      const key = `${d.kind}:${d.pin}`;
+      if (!diagnostics.has(key)) diagnostics.set(key, pinDiagnosticMessage(d));
     }
   };
 

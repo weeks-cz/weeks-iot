@@ -127,6 +127,8 @@ class NetVoltage {
   constructor(
     private readonly nets: NetMap,
     private readonly circuit: Circuit,
+    /** Tlačítka, která jsou právě stisknutá — nestisknuté přerušuje zem. */
+    private readonly pressed: Set<string>,
   ) {}
 
   /** Nastaví úroveň sítě, do které patří daný pin. */
@@ -156,52 +158,14 @@ class NetVoltage {
     return this.groundNets().has(this.nets.netOf(pinKey(compId, pinName)));
   }
 
-  /** Sítě, ze kterých se dá dostat na zem. Počítá se jednou za snímek. */
+  /**
+   * Sítě, ze kterých se dá dostat na zem. Počítá se jednou za snímek a
+   * stisk tlačítka se započítává: nestisknuté tlačítko svoje poloviny
+   * nespojuje, takže LED za ním nedostane zem (stejně jako na desce).
+   */
   private groundNets(): Set<string> {
-    if (this.grounded) return this.grounded;
-
-    const found = new Set<string>();
-    this.grounded = found;
-
-    const uno = this.circuit.comps.find((c) => c.type === "arduino-uno");
-    if (!uno) return found;
-
-    const spec = getComponentSpec("arduino-uno");
-    const queue: string[] = [];
-    for (const g of GROUND_PINS) {
-      if (!spec.pins.some((p) => p.name === g)) continue;
-      const net = this.nets.netOf(pinKey(uno.id, g));
-      if (found.has(net)) continue;
-      found.add(net);
-      queue.push(net);
-    }
-
-    /* Zem se šíří pasivními součástkami — rezistorem, sepnutým tlačítkem,
-       dráhou potenciometru. Stisk se tu záměrně neřeší: tlačítko v cestě
-       k zemi je pro tuhle otázku vodič, protože jinak by se obvod dítěte
-       tvářil rozpojeně, dokud ho někdo nedrží. */
-    const passive = new Set(["resistor-220", "pushbutton", "potentiometer"]);
-
-    while (queue.length > 0) {
-      const net = queue.shift()!;
-
-      for (const comp of this.circuit.comps) {
-        if (!passive.has(comp.type)) continue;
-
-        const pins = getComponentSpec(comp.type).pins;
-        const touches = pins.some((p) => this.nets.netOf(pinKey(comp.id, p.name)) === net);
-        if (!touches) continue;
-
-        for (const p of pins) {
-          const other = this.nets.netOf(pinKey(comp.id, p.name));
-          if (found.has(other)) continue;
-          found.add(other);
-          queue.push(other);
-        }
-      }
-    }
-
-    return found;
+    if (!this.grounded) this.grounded = groundedNets(this.circuit, this.nets, this.pressed);
+    return this.grounded;
   }
 }
 
@@ -221,7 +185,7 @@ export function readFrame(
      U přechodu jasu se snímků pořizují stovky — počítat sítě u každého
      zvlášť je ta nejdražší věc, kterou by simulace mohla dělat. */
   const nets = precomputed ?? resolveNets(circuit);
-  const voltage = new NetVoltage(nets, circuit);
+  const voltage = new NetVoltage(nets, circuit, inputs.pressed ?? new Set<string>());
 
   const uno = circuit.comps.find((c) => c.type === "arduino-uno");
 
@@ -284,7 +248,10 @@ export function readFrame(
     }
 
     if (comp.type === "piezo-buzzer") {
-      buzzers.push({ compId: comp.id, frequency: buzzerFrequency(circuit, comp, board, nets) });
+      buzzers.push({
+        compId: comp.id,
+        frequency: buzzerFrequency(circuit, comp, board, nets, voltage),
+      });
     }
   }
 
@@ -367,13 +334,22 @@ function buzzerFrequency(
   buzzer: CircuitComponent,
   board: BoardState,
   nets: NetMap,
+  voltage: NetVoltage,
 ): number {
   const uno = circuit.comps.find((c) => c.type === "arduino-uno");
   if (!uno) return 0;
 
+  /* Bzučák pípá, jen když jeho druhý pól vede na zem. Bez ní nemá proud kam
+     téct a tón nezazní. */
+  if (!voltage.isGround(buzzer.id, "-")) return 0;
+
   const spec = getComponentSpec("arduino-uno");
 
   for (const [pinNumber, frequency] of board.tones) {
+    /* Tón s délkou dozněl — pin už nic nehraje. */
+    const endsAt = board.toneEnds.get(pinNumber);
+    if (endsAt !== undefined && endsAt <= board.elapsedMs) continue;
+
     const pinName = spec.pins.find((p) => arduinoPinNumber(p.name) === pinNumber)?.name;
     if (!pinName) continue;
 
@@ -459,8 +435,8 @@ function readInputsFromCircuit(
   if (!uno) return values;
 
   const nets = resolveNets(circuit);
-  const voltage = new NetVoltage(nets, circuit);
   const pressed = inputs.pressed ?? new Set<string>();
+  const voltage = new NetVoltage(nets, circuit, pressed);
 
   const spec = getComponentSpec("arduino-uno");
   for (const p of POWER_PINS) {
@@ -524,7 +500,8 @@ function readInputsFromCircuit(
 
 /** Co program udělal jinak, než by udělala skutečná deska. */
 export interface PinDiagnostic {
-  kind: "not-output";
+  /** `not-output`: zápis bez pinMode OUTPUT. `no-pwm`: analogWrite na pinu bez vlnovky. */
+  kind: "not-output" | "no-pwm";
   pin: number;
 }
 
@@ -764,13 +741,17 @@ export function runProgram(
     return { ok, frames, diagnostics: diagnostics(), ...extra };
   };
 
-  /* Piny, do kterých se zapisovalo bez pinMode OUTPUT. Hlásí se až na
-     konci — dítě se má dozvědět, co udělalo, ne každé jednotlivé zapsání. */
+  /* Co program udělal jinak, než by udělala deska. Hlásí se až na konci —
+     dítě se má dozvědět, co udělalo, ne každé jednotlivé zapsání. */
   function diagnostics(): PinDiagnostic[] {
-    return [...state.unsetWrites]
+    const notOutput = [...state.unsetWrites]
       .filter((pin) => state.modes.get(pin) !== "output")
       .sort((a, b) => a - b)
       .map((pin) => ({ kind: "not-output" as const, pin }));
+    const noPwm = [...state.noPwmWrites]
+      .sort((a, b) => a - b)
+      .map((pin) => ({ kind: "no-pwm" as const, pin }));
+    return [...notOutput, ...noPwm];
   }
 
   try {

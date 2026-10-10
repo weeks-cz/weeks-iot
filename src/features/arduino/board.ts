@@ -13,6 +13,12 @@ export type PinMode = "input" | "output" | "input_pullup" | "unset";
 export const HIGH = 1;
 export const LOW = 0;
 
+/**
+ * Piny Uno s PWM (vlnovka `~`). Na ostatních se analogWrite chová jako
+ * vypínač: od 128 výš zapne, jinak vypne.
+ */
+export const PWM_PINS: ReadonlySet<number> = new Set([3, 5, 6, 9, 10, 11]);
+
 export interface SerialLine {
   text: string;
   /** Kolik milisekund běhu uplynulo, když se řádek vypsal. */
@@ -50,6 +56,10 @@ export interface BoardState {
    * výstup. Skutečná deska na nich nic nezapne — kid dostane vysvětlení.
    */
   unsetWrites: Set<number>;
+  /** Konec tónu (ms virtuálního času) u tónů s délkou. Bez konce tón zní pořád. */
+  toneEnds: Map<number, number>;
+  /** Piny bez PWM, na které program psal analogWrite. */
+  noPwmWrites: Set<number>;
 }
 
 export function emptyBoardState(): BoardState {
@@ -62,6 +72,8 @@ export function emptyBoardState(): BoardState {
     tones: new Map(),
     elapsedMs: 0,
     unsetWrites: new Set(),
+    toneEnds: new Map(),
+    noPwmWrites: new Set(),
   };
 }
 
@@ -108,7 +120,14 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     analogWrite(pin, value) {
       /* Jako na skutečné desce: analogWrite přepne pin na výstup sám. */
       state.modes.set(pin, "output");
-      state.outputs.set(pin, Math.max(0, Math.min(255, Math.round(value))));
+      const v = Math.max(0, Math.min(255, Math.round(value)));
+      if (PWM_PINS.has(pin)) {
+        state.outputs.set(pin, v);
+      } else {
+        /* Bez PWM je to jen vypínač. Dítě to má vědět — diagnostika to řekne. */
+        state.noPwmWrites.add(pin);
+        state.outputs.set(pin, v >= 128 ? 255 : 0);
+      }
     },
 
     analogRead(pin) {
@@ -152,14 +171,17 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
       state.serial.push({ text: `${text}\n`, atMs: state.elapsedMs });
     },
 
-    tone(pin, frequency) {
+    tone(pin, frequency, duration) {
       /* tone() také přepne pin na výstup. */
       state.modes.set(pin, "output");
       state.tones.set(pin, frequency);
+      if (duration === undefined) state.toneEnds.delete(pin);
+      else state.toneEnds.set(pin, state.elapsedMs + Math.max(0, duration));
     },
 
     noTone(pin) {
       state.tones.delete(pin);
+      state.toneEnds.delete(pin);
     },
   };
 }

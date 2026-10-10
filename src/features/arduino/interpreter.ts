@@ -403,7 +403,8 @@ export class Interpreter {
       case "millis":
         return this.board.millis();
       case "tone":
-        this.board.tone(pin(), num(values[1]));
+        /* tone(pin, frekvence) zní pořád; tone(pin, frekvence, délka) jen tu dobu. */
+        this.board.tone(pin(), num(values[1]), values.length > 2 ? num(values[2]) : undefined);
         return 0;
       case "noTone":
         this.board.noTone(pin());
