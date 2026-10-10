@@ -105,7 +105,7 @@ export default async function MetricsPage({
             label="V cílové skupině"
             stat={m.inTargetGroup}
             unit="%"
-            hint="Účty s profilem ve věku 10–15 let."
+            hint="Účty s profilem ve věku 9–15 let."
           />
           <StatTile
             label="Návrat v dalším týdnu"

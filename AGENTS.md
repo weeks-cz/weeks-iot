@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Weeks Učebna
 
-Výuková platforma pro děti 10–15 let na `ucebna.weeks.cz`. Není to samostatný
+Výuková platforma pro děti od 9 let na `ucebna.weeks.cz`. Není to samostatný
 byznys — je to trychtýř na letní tábory Weeks, který si na sebe vydělá
 předplatným.
 

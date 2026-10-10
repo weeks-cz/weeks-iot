@@ -13,20 +13,19 @@ import { REGION_CODES } from "@/lib/regions";
 /**
  * Kdo se smí zaregistrovat.
  *
- * Cílová skupina je 10–15 let, ale to je věc MĚŘENÍ, ne přístupu. Horní
- * strop v registraci nic nechrání — jen odmítá lidi, kteří by si kurz
- * chtěli projít: staršího sourozence, učitele, rodiče, který si to chce
- * vyzkoušet dřív než dítě. Metriku brány to neohrozí, protože se od
- * migrace 006 ukládá přesné datum a věkové pásmo jde spočítat v dotazu
- * (viz docs/metriky-brana-1.sql).
+ * Učebna nemá věkový limit: doporučujeme od 9 let, horní hranici nikdo
+ * nestanoví. Staršího sourozence, učitele nebo rodiče, který si to chce
+ * vyzkoušet, nic neodmítá. Věk ovlivní jen to, kdo podepíše souhlas
+ * (viz needsParentalConsent) — a to je jediná věková logika v registraci.
  *
- * MAX_AGE proto slouží jen jako pojistka proti překlepu v roce.
+ * MIN_AGE a MAX_AGE jsou jen pojistka proti překlepu v datu (budoucí den,
+ * rok 1920), ne věkový limit.
  */
-export const MIN_AGE = 6;
+export const MIN_AGE = 0;
 export const MAX_AGE = 100;
 
-/** Pásmo, na které se počítají čísla brány. Neomezuje registraci. */
-export const TARGET_MIN_AGE = 10;
+/** Pásmo, na které se počítají čísla brány (admin metriky). Neomezuje registraci. */
+export const TARGET_MIN_AGE = 9;
 export const TARGET_MAX_AGE = 15;
 
 /** Věk souhlasu podle § 7 zák. č. 110/2019 Sb. */
@@ -134,7 +133,7 @@ export const birthDateSchema = z
   .refine((value) => {
     const age = ageOn(value);
     return age >= MIN_AGE && age <= MAX_AGE;
-  }, `Zadejte datum narození. Učebna je od ${MIN_AGE} let výš.`);
+  }, "Zkontrolujte datum narození. Nesmí být v budoucnosti ani příliš daleko v minulosti.");
 
 export const avatarSchema = z
   .string()

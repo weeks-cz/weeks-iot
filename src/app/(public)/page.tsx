@@ -114,7 +114,7 @@ export default async function HomePage({
         <div className="section-container relative grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-12 lg:py-24">
           <div className="lg:col-span-7">
             <p className="mb-5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-accent-400">
-              Online učebna Weeks · pro děti 10–15 let
+              Online učebna Weeks · pro děti od 9 let
             </p>
 
             <h1 className="heading-1 mb-6 text-balance text-paper">

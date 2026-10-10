@@ -5,6 +5,7 @@ import {
   MIN_PASSWORD_LENGTH,
   ageOn,
   birthDateRange,
+  birthDateSchema,
   emailSchema,
   needsParentalConsent,
   newPasswordSchema,
@@ -184,8 +185,29 @@ describe("birthDateSchema", () => {
     expect(r.success).toBe(true);
   });
 
-  it("odmítne příliš mladé dítě", () => {
-    expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: "2025-01-01" })).success).toBe(false);
+  it("nemá věkový limit: osmiletý i padesátiletý projdou", () => {
+    expect(birthDateSchema.safeParse("2018-03-10").success).toBe(true);
+    expect(birthDateSchema.safeParse("1976-03-10").success).toBe(true);
+  });
+
+  it("osmileté dítě podepisuje souhlas rodič, padesátník sám", () => {
+    const kid = onboardingSchema.safeParse(
+      validOnboarding({ childBirthDate: "2018-03-10", parentalConsent: true }),
+    );
+    expect(kid.success).toBe(true);
+
+    const adult = onboardingSchema.safeParse(
+      validOnboarding({
+        childBirthDate: "1976-03-10",
+        parentalConsent: false,
+        selfConsent: true,
+      }),
+    );
+    expect(adult.success).toBe(true);
+  });
+
+  it("odmítne datum v budoucnosti", () => {
+    expect(onboardingSchema.safeParse(validOnboarding({ childBirthDate: "2099-01-01" })).success).toBe(false);
   });
 
   it("odmítne nesmyslný rok jako překlep", () => {

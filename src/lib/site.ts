@@ -19,7 +19,7 @@ export const SITE = {
   name: "Weeks Učebna",
   tagline: "Postav si vlastní techniku",
   description:
-    "Online učebna pro děti 10–15 let. Zapojíš obvod s Arduinem a naprogramuješ ho " +
+    "Online učebna pro děti od 9 let. Zapojíš obvod s Arduinem a naprogramuješ ho " +
     "z bloků nebo v kódu — první lekci si zkusíš hned, bez registrace.",
   url: resolveSiteUrl(),
   supportEmail: "info@weeks.cz",
