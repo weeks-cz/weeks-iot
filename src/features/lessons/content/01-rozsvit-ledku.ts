@@ -1,4 +1,4 @@
-import { ledEverOn, ledNeverOn, type Lesson } from "../types";
+import { ledEverOn, ledNeverOn, ledStaysOn, type Lesson } from "../types";
 import {
   digitalWrite,
   pinMode,
@@ -130,11 +130,17 @@ void loop() {
         "LED zatím nesvítí. Do „pak pořád dokola“ patří „na pin 8 pošli HIGH“ — a do „na začátku jednou“ blok „nastav pin 8 jako výstup“, jinak Arduino neví, že má pin ovládat.",
     },
     {
-      label: "Program řídí pin 8",
+      label: "LED zůstane svítit",
       iterations: 3,
-      pinInputs: {},
-      verify: (frames) => ledEverOn(frames),
-      hint: "Zkontroluj, že píšeš na stejný pin, na kterém máš LED zapojenou.",
+      /* Lekce 1 je o tom, že LED svítí a svítí dál. Blikání patří do lekce 2:
+         program, který LED zase zhasne, tady neprojde. */
+      verify: (frames) => ledStaysOn(frames),
+      hint:
+        "LED po chvíli zhasne. Tady má svítit pořád — zkontroluj, že v loop() " +
+        "nezapisuješ LOW a že píšeš na pin, na kterém máš LED zapojenou.",
+      blockHint:
+        "LED po chvíli zhasne. Tady má svítit pořád — zkontroluj, jestli v „pak pořád dokola“ " +
+        "nic LED nevypíná a jestli posíláš signál na pin, na kterém máš LED.",
     },
   ],
 };

@@ -174,6 +174,36 @@ export function runDurationMs(frames: SimulationFrame[]): number {
   return last.elapsedMs + (last.durationMs ?? 0);
 }
 
+/**
+ * Nejkratší doba, po kterou musí stav vydržet, aby se počítal jako pauza.
+ * Kratší zhasnutí je už jen záblesk, ne pauza mezi změnami.
+ */
+export const PAUSE_MS = 50;
+
+/**
+ * Je mezi svícením a tmou pauza? Stav „svítí" i stav „nesvítí" musí každý
+ * vydržet aspoň PAUSE_MS. Bez delay() obojí trvá nula a LED jen svítí.
+ */
+export function ledPausesBetweenChanges(frames: SimulationFrame[], comp?: string | null): boolean {
+  let onLong = false;
+  let offLong = false;
+  frames.forEach((f, i) => {
+    const b = brightnesses([f], comp)[0] ?? 0;
+    const d = f.durationMs ?? (frames[i + 1]?.elapsedMs ?? f.elapsedMs) - f.elapsedMs;
+    if (d < PAUSE_MS) return;
+    if (b > 0) onLong = true;
+    else offLong = true;
+  });
+  return onLong && offLong;
+}
+
+/** Rozsvítí se a pak už nezhasne? Pro lekci „rozsviť", ne „blikej". */
+export function ledStaysOn(frames: SimulationFrame[], comp?: string | null): boolean {
+  const states = brightnesses(frames, comp).map((b) => b > 0);
+  const first = states.indexOf(true);
+  return first >= 0 && states.slice(first).every(Boolean);
+}
+
 /** Rozezněl se bzučák? */
 export function buzzerSounded(frames: SimulationFrame[]): boolean {
   return frames.some((f) => f.buzzers.some((b) => b.frequency > 0));

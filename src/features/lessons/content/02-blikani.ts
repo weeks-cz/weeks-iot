@@ -1,4 +1,4 @@
-import { ledBlinked, runDurationMs, type Lesson } from "../types";
+import { ledBlinked, ledPausesBetweenChanges, type Lesson } from "../types";
 import {
   digitalWrite,
   pinMode,
@@ -133,7 +133,7 @@ void loop() {
     {
       label: "Mezi změnami je pauza",
       iterations: 4,
-      verify: (frames) => runDurationMs(frames) > 0,
+      verify: (frames) => ledPausesBetweenChanges(frames),
       hint:
         "Bez delay() by LED blikala tisíckrát za vteřinu a vypadala by, že jen svítí. " +
         "Přidej delay() mezi rozsvícení a zhasnutí.",
