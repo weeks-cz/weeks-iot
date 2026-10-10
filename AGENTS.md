@@ -194,6 +194,26 @@ Amber je vyhrazená hlavní akci. Dvě amber tlačítka na jedné obrazovce znam
 
 Mobile-first od 320 px. Dotykové cíle minimálně 44 px.
 
+## Měření, cookies a tábor
+
+- **Cookies a měřicí skripty jsou za souhlasem.** Lišta je
+  `src/features/cookies/CookieBanner.tsx`, souhlas žije jen v `localStorage`
+  (`ucebna-cookie-consent`, verze `COOKIE_CONSENT_VERSION` — bump = nový dotaz).
+  GA4 (`NEXT_PUBLIC_GA_ID`) se načte po analytickém souhlasu, Meta Pixel
+  (`NEXT_PUBLIC_FB_PIXEL_ID`) po marketingovém. Bez env proměnné se nenačte nic.
+- **Pixel ne na dětské obrazovky.** `pixelAllowedFor` vylučuje `/ucim-se*`
+  a lekce `/kurz/<kurz>/<lekce>`. GA běží všude po souhlasu. Kdo přidá novou
+  dětskou routu, přidá ji i tam.
+- **Do GA jde jen whitelist** (`GA_PARAMS` v `vendors.ts`) a jen funnel
+  události. Zápis do našeho Supabase se nemění — `track()` pošle vždy jako dřív.
+- **Server-side Meta CAPI** (`CompleteRegistration` v `onboarding/actions.ts`)
+  se posílá JEN s marketingovým souhlasem z onboardingu (`marketing-v3`).
+- **`/tabor` je vypnutý.** Routa vrací 404, pokud není `TABOR_ENABLED=1`.
+  PINy nemají výchozí hodnoty: prázdný PIN nikdy nepustí dovnitř
+  (`verifyPin`), kiosek se bez env PINů nedá odemknout.
+- **E2E smoke test** (`npm run e2e`, Playwright). Čte, nezakládá účty. Lokálně
+  spustí `npm run dev`; proti běžícímu serveru `BASE_URL=... npm run e2e`.
+
 ## Před commitem
 
 ```bash
