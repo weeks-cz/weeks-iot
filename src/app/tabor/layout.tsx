@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Outfit } from "next/font/google";
 import { GameStateProvider } from "@legacy/components/providers/GameStateProvider";
 import { AuthProvider } from "@legacy/contexts/AuthContext";
@@ -30,6 +31,11 @@ export const metadata: Metadata = {
 };
 
 export default function TaborLayout({ children }: { children: React.ReactNode }) {
+  /* Do léta je táborový režim vypnutý (AGENTS.md, „Dvě aplikace").
+     Bez TABOR_ENABLED=1 celá routa vrací 404 — i kdyby na ni někdo přišel
+     přímou adresou. Až bude režim zase potřeba, nastaví se env na Vercelu. */
+  if (process.env.TABOR_ENABLED !== "1") notFound();
+
   return (
     <div
       className={`legacy-shell ${outfit.variable}`}

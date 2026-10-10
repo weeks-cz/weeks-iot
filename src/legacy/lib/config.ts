@@ -24,36 +24,33 @@ export const TEST_BALANCE = {
   styleTokens: 6,
 } as const;
 
-// Hardcoded fallback PINs — used when env vars below aren't set.
-// These ARE the "default PINs" the admin warning banner checks against.
-const FALLBACK_DAILY_PIN = "123";
-const FALLBACK_LECTURER_PIN = "2468";
-const FALLBACK_ADMIN_PASSWORD = "321";
-
-// PINs sourced from env so deploys can rotate them without a code change.
-// NEXT_PUBLIC_* values still ship in the JS bundle — this is not a security boundary,
-// the win is keeping production PINs out of git history.
-function envPin(envValue: string | undefined, fallback: string): string {
-  const v = envValue?.trim();
-  return v && v.length > 0 ? v : fallback;
+// Žádné výchozí PINy. Dřív tu byly fallbacky 123/2468/321, které se dostaly
+// do JS bundlu a byly veřejně známé. Bez env proměnné je PIN prázdný a kiosek
+// ho odmítá (verifyPin vrací false), takže nezabezpečený režim nevznikne tiše.
+// NEXT_PUBLIC_* hodnoty se do bundlu přesto dostanou — je to jen rotace, ne
+// bezpečnostní hranice (viz komentář u admin stránky).
+function envPin(envValue: string | undefined): string {
+  return envValue?.trim() ?? "";
 }
 
 export const DEFAULT_CONFIG: Config = {
-  dailyPin: envPin(process.env.NEXT_PUBLIC_DAILY_PIN, FALLBACK_DAILY_PIN),
-  lecturerPin: envPin(process.env.NEXT_PUBLIC_LECTURER_PIN, FALLBACK_LECTURER_PIN),
-  adminPassword: envPin(process.env.NEXT_PUBLIC_ADMIN_PASSWORD, FALLBACK_ADMIN_PASSWORD),
+  dailyPin: envPin(process.env.NEXT_PUBLIC_DAILY_PIN),
+  lecturerPin: envPin(process.env.NEXT_PUBLIC_LECTURER_PIN),
+  adminPassword: envPin(process.env.NEXT_PUBLIC_ADMIN_PASSWORD),
   maxStudents: 15,
   helpCodeCost: 15,
   helpWiringCost: 15,
   skipCost: 30,
 };
 
-// Exported so the admin warning banner can detect "still on default values".
-export const FALLBACK_PINS = {
-  dailyPin: FALLBACK_DAILY_PIN,
-  lecturerPin: FALLBACK_LECTURER_PIN,
-  adminPassword: FALLBACK_ADMIN_PASSWORD,
-} as const;
+/** Který PIN chybí v env. Admin stránka podle toho ukáže, co doplnit. */
+export function missingPinNames(config: Config = DEFAULT_CONFIG): string[] {
+  return [
+    !config.dailyPin && "denní",
+    !config.lecturerPin && "lektorský",
+    !config.adminPassword && "admin",
+  ].filter(Boolean) as string[];
+}
 
 export const STYLE_SHOP_CONFIG = {
   directUnlockCost: 40,

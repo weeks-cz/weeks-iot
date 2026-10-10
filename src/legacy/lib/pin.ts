@@ -34,12 +34,15 @@ export type PinLevel = "daily" | "lecturer" | "admin";
 
 export function verifyPin(input: string, level: PinLevel, config: Config = DEFAULT_CONFIG): boolean {
   if (PREVIEW_ALLOW_ANY_PIN) return true;
+  /* Prázdný PIN v konfiguraci znamená „nenastaveno" — nikdy nepovolí vstup,
+     ani když uživatel pošle prázdný řetězec. */
   switch (level) {
     case "daily":
-      return input === buildDailyPin() || input === config.dailyPin;
+      if (!config.dailyPin && !buildDailyPin()) return false;
+      return input === buildDailyPin() || (config.dailyPin !== "" && input === config.dailyPin);
     case "lecturer":
-      return input === config.lecturerPin;
+      return config.lecturerPin !== "" && input === config.lecturerPin;
     case "admin":
-      return input === config.adminPassword;
+      return config.adminPassword !== "" && input === config.adminPassword;
   }
 }

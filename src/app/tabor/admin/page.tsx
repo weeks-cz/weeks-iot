@@ -7,7 +7,7 @@ import { useGameState } from "@legacy/components/providers/GameStateProvider";
 import { PanelGlass } from "@legacy/components/ui/PanelGlass";
 import { Button } from "@legacy/components/ui/Button";
 import { getAllTasks } from "@legacy/lib/tasks";
-import { FALLBACK_PINS, MAX_STUDENTS_LIMIT } from "@legacy/lib/config";
+import { MAX_STUDENTS_LIMIT, missingPinNames } from "@legacy/lib/config";
 
 function getStudentStats(
   accounts: ReturnType<typeof useGameState>["state"]["accounts"],
@@ -45,7 +45,7 @@ export default function AdminPage() {
   function handleAdminLogin(e: FormEvent) {
     e.preventDefault();
     setPinError(null);
-    if (pinInput !== state.config.adminPassword) {
+    if (!state.config.adminPassword || pinInput !== state.config.adminPassword) {
       setPinError("Admin PIN není správný.");
       return;
     }
@@ -93,11 +93,7 @@ export default function AdminPage() {
   const stats = getStudentStats(state.accounts, state.config.maxStudents);
   const activeCount = stats.filter((s) => s.hasData).length;
 
-  const defaultPinsInUse = [
-    state.config.dailyPin === FALLBACK_PINS.dailyPin && "denní",
-    state.config.lecturerPin === FALLBACK_PINS.lecturerPin && "lektorský",
-    state.config.adminPassword === FALLBACK_PINS.adminPassword && "admin",
-  ].filter(Boolean) as string[];
+  const missingPins = missingPinNames(state.config);
 
   if (!state.adminAuthenticated) {
     return (
@@ -154,10 +150,10 @@ export default function AdminPage() {
         </Button>
       </header>
 
-      {defaultPinsInUse.length > 0 && (
+      {missingPins.length > 0 && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm">
           <p className="font-semibold text-red-300">
-            ⚠ Používáš výchozí PIN ({defaultPinsInUse.join(", ")})
+            ⚠ Chybí PIN ({missingPins.join(", ")}) — kiosek je zamčený
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-red-200/80">
             <li>
@@ -169,7 +165,7 @@ export default function AdminPage() {
               <code className="text-[color:var(--theme-text)]">NEXT_PUBLIC_ADMIN_PASSWORD</code> a
               redeployni.
             </li>
-            {defaultPinsInUse.includes("denní") && (
+            {missingPins.includes("denní") && (
               <li>
                 Denní PIN můžeš taky přepsat dole v sekci &bdquo;Nastavení&ldquo; (uložením
                 resetuje studenty, vydrží jen do redeployu).
