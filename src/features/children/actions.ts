@@ -10,6 +10,8 @@ import { EVENT } from "@/features/analytics/events";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { ACTIVE_CHILD_COOKIE } from "./constants";
 import { childSchema } from "@/features/onboarding/schema";
+import { consentTextFor } from "@/features/consent/texts";
+import { SELF_UNDER_15_MESSAGE, childCreationRule } from "./rules";
 import {
   PIN_LOCK_MINUTES,
   clearedLockState,
@@ -60,6 +62,31 @@ export async function createChildAction(
     return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
   }
 
+  /* Typ účtu si server přečte sám. Klient nesmí poslat, že je rodič —
+     jinak by účet „spravovaný sám“ mohl založit dítě pod 15 let. */
+  const { data: parent } = await supabase
+    .from("parents")
+    .select("account_type")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const rule = childCreationRule(parent?.account_type, parsed.data.birthDate);
+  if (!rule.allowed) {
+    return { error: SELF_UNDER_15_MESSAGE };
+  }
+
+  /* Souhlas zákonného zástupce za dítě do 15 let se neodvozuje z dřívějšího
+     souhlasu účtu. Každé takové dítě dostane vlastní řádek. Bez zaškrtnutí
+     se profil nezakládá. */
+  const parentalConsent = formData.get("parentalConsent") === "on";
+  if (rule.needsParentalConsent && !parentalConsent) {
+    return {
+      fieldErrors: {
+        parentalConsent: "Bez souhlasu zákonného zástupce nemůžeme údaje dítěte zpracovávat.",
+      },
+    };
+  }
+
   const { data: child, error } = await supabase
     .from("children")
     .insert({
@@ -74,6 +101,28 @@ export async function createChildAction(
   if (error || !child) {
     console.error("[children] Založení selhalo:", error?.message);
     return { error: "Profil se nepodařilo založit. Zkuste to prosím znovu." };
+  }
+
+  if (rule.needsParentalConsent) {
+    const requestHeaders = await headers();
+    const text = consentTextFor("parental");
+    const { error: consentError } = await supabase.rpc("record_child_consent", {
+      p_child_id: child.id,
+      p_kind: "parental",
+      p_version: text.version,
+      p_text_snapshot: text.full,
+      p_granted: true,
+      p_ip: clientIp(requestHeaders),
+      p_user_agent: requestHeaders.get("user-agent")?.slice(0, 500) ?? null,
+    } as never);
+
+    if (consentError) {
+      /* Dítě bez souhlasu nesmí zůstat v databázi. Profil je čerstvý, postup
+         v něm ještě není, takže ho lze bez ztráty smazat. */
+      console.error("[children] Zápis souhlasu za dítě selhal:", consentError.message);
+      await createServiceClient().from("children").delete().eq("id", child.id);
+      return { error: "Souhlas se nepodařilo uložit, profil jsme proto nezaložili. Zkuste to prosím znovu." };
+    }
   }
 
   await supabase.from("learning_events").insert({

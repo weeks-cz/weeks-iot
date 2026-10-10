@@ -17,6 +17,11 @@ import { CertificateCard } from "@/features/certificates/components/CertificateC
 import { earnedCertificates } from "@/features/certificates/queries";
 import { RegistrationPixel } from "@/features/cookies/RegistrationPixel";
 import { ClearAnonSession } from "@/features/anon-session/components/ClearAnonSession";
+import { ClearOnboardingDraft } from "@/features/onboarding/components/ClearOnboardingDraft";
+import { AdoptProgressPrompt } from "@/features/anon-session/components/AdoptProgressPrompt";
+import { ACTIVE_CHILD_COOKIE } from "@/features/children/constants";
+import { pickActiveChild } from "@/features/children/active";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "Přehled" };
 
@@ -60,6 +65,13 @@ export default async function AccountPage({
     )
   ).flat();
 
+  /* Nabídka převzetí se ukáže jen mimo vítání: po onboardingu přenos
+     udělal onboarding sám a ClearAnonSession postup smazal. */
+  const activeChild = pickActiveChild(
+    children,
+    (await cookies()).get(ACTIVE_CHILD_COOKIE)?.value,
+  );
+
   const outdated = consentStatuses(
     consents ?? [],
     parent?.account_type !== "self",
@@ -69,12 +81,19 @@ export default async function AccountPage({
     <div className="flex flex-col gap-8">
       {params.vitejte === "1" && <RegistrationPixel userId={session.userId} />}
       {params.vitejte === "1" && params.postup !== "chyba" && <ClearAnonSession />}
+      {params.vitejte === "1" && <ClearOnboardingDraft />}
       {params.vitejte && (
         <Alert tone="success" title="Účet je hotový">
           Profil dítěte je připravený. Můžete rovnou začít první lekcí.
         </Alert>
       )}
       {params.heslo === "zmeneno" && <Alert tone="success">Heslo bylo změněno.</Alert>}
+      {!params.vitejte && (
+        <AdoptProgressPrompt
+          profiles={children.map((c) => ({ id: c.id, nick: c.nick, avatar: c.avatar }))}
+          activeChildId={activeChild?.id ?? null}
+        />
+      )}
 
       {outdated.length > 0 && (
         <Alert tone="warning" title="Aktualizovali jsme znění souhlasů">

@@ -14,6 +14,7 @@ import {
 } from "@/features/onboarding/schema";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { isSafeNextPath } from "./safe-path";
+import { afterSignInPath } from "./post-login";
 
 /**
  * Přihlašování a registrace.
@@ -230,6 +231,10 @@ export async function setNewPasswordAction(
 
 /* ── Google ────────────────────────────────────────────────────────────── */
 
+/**
+ * Přesměrovací tok (fallback bez NEXT_PUBLIC_GOOGLE_CLIENT_ID nebo bez
+ * skriptu Googlu). Účet Google se v něm ukáže s adresou projektu Supabase.
+ */
 export async function signInWithGoogleAction(formData: FormData): Promise<void> {
   const next = String(formData.get("next") ?? "/ucet");
 
@@ -251,6 +256,30 @@ export async function signInWithGoogleAction(formData: FormData): Promise<void> 
   }
 
   redirect(data.url);
+}
+
+/**
+ * Dokončení přihlášení přes GIS. Session už v prohlížeči existuje
+ * (signInWithIdToken ji zapsal do cookies), tady se jen rozhodne, kam dál.
+ * Stejné pravidlo jako návrat z e-mailového odkazu — viz post-login.ts.
+ */
+export async function completeGoogleSignInAction(next: unknown): Promise<void> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) redirect("/prihlaseni?chyba=google");
+
+  const { data: parent } = await supabase
+    .from("parents")
+    .select("onboarding_completed_at")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
+  redirect(
+    afterSignInPath({
+      onboardingDone: Boolean(parent?.onboarding_completed_at),
+      next,
+    }),
+  );
 }
 
 /* ── Odhlášení ─────────────────────────────────────────────────────────── */

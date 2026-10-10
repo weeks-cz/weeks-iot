@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/ui/AuthShell";
-import { GoogleButton } from "@/features/auth/components/GoogleButton";
+import { GoogleSignIn } from "@/features/auth/components/GoogleSignIn";
 import { SignUpForm } from "@/features/auth/components/SignUpForm";
 import { AnonProgressNotice } from "@/features/anon-session/components/AnonProgressNotice";
 
@@ -27,7 +27,10 @@ export default function SignUpPage() {
       <div className="flex flex-col gap-5">
         <AnonProgressNotice />
 
-        <GoogleButton next="/registrace/onboarding" />
+        <GoogleSignIn
+          next="/registrace/onboarding"
+          clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? null}
+        />
 
         <div className="flex items-center gap-3" aria-hidden="true">
           <span className="h-px flex-1 bg-ink/15" />

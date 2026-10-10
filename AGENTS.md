@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Weeks Učebna
 
-Výuková platforma pro děti 10–15 let na `ucebna.weeks.cz`. Není to samostatný
+Výuková platforma pro děti od 9 let na `ucebna.weeks.cz`. Není to samostatný
 byznys — je to trychtýř na letní tábory Weeks, který si na sebe vydělá
 předplatným.
 
@@ -49,10 +49,24 @@ tabulku, přidej i RLS politiku a sloupcové granty do migrace.
 **Souhlasy jsou append-only.** Odvolání je nový řádek s `granted = false`,
 nikdy update. Kdo mění znění v `src/features/consent/texts.ts`, MUSÍ zvýšit
 `version` — jinak vzniknou dva různé souhlasy pod stejným označením.
+Smazání účtu ledger nemaže: `consents.parent_id` se odpojí (`on delete set
+null`, migrace 013) a řádek zůstane jako doklad. Záznam souhlasu zákonného
+zástupce se váže na dítě (`consents.child_id`, migrace 014).
 
 **Anonymní relace nesmí nic poslat na server.** Do okamžiku, kdy rodič odešle
 registraci, žije postup výhradně v `localStorage`. Je to právní stav, ne
-optimalizace.
+optimalizace. Přihlášený rodič, který
+se vrátí na stejný počítač, dostane na `/ucet` NABÍDKU převzetí (`AdoptProgressPrompt`);
+nikdy k tomu nedojde automaticky. „Ne“ postup smaže z prohlížeče.
+
+**Rozdělaný onboarding je v sessionStorage, bez souhlasů.** `onboarding/draft.ts`
+drží datum, přezdívku, avatar a kraj. Souhlasy se neukládají nikdy — ani jako
+předvyplněné, ani po obnovení. Koncept se maže až na `/ucet?vitejte=1`, tedy po
+úspěšném zápisu účtu.
+
+Hlavička lekce ukazuje, kdo se učí (`activeChild`: přezdívka, avatar), a odkaz
+„Přepnout“ vede na `/ucim-se/prepnout`. Přihlášený rodič bez vybraného profilu
+hlavičku nevidí a postup se nezapisuje (`needsChildProfile`).
 
 **Anonym měří stejně jako přihlášený.** Bez `lesson_start` od anonyma
 neexistuje jmenovatel hlavní metriky a brána 1 se nedá vyhodnotit.
@@ -236,6 +250,18 @@ zastaví syntaxe dřív, než pochopí, co program dělá).
 - **Ikony Blockly jsou v `public/blockly/`.** Výchozí CDN CSP nepustí.
 - Kód → bloky neumí převést zpátky: přepínač se zeptá, když dítě kód
   upravilo, a jeho úpravy pak zahodí.
+
+## Přihlášení Googlem
+
+- Tlačítko je Google Identity Services (`GoogleSignIn`), účet se ukáže s názvem
+  učebny, ne s adresou `supabase.co`. ID token jde do `signInWithIdToken`,
+  pak `completeGoogleSignInAction` rozhodne cíl přes `afterSignInPath`.
+- Nonce: Google dostává HASH (`hashNonce`), Supabase SUROVÝ. Záměna = chyba
+  při každém přihlášení.
+- Bez `NEXT_PUBLIC_GOOGLE_CLIENT_ID` nebo bez skriptu Googlu (blokátor) zůstává
+  přesměrovací tok (`GoogleButton`). `NEXT_PUBLIC_*` se zapéká při buildu —
+  změna na Vercelu platí až po novém deployi.
+- CSP pro GIS je v `next.config.ts` (`GOOGLE_IDENTITY`).
 
 ## Design
 

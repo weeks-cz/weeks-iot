@@ -110,7 +110,7 @@ export async function getMetrics(range: Range): Promise<MetricsSnapshot> {
   /* ── Registrovaní ───────────────────────────────────────────────────── */
   const completed = par.filter((p) => p.onboarding_completed_at);
 
-  /* ── Cílová skupina 10–15 let ───────────────────────────────────────── */
+  /* ── Cílová skupina 9–15 let ───────────────────────────────────────── */
   const ageByParent = new Map<string, number>();
   for (const c of children ?? []) {
     const born = new Date(`${c.birth_date}T00:00:00Z`);

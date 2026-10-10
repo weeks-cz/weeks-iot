@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, SelectField, TextField } from "@/components/ui/Field";
 import { Alert, MonoLabel, Stepper } from "@/components/ui/Surface";
@@ -9,6 +9,7 @@ import { AVATARS, Avatar } from "@/features/children/avatars";
 import { consentTextsForAge } from "@/features/consent/texts";
 import type { ActionState } from "@/features/actions";
 import { completeOnboardingAction } from "../actions";
+import { EMPTY_DRAFT, ONBOARDING_DRAFT_KEY, parseDraft, writeDraft, type OnboardingDraft } from "../draft";
 import { birthDateRange, needsParentalConsent } from "../schema";
 
 const STEPS = ["Kdo se učí", "Kraj", "Souhlasy"] as const;
@@ -41,9 +42,40 @@ function stepForErrors(errors: Record<string, string> | undefined): number | nul
  * ukládání by nechávalo v databázi poloviční účty bez souhlasu.
  */
 export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
+  /* Rozpracovaný koncept z sessionStorage. Čte se přes useSyncExternalStore,
+     ne v efektu: na serveru i při hydrataci je k dispozici prázdný řetězec,
+     takže výstup se neliší. Po hydrataci se formulář znovu sestaví s
+     uloženými hodnotami (klíč), a to bez setState v efektu. */
+  const saved = useSyncExternalStore(noopSubscribe, readSavedDraft, () => "");
+  const initial = parseDraft(saved) ?? EMPTY_DRAFT;
+
+  return <WizardForm key={saved === "" ? "fresh" : "restored"} regions={regions} initial={initial} />;
+}
+
+const noopSubscribe = () => () => {};
+
+function readSavedDraft(): string {
+  try {
+    return window.sessionStorage.getItem(ONBOARDING_DRAFT_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function WizardForm({ regions, initial }: { regions: RegionOption[]; initial: OnboardingDraft }) {
   const [step, setStep] = useState(0);
-  const [birthDate, setBirthDate] = useState("");
   const [state, submit, pending] = useActionState(completeOnboardingAction, EMPTY);
+
+  /* Vyplněná pole přežijí obnovení stránky. Souhlasy se neukládají — viz
+     draft.ts. Zápis jde z obsluhy změny, ne z efektu: první vykreslení
+     nesmí přepsat uložený koncept prázdnými hodnotami. */
+  const [draft, setDraft] = useState<OnboardingDraft>(initial);
+  const update = (patch: Partial<OnboardingDraft>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    writeDraft(next);
+  };
+  const { birthDate } = draft;
 
   const anonSession = useAnonSessionRaw();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -107,7 +139,7 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
           min={minDate}
           max={maxDate}
           value={birthDate}
-          onChange={(e) => setBirthDate(e.target.value)}
+          onChange={(e) => update({ birthDate: e.target.value })}
           hint="Podle data poznáme, kdo musí podepsat souhlas. Hranice je 15 let a ze samotného ročníku ji spolehlivě určit nejde."
           error={state.fieldErrors?.childBirthDate}
         />
@@ -126,6 +158,8 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
           maxLength={24}
           required
           autoComplete="off"
+          value={draft.nick}
+          onChange={(e) => update({ nick: e.target.value })}
           hint={
             isMinor
               ? "Nemusí to být skutečné jméno. Uvidíte ji jen vy a dítě."
@@ -139,7 +173,7 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
           {/* auto-fill místo pevného počtu sloupců: dlaždice se přizpůsobí
               šířce, takže delší popisky jako „Ozubené kolo" nevytečou ven. */}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-2">
-            {AVATARS.map((avatar, index) => (
+            {AVATARS.map((avatar) => (
               <label
                 key={avatar.id}
                 className="flex cursor-pointer flex-col items-center gap-1.5 rounded-md border
@@ -153,7 +187,8 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
                   type="radio"
                   name="childAvatar"
                   value={avatar.id}
-                  defaultChecked={index === 0}
+                  checked={draft.avatar === avatar.id}
+                  onChange={() => update({ avatar: avatar.id })}
                   className="sr-only"
                 />
                 <Avatar id={avatar.id} className="block size-8 text-ink" />
@@ -180,7 +215,8 @@ export function OnboardingWizard({ regions }: { regions: RegionOption[] }) {
           label="Kraj, ve kterém bydlíte"
           name="regionCode"
           required
-          defaultValue=""
+          value={draft.region}
+          onChange={(e) => update({ region: e.target.value })}
           hint="Podle kraje poznáme, jestli k vám jezdíme s letním táborem."
           error={state.fieldErrors?.regionCode}
         >

@@ -5,6 +5,18 @@ import type { NextConfig } from "next";
  * po souhlasu s cookies (src/features/cookies), ale CSP je musí povolit předem.
  * GA posílá data na regionální `*.google-analytics.com`, Meta na facebook.com.
  */
+/**
+ * Přihlášení Googlem přímo na stránce (Google Identity Services). Hosty
+ * a cesty podle Google CSP guide. Skript se načítá jen na přihlašovacích
+ * stránkách; povolit ho ale musí CSP předem, jinak se tiše nenačte.
+ */
+const GOOGLE_IDENTITY = {
+  script: "https://accounts.google.com/gsi/client",
+  style: "https://accounts.google.com/gsi/style",
+  frame: "https://accounts.google.com/gsi/",
+  connect: "https://accounts.google.com/gsi/",
+} as const;
+
 const MEASUREMENT_HOSTS = {
   scripts:
     "https://www.googletagmanager.com https://connect.facebook.net",
@@ -29,11 +41,12 @@ function buildCsp(): string {
 
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""} ${MEASUREMENT_HOSTS.scripts}`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""} ${MEASUREMENT_HOSTS.scripts} ${GOOGLE_IDENTITY.script}`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com ${GOOGLE_IDENTITY.style}`,
+    `frame-src ${GOOGLE_IDENTITY.frame}`,
     "font-src 'self' data: https://fonts.gstatic.com",
     `img-src 'self' data: blob: https://weeks.cz ${MEASUREMENT_HOSTS.beacons}`,
-    `connect-src 'self' ${supabase} ${supabaseWs} ${MEASUREMENT_HOSTS.beacons}`.trim(),
+    `connect-src 'self' ${supabase} ${supabaseWs} ${MEASUREMENT_HOSTS.beacons} ${GOOGLE_IDENTITY.connect}`.trim(),
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
