@@ -27,7 +27,7 @@ export const lesson2: Lesson = {
   brief: [
     "Zapojení necháš stejné jako minule. Měnit budeš jen program.",
     "Všimni si názvu: loop znamená smyčka. Všechno, co do něj napíšeš, Arduino udělá, vrátí se na začátek a udělá to znovu. A znovu. Tisíckrát za vteřinu.",
-    "Když LED rozsvítíš a hned zhasneš, blikne to tak rychle, že to oko nezachytí. Proto delay — pauza.",
+    "Když LED rozsvítíš a hned zhasneš, blikne to tak rychle, že to oko nezachytí. Proto potřebuješ delay, pauzu.",
   ],
 
   concept: {

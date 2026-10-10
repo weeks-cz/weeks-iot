@@ -39,17 +39,17 @@ const ENTRIES: VocabularyEntry[] = [
   {
     needle: "digitalRead",
     syntax: "digitalRead(pin)",
-    what: "Zeptá se pinu, co se děje. Držené tlačítko vrátí LOW.",
+    what: "Zeptá se pinu, co se děje. Zmáčknuté tlačítko vrátí LOW.",
   },
   {
     needle: "delay",
     syntax: "delay(1000)",
-    what: "Počká a nic nedělá. Číslo jsou tisíciny vteřiny — 1000 je jedna vteřina.",
+    what: "Počká a nic nedělá. Číslo je v milisekundách — 1000 je jedna vteřina.",
   },
   {
     needle: "analogWrite",
     syntax: "analogWrite(pin, 128)",
-    what: "Nastaví sílu od 0 (nic) do 255 (naplno). Funguje jen na pinech s vlnovkou.",
+    what: "Nastaví jas od 0 (zhasnuto) do 255 (naplno). Funguje jen na pinech s vlnovkou.",
   },
   {
     needle: "analogRead",
@@ -59,12 +59,12 @@ const ENTRIES: VocabularyEntry[] = [
   {
     needle: "noTone",
     syntax: "noTone(pin)",
-    what: "Vypne tón. Bez toho bzučák hraje dál a dál.",
+    what: "Vypne tón. Bez toho bzučák hraje dál.",
   },
   {
     needle: "tone(",
     syntax: "tone(pin, 440)",
-    what: "Pustí tón. Čím vyšší číslo, tím vyšší pískání — 440 je komorní A.",
+    what: "Pustí tón. Čím vyšší číslo, tím vyšší tón — 440 je komorní A.",
   },
   {
     needle: "Serial.println",

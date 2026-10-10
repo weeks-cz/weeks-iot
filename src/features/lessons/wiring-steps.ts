@@ -302,7 +302,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
         done: satisfied,
         warning: shorted
           ? "Oba drátky ti vedou na tutéž nožičku — proud tak součástku obejde, jako by " +
-            "tam nebyla. Přendej jeden z nich na druhou stranu."
+            "tam nebyla. Přesuň jeden z nich na jinou nožičku."
           : undefined,
       }),
     );
@@ -322,7 +322,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
       if (step) {
         step.warning =
           "Tlačítko je otočené špatně — jeho dvě strany spojuje breadboard, takže je " +
-          "pořád jako stisknuté. Otoč ho (tlačítko Otočit) nebo ho posaď přes prostřední drážku.";
+          "pořád stisknuté. Otoč ho (tlačítko Otočit) nebo ho posaď přes prostřední drážku.";
       }
       continue;
     }
@@ -347,9 +347,9 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
       const step = steps.find((st) => !st.done) ?? steps[steps.length - 1];
       if (step) {
         step.warning =
-          "Oba drátky vedou na stejnou stranu tlačítka. Ta je uvnitř spojená pořád, " +
-          "takže stisk nic nezmění. Otoč tlačítko (tlačítko Otočit), nebo přendej jeden " +
-          "drátek na druhou stranu.";
+          "Oba drátky vedou na stejnou stranu tlačítka. Ta je uvnitř spojená, " +
+          "takže stisk nic nezmění. Otoč tlačítko (tlačítko Otočit), nebo přesuň jeden " +
+          "drátek na tu druhou.";
       }
     }
   }

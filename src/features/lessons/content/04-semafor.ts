@@ -27,7 +27,7 @@ export const lesson4: Lesson = {
 
   brief: [
     "Tři LED, tři barvy, jedno pořadí. Semafor, jaký znáš z křižovatky.",
-    "Do teď jsi ovládal jednu LED. Teď tři — a hlavně jde o to, v jakém pořadí se střídají. Zelená, oranžová, červená, a zase dokola.",
+    "Doteď šlo o jednu LED. Teď jsou tři — a hlavně jde o to, v jakém pořadí se střídají. Zelená, žlutá, červená, a zase dokola.",
     "Tohle je první obvod, kde se breadboard opravdu hodí: tři LED sdílejí jednu zem.",
   ],
 
@@ -36,7 +36,7 @@ export const lesson4: Lesson = {
     body:
       "Každá LED potřebuje cestu zpátky na GND. Arduino má ale jen pár pinů GND, " +
       "a ty bys jich potřeboval tři. Řešení je napájecí lišta breadboardu: " +
-      "spojíš ji jednou s GND a všechny LED se na ni napojí. Jeden drát místo tří.",
+      "spojíš ji jednou s GND a všechny LED se na ni napojí. Jeden drátek místo tří.",
   },
 
   palette: ["breadboard-half", "led-red", "led-yellow", "led-green", "resistor-220"],
@@ -80,7 +80,7 @@ export const lesson4: Lesson = {
   wiringHints: [
     "Nejdřív spoj GND Arduina s napájecí lištou breadboardu (tou s modrým pruhem).",
     "Každá LED má svůj pin: červená 2, žlutá 3, zelená 4.",
-    "Každá LED má svůj rezistor. Sdílet se dá zem, ne rezistor.",
+    "Sdílí se zem, ne rezistor: každá LED má svůj vlastní.",
     "Katody všech tří LED vedou do stejné lišty.",
   ],
 
@@ -188,8 +188,8 @@ void loop() {
       iterations: 2,
       verify: (frames) => runDurationMs(frames) >= 1000,
       hint:
-        "Bez delay() by se barvy střídaly tak rychle, že by to vypadalo jako " +
-        "svítící všechno naráz. Přidej pauzu za každou barvu.",
+        "Bez delay() by se barvy střídaly tak rychle, že by to vypadalo, že " +
+        "svítí všechny naráz. Přidej pauzu za každou barvu.",
       blockHint:
         "Bez bloku „počkej“ by se barvy střídaly tak rychle, že by to vypadalo, že svítí všechny naráz. Přidej „počkej“ za každou barvu.",
     },
