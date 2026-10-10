@@ -1,7 +1,6 @@
 "use client";
 
-import { getComponentSpec } from "@/features/circuit/components";
-import { PITCH } from "@/features/circuit/constants";
+import { getComponentSpec, naturalSize } from "@/features/circuit/components";
 import { Card, MonoLabel } from "@/components/ui/Surface";
 import type { ComponentType } from "@/features/circuit/types";
 
@@ -23,8 +22,7 @@ const PREVIEW = { width: 96, height: 72 };
 function Preview({ type }: { type: ComponentType }) {
   const spec = getComponentSpec(type);
 
-  const naturalWidth = (spec.spanX * PITCH) / spec.scale;
-  const naturalHeight = (spec.spanY * PITCH) / spec.scale;
+  const { width: naturalWidth, height: naturalHeight } = naturalSize(spec);
   const fit = Math.min(PREVIEW.width / naturalWidth, PREVIEW.height / naturalHeight);
 
   const Tag = spec.wokwiTag as unknown as React.FC<Record<string, unknown>>;
