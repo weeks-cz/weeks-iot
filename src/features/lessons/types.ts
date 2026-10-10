@@ -39,6 +39,12 @@ export interface LessonCheck {
   label: string;
   /** Co mají číst vstupní piny během běhu. */
   pinInputs?: Record<number, number>;
+  /**
+   * Hodnoty senzorů podle role (0–1023), jako by je dítě nastavilo na
+   * slideru. Na rozdíl od `pinInputs` jde signál přes obvod — kontrola tak
+   * ověří i zapojení senzoru, ne jen program.
+   */
+  sensors?: Record<string, number>;
   /** Které tlačítko je při běhu stisknuté. Role z `wiring.parts`. */
   pressed?: string[];
   /** Kolik průchodů `loop()` spočítat, než se výsledek posoudí. */

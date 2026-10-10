@@ -2,7 +2,7 @@ import { createBoard, emptyBoardState, type BoardState } from "@/features/arduin
 import { Interpreter, RuntimeError, compile } from "@/features/arduino/interpreter";
 import { getComponentSpec } from "./components";
 import { pinKey, resolveNets, type NetMap } from "./nets";
-import type { Circuit, CircuitComponent } from "./types";
+import type { Circuit, CircuitComponent, ComponentType } from "./types";
 
 /**
  * Most mezi programem a obvodem.
@@ -496,6 +496,17 @@ function readInputsFromCircuit(
     const number = arduinoPinNumber(pin.name);
     if (number === null) continue;
 
+    /* Analogový pin se čte bez ohledu na pinMode. Hodnotu dá senzor, který
+       je napájený a jeho výstup sedí na tomhle pinu; bez senzoru jde o
+       napětí z drátu, jako u digitálního čtení. */
+    if (number >= 14) {
+      const reading = sensorReading(circuit, uno.id, pin.name, nets, grounded, inputs);
+      if (reading !== null) values.set(number, reading);
+      else if (voltage.level(uno.id, pin.name) > 0) values.set(number, 1023);
+      else values.set(number, 0);
+      continue;
+    }
+
     const mode = board.modes.get(number);
     if (mode !== "input" && mode !== "input_pullup") continue;
 
@@ -571,6 +582,46 @@ function runtimeShortCircuit(
 
 /** Vyhodí se z `snapshot`, aby zkrat zastavil běh uprostřed `delay`. */
 class ShortCircuitSignal extends Error {}
+
+/** Senzory, které dávají analogový signál: součástka → (signální pin, napájení, zem). */
+const SENSOR_PINS: Partial<Record<ComponentType, { signal: string; vcc: string; gnd: string }>> = {
+  photoresistor: { signal: "aout", vcc: "vcc", gnd: "gnd" },
+  potentiometer: { signal: "signal", vcc: "terminal-a", gnd: "terminal-b" },
+};
+
+/**
+ * Hodnota senzoru, který je na analogový pin připojený.
+ *
+ * Senzor čte, jen když je napájený z 5 V a má zem — jinak jeho výstup nic
+ * neříká. Hodnota přichází z `inputs.analog` podle id součástky (slider
+ * v lekci); když chybí, bere se střed rozsahu.
+ */
+function sensorReading(
+  circuit: Circuit,
+  unoId: string,
+  analogPin: string,
+  nets: NetMap,
+  grounded: Set<string>,
+  inputs: SimulationInputs,
+): number | null {
+  const net = nets.netOf(pinKey(unoId, analogPin));
+  const fiveVolts = nets.netOf(pinKey(unoId, "5V"));
+
+  for (const comp of circuit.comps) {
+    const pins = SENSOR_PINS[comp.type];
+    if (!pins) continue;
+    if (nets.netOf(pinKey(comp.id, pins.signal)) !== net) continue;
+
+    const powered = nets.netOf(pinKey(comp.id, pins.vcc)) === fiveVolts;
+    const earthed = grounded.has(nets.netOf(pinKey(comp.id, pins.gnd)));
+    if (!powered || !earthed) return 0;
+
+    const value = inputs.analog?.get(comp.id) ?? 512;
+    return Math.max(0, Math.min(1023, Math.round(value)));
+  }
+
+  return null;
+}
 
 /* ── Celý běh ───────────────────────────────────────────────────────────── */
 

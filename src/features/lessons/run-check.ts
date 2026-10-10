@@ -83,6 +83,8 @@ export function runLessonChecks(
    * na desce nemělo žádný viditelný následek.
    */
   held: Set<string> = new Set(),
+  /** Hodnoty senzorů podle id součástky — hýbe jimi slider v lekci. */
+  sensors: Map<string, number> = new Map(),
 ): LessonRunResult {
   /* Role se rozdělí jednou. Kontrola zapojení je umí přiřadit i tehdy, když
      zapojení není hotové — a to je záměr: dítě má vidět, jak se jeho obvod
@@ -122,7 +124,7 @@ export function runLessonChecks(
      Dítě pak vidělo něco jiného, než co jeho obvod dělá. */
   const previewRun = runProgram(source, circuit, {
     iterations: 20,
-    inputs: { pressed: held },
+    inputs: { pressed: held, analog: sensors },
   });
   const preview = previewRun.frames;
   collect(previewRun);
@@ -134,7 +136,10 @@ export function runLessonChecks(
     const run = runProgram(source, circuit, {
       iterations: check.iterations,
       pinInputs: toPinInputs(check),
-      inputs: { pressed: new Set([...toPressed(check, ctx), ...held]) },
+      inputs: {
+        pressed: new Set([...toPressed(check, ctx), ...held]),
+        analog: toSensors(check, ctx),
+      },
     });
     collect(run);
 
@@ -194,6 +199,16 @@ function toPinInputs(check: LessonCheck): Map<number, number> {
   return new Map(
     Object.entries(check.pinInputs ?? {}).map(([pin, value]) => [Number(pin), value]),
   );
+}
+
+/** Hodnoty senzorů z kontroly, přeložené z rolí na id součástek. */
+function toSensors(check: LessonCheck, ctx: CheckContext): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const [role, value] of Object.entries(check.sensors ?? {})) {
+    const id = ctx.comp(role);
+    if (id) out.set(id, value);
+  }
+  return out;
 }
 
 /** Role stisknutých tlačítek na id skutečných součástek. */
