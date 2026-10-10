@@ -335,23 +335,6 @@ export function LessonWorkbench({
     }, 160);
   }
 
-  /* Součástky, o kterých mluví první nesplněný bod zapojení. Builder je
-     orámuje, aby dítě nehledalo „tu LED" mezi pěti.
-
-     Arduino a breadboard se nezvýrazňují: jsou na ploše vždycky a rámeček
-     kolem celé desky neřekne nic. Zajímavá je ta součástka, která do
-     spoje patří a chybí. */
-  const workspaceRoles = new Set(
-    lesson.wiring.parts
-      .filter((p) => p.type === "arduino-uno" || p.type === "breadboard-half")
-      .map((p) => p.role),
-  );
-
-  const flagged = (wiring.issues[0]?.roles ?? [])
-    .filter((role) => !workspaceRoles.has(role))
-    .map((role) => wiring.roles?.[role])
-    .filter((id): id is string => Boolean(id));
-
   const firstUnmet = run?.outcomes.find((o) => !o.passed);
 
   /* Součástky, se kterými se dá při běhu hýbat. Zatím jen tlačítka. */
@@ -460,7 +443,6 @@ export function LessonWorkbench({
               palette={lesson.palette}
               initialCircuit={circuit}
               onChange={onCircuitChange}
-              flagged={flagged}
               /* Piny aktuálního kroku blikají, takže je vidět, kam kliknout.
                  Bez toho je plocha les stejných teček. */
               highlightPins={step2?.pins}

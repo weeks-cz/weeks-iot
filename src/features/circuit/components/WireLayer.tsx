@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { resolvePinPosition } from "../pins";
+import { wirePathD } from "../wire-geometry";
 import { WIRE_COLOR_DRAFT } from "../constants";
 import type { BuilderAction, BuilderState } from "./state";
 import type { Circuit, Wire } from "../types";
@@ -46,25 +47,18 @@ function wireColor(circuit: Circuit, wire: Wire): string {
   return "#3a9e4d";
 }
 
+/* Tvar drátku (průvěs na stole) žije v `wire-geometry.ts`, aby ho kreslení
+   i klik počítaly stejně. */
+
 /**
- * Cesta drátku: oblouk s mírným průvěsem, jako by drátek ležel na stole.
+ * Drátky.
  *
- * Rovná čára vypadá jako schéma; skutečné drátky se prohýbají. Průvěs
- * jde vždycky „dolů" a je úměrný délce, takže krátké propojky zůstávají
- * skoro rovné a dlouhé drátky se prohnou znatelně — přesně jako na fotce
- * zapojení.
+ * Vrstva drátků leží NAD deskou a Arduinem, ale POD součástkami: LED položená
+ * na desku se nesmí schovat za drátek. Proto tu nejsou žádné kliky na
+ * drátek — ty řeší plocha, která drží pořadí (pin → součástka → drátek).
+ * Tady zůstává jen hover, aby se drátek při najetí zvýraznil.
  */
-function wirePath(x1: number, y1: number, x2: number, y2: number): string {
-  const length = Math.hypot(x2 - x1, y2 - y1);
-  const sag = Math.min(18, length * 0.14);
-
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2 + sag;
-
-  return `M ${x1} ${y1} Q ${mx} ${my} ${x2} ${y2}`;
-}
-
-export function WireLayer({ state, dispatch, readOnly }: Props) {
+export function WireLayer({ state, readOnly }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const at = (compId: string, pinName: string) => {
@@ -77,7 +71,7 @@ export function WireLayer({ state, dispatch, readOnly }: Props) {
   return (
     <svg
       className="pointer-events-none absolute inset-0"
-      style={{ zIndex: 10, width: "100%", height: "100%", overflow: "visible" }}
+      style={{ zIndex: 5, width: "100%", height: "100%", overflow: "visible" }}
       aria-hidden="true"
     >
       {state.circuit.wires.map((wire) => {
@@ -88,7 +82,7 @@ export function WireLayer({ state, dispatch, readOnly }: Props) {
         const selected = state.selection?.kind === "wire" && state.selection.id === wire.id;
         const isHovered = hovered === wire.id;
         const color = selected ? "var(--color-cta-500)" : wireColor(state.circuit, wire);
-        const d = wirePath(from.x, from.y, to.x, to.y);
+        const d = wirePathD(from.x, from.y, to.x, to.y);
 
         return (
           <g key={wire.id}>
@@ -102,10 +96,6 @@ export function WireLayer({ state, dispatch, readOnly }: Props) {
               strokeWidth={16}
               fill="none"
               style={{ pointerEvents: readOnly ? "none" : "stroke", cursor: "pointer" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                dispatch({ type: "SELECT", target: { kind: "wire", id: wire.id } });
-              }}
               onMouseEnter={() => setHovered(wire.id)}
               onMouseLeave={() => setHovered((prev) => (prev === wire.id ? null : prev))}
             />
@@ -141,7 +131,7 @@ export function WireLayer({ state, dispatch, readOnly }: Props) {
       {draftFrom && state.cursor && (
         <g>
           <path
-            d={wirePath(draftFrom.x, draftFrom.y, state.cursor.x, state.cursor.y)}
+            d={wirePathD(draftFrom.x, draftFrom.y, state.cursor.x, state.cursor.y)}
             stroke={WIRE_COLOR_DRAFT}
             strokeWidth={3}
             strokeDasharray="6 5"

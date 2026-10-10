@@ -1,6 +1,5 @@
-import { getComponentSpec } from "../components";
 import { PITCH } from "../constants";
-import { resolvePinPosition } from "../pins";
+import { drawBounds, resolvePinPosition } from "../pins";
 import type { Circuit, PinRef } from "../types";
 
 /**
@@ -49,12 +48,14 @@ export function fitCircuit(
   let maxX = -Infinity;
   let maxY = -Infinity;
 
+  /* Rámec kresby, ne rozpětí pinů: deska je posunutá o visualOffset a její
+     popisky lišt by se jinak useknuly. */
   for (const comp of circuit.comps) {
-    const spec = getComponentSpec(comp.type);
-    minX = Math.min(minX, comp.x);
-    minY = Math.min(minY, comp.y);
-    maxX = Math.max(maxX, comp.x + spec.spanX * PITCH);
-    maxY = Math.max(maxY, comp.y + spec.spanY * PITCH);
+    const b = drawBounds(comp);
+    minX = Math.min(minX, b.x);
+    minY = Math.min(minY, b.y);
+    maxX = Math.max(maxX, b.x + b.w);
+    maxY = Math.max(maxY, b.y + b.h);
   }
 
   const width = Math.max(1, maxX - minX);

@@ -74,7 +74,7 @@ export const lesson6: Lesson = {
   wiringHints: [
     "Bzučák má nožičky označené + a −. Plus jde na pin, mínus na zem.",
     "Bzučák nepotřebuje rezistor, na rozdíl od LED.",
-    "Tlačítko zapoj stejně jako v lekci 3: pin 7 a GND.",
+    "Tlačítko zapoj přes prostřední drážku, stejně jako v lekci 3: jedna strana na pin 7, druhá na GND.",
   ],
 
   programGoal: "Když držíš tlačítko, bzučák hraje. Když ho pustíš, je ticho.",

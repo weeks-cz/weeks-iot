@@ -1,4 +1,4 @@
-import { getComponentSpec, pinLabel, pinShort } from "@/features/circuit/components";
+import { equivalentPins, getComponentSpec, pinLabel, pinShort } from "@/features/circuit/components";
 import { pinKey, resolveNets } from "@/features/circuit/nets";
 import { findPath } from "@/features/circuit/paths";
 import {
@@ -102,13 +102,26 @@ function connectionSatisfied(
   const toId = roles?.[conn.to.role];
   if (!fromId || !toId) return false;
 
-  const result = findPath(circuit, pinKey(fromId, conn.from.pin), pinKey(toId, conn.to.pin), {
-    through: conn.through,
-    maxHops: conn.through?.length ?? 0,
-    nets,
-  });
+  /* Kterákoli nožička téže strany tlačítka: strany jsou uvnitř spojené. */
+  const fromPins = equivalentPins(typeOf(circuit, fromId), conn.from.pin);
+  const toPins = equivalentPins(typeOf(circuit, toId), conn.to.pin);
+  let result: ReturnType<typeof findPath> | null = null;
+  for (const fp of fromPins) {
+    for (const tp of toPins) {
+      const r = findPath(circuit, pinKey(fromId, fp), pinKey(toId, tp), {
+        through: conn.through,
+        maxHops: conn.through?.length ?? 0,
+        nets,
+      });
+      if (r.found) {
+        result = r;
+        break;
+      }
+    }
+    if (result) break;
+  }
 
-  if (!result.found) return false;
+  if (!result) return false;
   /* `through` je seznam POVOLENÝCH typů, ne vyžadovaných — na to, že tam
      rezistor opravdu je, se musí doptat zvlášť. */
   return (conn.through ?? []).every((type) => result.through.includes(type));
@@ -289,9 +302,10 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
     );
   }
 
-  /* Tlačítko s propojenými stranami: spoj vypadá hotový, ale stisk by
-     nic nezměnil — obě strany už jsou spojené drátem nebo deskou. Stejná
-     rodina chyb jako přemostěný rezistor. */
+  /* Tlačítko, jehož dvě strany sdílí síť: stisk by nic nezměnil, protože
+     breadboard je spojuje sám. Nejčastěji otočené na jedné polovině desky —
+     obě nožičky sedí ve stejném sloupci. Stejná rodina chyb jako přemostěný
+     rezistor, a dítě jí neuvidí, pokud mu to nikdo neřekne. */
   for (const part of spec.parts) {
     if (part.type !== "pushbutton") continue;
     const id = wiring.roles?.[part.role];
@@ -301,8 +315,8 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
       const step = steps.find((st) => !st.done) ?? steps[steps.length - 1];
       if (step) {
         step.warning =
-          "Obě strany tlačítka máš propojené napřímo — stisk by pak nic nezměnil. " +
-          "Jeden drátek patří na levou stranu tlačítka, druhý na pravou.";
+          "Tlačítko je otočené špatně — jeho dvě strany spojuje breadboard, takže je " +
+          "pořád jako stisknuté. Otoč ho (tlačítko Otočit) nebo ho posaď přes prostřední drážku.";
       }
     }
   }
@@ -351,8 +365,21 @@ function nearPin(
   return via ? { near: arduinoPinOf(via), nearOffset: 0 } : {};
 }
 
-/** GND pin Arduina → všechny jeho GND piny. Ostatní piny beze změny. */
+function typeOf(circuit: Circuit, compId: string): ComponentType {
+  return circuit.comps.find((c) => c.id === compId)?.type ?? "led-red";
+}
+
+/**
+ * Zaměnitelné piny jednoho konce spoje.
+ *
+ * GND Arduina jsou jedna zem, takže všechny tři. Strana tlačítka jsou dvě
+ * nožičky, které jsou uvnitř spojené — zvýrazní se obě, ať dítě trefí
+ * kteroukoli. Ostatní piny beze změny.
+ */
 function expandGround(part: PartSpec, pin: PinRef): PinRef[] {
+  if (part.type === "pushbutton") {
+    return equivalentPins(part.type, pin.pinName).map((name) => ({ compId: pin.compId, pinName: name }));
+  }
   if (part.type !== "arduino-uno" || !pin.pinName.startsWith("GND")) return [pin];
 
   return getComponentSpec("arduino-uno")

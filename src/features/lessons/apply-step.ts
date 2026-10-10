@@ -2,6 +2,7 @@ import { getComponentSpec } from "@/features/circuit/components";
 import { PITCH } from "@/features/circuit/constants";
 import { pinKey, resolveNets } from "@/features/circuit/nets";
 import { resolvePinPosition } from "@/features/circuit/pins";
+import { occupiedSockets } from "@/features/circuit/occupancy";
 import type { Circuit, PinRef, Wire } from "@/features/circuit/types";
 import {
   findBoard,
@@ -62,7 +63,12 @@ export function applyStep(circuit: Circuit, step: WiringStep): Circuit {
     };
   }
 
-  const pair = closestPair(circuit, step.from, step.to);
+  /* Pin Arduina, do kterého už něco vede, se znovu nepoužije — jeden konec
+     drátku na jednom pinu. Zem má tři piny, takže volných bývá dost. */
+  const taken = occupiedSockets(circuit);
+  const free = (refs: PinRef[]) =>
+    refs.filter((r) => !taken.has(pinKey(r.compId, r.pinName)));
+  const pair = closestPair(circuit, free(step.from), free(step.to));
   if (!pair) return circuit;
 
   return {
@@ -111,6 +117,7 @@ function wire(from: PinRef, to: PinRef): Wire {
 function wiresFor(circuit: Circuit, rawFrom: PinRef, rawTo: PinRef, groundOptions: PinRef[]): Wire[] {
   const board = findBoard(circuit);
   if (!board) return [wire(rawFrom, rawTo)];
+  const taken = occupiedSockets(circuit);
 
   /* Zem ať je vždycky „kam". */
   const [from, to] = isGround(circuit, rawFrom) && !isGround(circuit, rawTo)
@@ -139,15 +146,25 @@ function wiresFor(circuit: Circuit, rawFrom: PinRef, rawTo: PinRef, groundOption
       /* Lišta ještě nevede k Arduinu? Pak jeden drátek navíc, jen
          jednou — další zemnění už na lištu jen přibude. */
       const nets = resolveNets(circuit);
+      /* Lišta je jedna síť po celé délce. Je-li spojená s kterýmkoli GND,
+         je hotovo; jinak ji připojí volný GND — jinak by dva GND piny
+         přišly o svůj jediný drátek. */
+      const groundPins = (uno: Circuit["comps"][number]) =>
+        getComponentSpec("arduino-uno")
+          .pins.filter((p) => p.name.startsWith("GND"))
+          .map((p) => pinKey(uno.id, p.name));
       const railConnected = circuit.comps.some(
         (c) =>
           c.type === "arduino-uno" &&
-          nets.connected(pinKey(board.id, railName), pinKey(c.id, "GND-1")),
+          groundPins(c).some((k) => nets.connected(pinKey(board.id, railName), k)),
       );
       if (!railConnected) {
+        const freeGround = groundOptions.filter(
+          (g) => isGround(circuit, g) && !taken.has(pinKey(g.compId, g.pinName)),
+        );
         const gnd = nearest(
           circuit,
-          groundOptions.filter((g) => isGround(circuit, g)),
+          freeGround.length > 0 ? freeGround : groundOptions.filter((g) => isGround(circuit, g)),
           holePosition(board, railName),
         ) ?? to;
         const railForGnd = freeRailHole(

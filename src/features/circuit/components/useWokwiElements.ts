@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { registerBreadboardHalf } from "../register-breadboard";
+import { registerTactSwitch } from "../register-tact-switch";
 
 /**
  * Načtení součástkových prvků.
@@ -20,6 +21,7 @@ let loading: Promise<void> | null = null;
 function loadOnce(): Promise<void> {
   loading ??= import("@wokwi/elements").then(() => {
     registerBreadboardHalf();
+    registerTactSwitch();
   });
   return loading;
 }

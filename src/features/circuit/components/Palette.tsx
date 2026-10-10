@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { getComponentSpec } from "../components";
-import { PITCH } from "../constants";
+import { getComponentSpec, naturalSize } from "../components";
 import type { BuilderAction } from "./state";
 import type { ComponentType } from "../types";
 
@@ -36,8 +35,7 @@ function ComponentPreview({ type }: { type: ComponentType }) {
   /* Prvek se na desce vykresluje ve své přirozené velikosti a teprve
      `spec.scale` ho roztáhne na mřížku. Zpětným přepočtem se dostaneme
      k té přirozené velikosti a z ní ke zmenšení, které se vejde sem. */
-  const naturalWidth = (spec.spanX * PITCH) / spec.scale;
-  const naturalHeight = (spec.spanY * PITCH) / spec.scale;
+  const { width: naturalWidth, height: naturalHeight } = naturalSize(spec);
   const fit = Math.min(ICON_BOX.width / naturalWidth, ICON_BOX.height / naturalHeight);
 
   const Tag = spec.wokwiTag as unknown as React.FC<Record<string, unknown>>;

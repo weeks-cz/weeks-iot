@@ -79,7 +79,7 @@ export const lesson3: Lesson = {
 
   wiringHints: [
     "LED zapoj stejně jako minule na pin 8.",
-    "Tlačítko má čtyři nožičky, ale funguje jako dvě dvojice. Stačí ti jedna z každé strany.",
+    "Tlačítko dej přes prostřední drážku desky: jedna strana do jednoho sloupce, druhá do druhého. Každou stranu tvoří dvě nožičky a stačí ti jedna z nich.",
     "Jedna strana tlačítka jde na pin 7, druhá na GND.",
   ],
 

@@ -153,6 +153,39 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
   počáteční hodnota. Dovnitř se obvod dostane jedině přes `pushCircuit`, které
   porovnává REFERENCI, takže každé vnucení musí být nový objekt.
 
+### Deska, tlačítko a obsazenost (builder)
+
+- **Tlačítko je čtyřnožičkový spínač 6×6 mm, ne Wokwi tlačítko.** Nožičky
+  `1a/1b` a `2a/2b` jsou uvnitř spojené vždycky (strana 1, strana 2), stisk
+  spojí `1a` s `2a`. Na desce leží přes prostřední drážku: strana 1 v jednom
+  sloupci (řady E a F), strana 2 ve druhém. Pár přes příkop je jediná cesta
+  mezi půlkami, takže přes příkop se nic jiného nespojí. Otočené o 90° na jedné
+  polovině dá obě strany do stejného sloupce → breadboard je zkratuje a tlačítko
+  je pořád stisknuté. Hlídá to `wiring-steps.ts` (varování).
+- **Kontroly berou kteroukoli nožičku strany** (`equivalentPins`). Přesný pin
+  by dítě zbytečně trestal za to, která nožička je nahoře.
+- **Polohu pinu počítá jen `pins.ts`** (`resolvePinPosition`, `toPlane`).
+  Otočení je rotace kolem středu obdélníku a kresba dostává CSS transformaci
+  `rotationTransform`. Obě věci se musí shodovat — test porovnává CSS
+  s maticí. Kdo počítá `x + dx·PITCH` přímo, rozjede nožičku od kresby.
+- **Obsazenost je jedna věc: `occupancy.ts`.** Dírka nebo pin Arduina patří
+  jedné nožičce, nebo jednomu konci drátku. Reducer odmítne drátek i položení
+  do obsazené dírky, otočení i přesun, které by dvě věci dalo do jedné.
+  Zelené kroužky se kreslí podle `pluggedLegs`.
+- **Klik: `targetAt` v tomhle pořadí** — nožička (do 18 px), tělo součástky,
+  drátek (do 8 px), deska, prázdno. Dírka pod tělem nebo pod nožičkou není
+  cíl (kresba ji zakrývá). Volná dírka vyhraje, jen když je blíž než nožička.
+- **Vrstvy:** deska a Arduino 1 → drátky 5 → součástky 6 → kroužky 12 →
+  náhled 13. LED se nesmí schovat za drátek ani za desku.
+- **Přesun desky nese zapíchnuté díly** (`carry`, `pluggedInto` v okamžiku
+  tahu). Deska se posouvá po celém kroku mřížky, takže díly zůstanou v dírkách.
+- **Výřez:** `RESET` zachová zoom a posun. Krok „Zapoj za mě" výřez nepřepočítá,
+  jen posune, když nová součástka leží mimo něj. Obsah drží `clampPan` aspoň
+  60 px na obrazovce, zoom kolečkem jde ke kurzoru (`zoomAt`).
+- **Zapoj za mě** bere jen volné piny Arduina (`wiresFor` / `freeHoleInColumn`).
+  Referenční zapojení rozděluje tři GND piny. Test `trench.test.ts` projde
+  všechny lekce a hlídá zkrat.
+
 ## Bloky
 
 Krok Program má přepínač **Bloky | Kód**; výchozí jsou bloky (mladší děti

@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2, Minus, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Maximize2, Minimize2, Minus, Plus, RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { Palette } from "./Palette";
 import { Plane } from "./Plane";
-import { useBuilderReducer } from "./state";
+import { canRotate, useBuilderReducer } from "./state";
 import { ensureVisible, fitCircuit } from "./fit";
+import { clampPan, contentBounds, zoomAt } from "./view";
 import { useWokwiElements } from "./useWokwiElements";
 import { SAVE_DEBOUNCE_MS, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "../constants";
+import { getComponentSpec } from "../components";
+import { isRotatable } from "../pins";
 import type { Circuit, ComponentType, PinRef } from "../types";
 import type { SimulationFrame } from "../simulate";
 
@@ -17,8 +20,6 @@ interface Props {
   onChange: (circuit: Circuit) => void;
   /** Poslední snímek běhu — z něj se rozsvítí LED a rozezní bzučák. */
   frame?: SimulationFrame | null;
-  /** Součástky, ke kterým se váže nesplněný bod zapojení. */
-  flagged?: string[];
   /** Piny, na které se má dítě právě trefit — plocha je rozbliká. */
   highlightPins?: PinRef[];
   /** Ukázat tečky pinů i bez najetí myší. Zapíná se v kroku zapojování. */
@@ -32,19 +33,13 @@ interface Props {
   /**
    * Obvod, na který se dítě vrátí tlačítkem „Začít znovu".
    *
-   * Musí to být VÝCHOZÍ stav lekce, ne ten aktuální. Dřív se sem posílal
-   * aktuální obvod, takže tlačítko resetovalo na to, co už tam bylo —
-   * kliklo se a nestalo se nic.
+   * Musí to být VÝCHOZÍ stav lekce, ne ten aktuální.
    */
   resetTo?: Circuit;
   /** Zavolá se po resetu, aby o něm věděla i lekce. */
   onReset?: () => void;
   /**
    * Obvod vnucený zvenku — použije se, jakmile dorazí JINÝ objekt.
-   *
-   * Builder si jinak obvod drží sám a `initialCircuit` je opravdu jen
-   * počáteční hodnota. Lekce ale potřebuje umět jeden krok zapojení udělat
-   * za dítě, a k tomu musí jít hotový obvod poslat dovnitř.
    *
    * Porovnává se REFERENCE, ne obsah: každé vnucení musí být nový objekt,
    * jinak druhé kliknutí na tutéž věc nic neudělá.
@@ -59,9 +54,6 @@ interface Props {
   height?: number;
   /**
    * Návod ke kroku, který se veze i do režimu přes celou obrazovku.
-   *
-   * Bez toho by se dítě po roztažení plochy octlo bez instrukce — a to je
-   * přesně ta chvíle, kdy ji potřebuje nejvíc.
    */
   toolbar?: React.ReactNode;
 }
@@ -85,7 +77,6 @@ export function CircuitBuilder({
   initialCircuit,
   onChange,
   frame,
-  flagged,
   highlightPins,
   showPins,
   suggested,
@@ -102,14 +93,30 @@ export function CircuitBuilder({
   const [state, dispatch] = useBuilderReducer(initialCircuit);
   const ready = useWokwiElements();
   const [expanded, setExpanded] = useState(false);
+  /** „Začít znovu" se nesmí spustit jedním klepnutím: obvod, na který dítě
+      přišlo, je pryč, a `window.confirm` na tabletu nevypadá dobře. */
+  const [confirmReset, setConfirmReset] = useState(false);
   const lastSent = useRef<Circuit>(initialCircuit);
   const viewportRef = useRef<HTMLDivElement>(null);
+  /* Výřez pro efekty, které běží mimo vykreslení (requestAnimationFrame). */
+  const viewRef = useRef({ zoom: state.zoom, pan: state.pan });
+  useEffect(() => {
+    viewRef.current = { zoom: state.zoom, pan: state.pan };
+  }, [state.zoom, state.pan]);
 
-  /** Doostří výřez tak, aby byl vidět celý obvod. */
+  /* Obvod, jaký je právě na ploše — čte se z efektů, které nemají vlastní
+     závislost na stavu. */
+  const circuitRef = useRef(state.circuit);
+  useEffect(() => {
+    circuitRef.current = state.circuit;
+  }, [state.circuit]);
+
+  /** Doostří výřez tak, aby byl vidět celý obvod. Vrací, jestli to šlo —
+      při nulové velikosti výřezu (skrytý rodič) se nedá nic spočítat. */
   const fit = useCallback(
-    (circuit: Circuit) => {
+    (circuit: Circuit): boolean => {
       const el = viewportRef.current;
-      if (!el) return;
+      if (!el) return false;
 
       const rect = el.getBoundingClientRect();
       const next = fitCircuit(
@@ -117,46 +124,64 @@ export function CircuitBuilder({
         { width: rect.width, height: rect.height },
         { minZoom: readOnly ? 0.4 : undefined },
       );
-      if (!next) return;
+      if (!next) return false;
 
       dispatch({ type: "SET_ZOOM", zoom: next.zoom });
       dispatch({ type: "SET_PAN", pan: next.pan });
+      return true;
     },
     [dispatch, readOnly],
   );
 
-  /* Výřez se jednou nastaví tak, aby byla vidět celá deska.
-     V editovatelném builderu JEN jednou na začátku: dítě si pak výřez
-     posouvá samo a přeskakovat mu ho pod rukama by bylo horší než kus
-     obvodu za okrajem. V náhledu se přepočítá pokaždé, protože tam se
-     nedá hýbat ničím. */
+  /* Výřez se jednou nastaví tak, aby byla vidět celá deska. V editovatelném
+     builderu JEN jednou, dokud se nepovede: dřív se příznak nastavil dřív,
+     než se vědělo, že výřez má velikost — a plocha zůstala odjetá. V náhledu
+     se přepočítá pokaždé, protože tam se nedá hýbat ničím. */
   const fitted = useRef(false);
 
   useEffect(() => {
     if (!ready) return;
     if (!readOnly && fitted.current) return;
-
-    fitted.current = true;
-    fit(initialCircuit);
+    if (fit(initialCircuit)) fitted.current = true;
   }, [ready, readOnly, initialCircuit, fit]);
 
-  /* Obvod poslaný zvenku. Výřez se doostří, aby bylo vidět, co přibylo —
-     součástka položená za okrajem obrazovky vypadá jako by se nic nestalo. */
+  /* Obvod poslaný zvenku (krok „Zapoj za mě"). Výřez se NEPŘEPOČÍTÁVÁ — dítě
+     by po každém kroku vidělo, jak mu plocha uskakuje. Posune se jen tehdy,
+     když nová součástka leží mimo výřez. */
   const lastPushed = useRef(pushCircuit);
 
   useEffect(() => {
     if (!pushCircuit || pushCircuit === lastPushed.current) return;
 
     lastPushed.current = pushCircuit;
+    const before = circuitRef.current;
     dispatch({ type: "RESET", circuit: pushCircuit });
     /* Zpátky ven se to neposílá — lekce ten obvod poslala, takže ho má. */
     lastSent.current = pushCircuit;
-    requestAnimationFrame(() => fit(pushCircuit));
-  }, [pushCircuit, dispatch, fit]);
+
+    const added = pushCircuit.comps.filter((c) => !before.comps.some((b) => b.id === c.id));
+    if (added.length === 0) return;
+    const pins: PinRef[] = added.flatMap((c) =>
+      getComponentSpec(c.type).pins.map((p) => ({ compId: c.id, pinName: p.name })),
+    );
+
+    requestAnimationFrame(() => {
+      const el = viewportRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const pan = ensureVisible(
+        pushCircuit,
+        pins,
+        { width: rect.width, height: rect.height },
+        viewRef.current,
+      );
+      if (pan) dispatch({ type: "SET_PAN", pan });
+    });
+  }, [pushCircuit, dispatch]);
 
   /* Zvýrazněné piny musí být vidět. Jinak plocha bliká někam za okraj a
      dítě hledá tečku, která na obrazovce není. Posouvá se jen tehdy, když
-     opravdu nejsou vidět — skákání pod rukama je horší než nic. */
+     opravdu nejsou vidět. */
   const highlightKey = (highlightPins ?? []).map((p) => `${p.compId}#${p.pinName}`).join(",");
 
   useEffect(() => {
@@ -189,7 +214,7 @@ export function CircuitBuilder({
 
   /* Změny se posílají ven se zpožděním. Během tahu součástkou se stav mění
      desetkrát za vteřinu a nadřazená lekce po každé změně přepočítává
-     kontrolu zapojení — bez zdržení by se to dělalo úplně zbytečně. */
+     kontrolu zapojení. */
   useEffect(() => {
     if (state.circuit === lastSent.current) return;
 
@@ -210,18 +235,39 @@ export function CircuitBuilder({
     live.set(id, { ...(live.get(id) ?? {}), pressed: true });
   }
 
-  const setZoom = (value: number) =>
+  /** Zvětší nebo zmenší kolem středu výřezu — tlačítka nemají kurzor. */
+  const zoomFromCentre = (value: number) => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+    const next = zoomAt(
+      { zoom: state.zoom, pan: state.pan },
+      { x: rect.width / 2, y: rect.height / 2 },
+      zoom,
+    );
+    dispatch({ type: "SET_ZOOM", zoom: next.zoom });
     dispatch({
-      type: "SET_ZOOM",
-      zoom: Number(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value)).toFixed(2)),
+      type: "SET_PAN",
+      pan: clampPan(next.pan, next.zoom, contentBounds(state.circuit), {
+        width: rect.width,
+        height: rect.height,
+      }),
     });
+  };
 
+  const selectedComp =
+    state.selection?.kind === "component"
+      ? state.circuit.comps.find((c) => c.id === state.selection?.id) ?? null
+      : null;
   const selectedLabel =
     state.selection?.kind === "component"
       ? "součástku"
       : state.selection?.kind === "wire"
         ? "drátek"
         : null;
+  const rotatable = selectedComp !== null && isRotatable(selectedComp.type);
+  const rotationBlocked = rotatable && selectedComp !== null && !canRotate(state.circuit, selectedComp.id);
 
   const body = (
     <div
@@ -263,7 +309,6 @@ export function CircuitBuilder({
               state={state}
               dispatch={dispatch}
               live={live}
-              flagged={new Set(flagged ?? [])}
               highlightPins={highlightPins}
               showPins={showPins}
               onPress={onPress}
@@ -279,11 +324,10 @@ export function CircuitBuilder({
           )}
 
           {/* Ovládání. Mazací tlačítko je tu proto, že na tabletu žádná
-              klávesa Delete není — bez něj by se špatně natažený drátek
-              nedal odstranit vůbec. */}
+              klávesa Delete není. */}
           {!bare && (
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2">
-              <div className="pointer-events-auto flex flex-wrap gap-1">
+              <div className="pointer-events-auto flex flex-wrap items-end gap-1">
                 {selectedLabel && !readOnly && (
                   <button
                     type="button"
@@ -301,28 +345,73 @@ export function CircuitBuilder({
                   </button>
                 )}
 
-                {resetTo && !readOnly && (
+                {rotatable && !readOnly && selectedComp && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: "ROTATE", id: selectedComp.id })}
+                      disabled={rotationBlocked}
+                      title={rotationBlocked ? "Tady se otočit nedá — nožička by padla do obsazené dírky." : "Otočit o čtvrt kola (R)"}
+                      className="flex min-h-11 items-center gap-2 rounded-md border border-ink bg-paper px-3.5 text-sm font-semibold text-ink shadow-hard-sm hover:bg-primary-50 disabled:opacity-40"
+                    >
+                      <RotateCw className="h-4 w-4 text-primary-700" aria-hidden="true" />
+                      Otočit
+                    </button>
+                    {rotationBlocked && (
+                      <span className="max-w-[16rem] rounded-md bg-paper/90 px-2 py-1 text-xs leading-snug text-danger-700">
+                        Otočit nejde: nožička by padla do obsazené dírky.
+                      </span>
+                    )}
+                  </>
+                )}
+
+                {resetTo && !readOnly && !confirmReset && (
                   <button
                     type="button"
-                    onClick={() => {
-                      dispatch({ type: "RESET", circuit: resetTo });
-                      /* Výřez taky, jinak zůstane odjetý někam, kde po
-                         resetu nic není. */
-                      requestAnimationFrame(() => fit(resetTo));
-                      onReset?.();
-                    }}
+                    onClick={() => setConfirmReset(true)}
                     className="flex min-h-11 items-center gap-2 rounded-md border border-ink/30 bg-paper px-3.5 text-sm font-medium text-ink-500 hover:border-ink hover:text-ink"
                   >
                     <RotateCcw className="h-4 w-4" aria-hidden="true" />
                     Začít znovu
                   </button>
                 )}
+
+                {resetTo && !readOnly && confirmReset && (
+                  <div
+                    role="group"
+                    aria-label="Potvrzení smazání"
+                    className="flex flex-wrap items-center gap-1 rounded-md border border-danger-600 bg-paper p-1 shadow-hard-sm"
+                  >
+                    <span className="px-2 text-sm font-semibold text-ink">Opravdu smazat vše?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmReset(false);
+                        dispatch({ type: "RESET", circuit: resetTo });
+                        /* Výřez taky, jinak zůstane odjetý někam, kde po
+                           resetu nic není. */
+                        requestAnimationFrame(() => fit(resetTo));
+                        onReset?.();
+                      }}
+                      className="min-h-11 rounded px-3 text-sm font-semibold text-danger-700 hover:bg-danger-50"
+                    >
+                      Ano, smazat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmReset(false)}
+                      className="min-h-11 rounded px-3 text-sm font-medium text-ink-500 hover:bg-ink/5 hover:text-ink"
+                    >
+                      Ne
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border border-ink bg-paper p-0.5 shadow-hard-sm">
                 <button
                   type="button"
-                  onClick={() => setZoom(state.zoom - ZOOM_STEP)}
+                  onClick={() => zoomFromCentre(state.zoom - ZOOM_STEP)}
                   className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
                   aria-label="Oddálit"
                 >
@@ -342,7 +431,7 @@ export function CircuitBuilder({
 
                 <button
                   type="button"
-                  onClick={() => setZoom(state.zoom + ZOOM_STEP)}
+                  onClick={() => zoomFromCentre(state.zoom + ZOOM_STEP)}
                   className="grid size-11 place-items-center rounded text-ink-500 hover:bg-ink/5 hover:text-ink"
                   aria-label="Přiblížit"
                 >
@@ -381,8 +470,7 @@ export function CircuitBuilder({
   );
 
   /* Přes celou obrazovku. Skládání je hlavní práce lekce a ve výřezu
-     vysokém 460 px se dělá mizerně — Tinkercad má na totéž celé okno a je
-     to jeden z důvodů, proč se v něm staví pohodlně. */
+     vysokém 460 px se dělá mizerně. */
   if (expanded) {
     return (
       <div

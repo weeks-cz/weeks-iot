@@ -1,6 +1,11 @@
 import { pinKey, resolveNets, type NetMap } from "./nets";
 import { findPath } from "./paths";
+import { equivalentPins } from "./components";
 import type { Circuit, ComponentType } from "./types";
+
+function typeOf(circuit: Circuit, compId: string): ComponentType {
+  return circuit.comps.find((c) => c.id === compId)?.type ?? "led-red";
+}
 
 /**
  * Kontrola zapojení podle zadání lekce.
@@ -120,12 +125,25 @@ function checkAssignment(
     const toId = roles.get(conn.to.role);
     if (!fromId || !toId) continue;
 
-    const result = findPath(
-      circuit,
-      pinKey(fromId, conn.from.pin),
-      pinKey(toId, conn.to.pin),
-      { through: conn.through, maxHops: conn.through?.length ?? 0, nets },
-    );
+    /* Tlačítko: kterákoli nožička téže strany je pro spoj stejná (strany
+       jsou uvnitř spojené). Zkouší se všechny kombinace a první, která
+       sedí, rozhoduje. */
+    const fromPins = equivalentPins(typeOf(circuit, fromId), conn.from.pin);
+    const toPins = equivalentPins(typeOf(circuit, toId), conn.to.pin);
+    let result: ReturnType<typeof findPath> = { found: false, through: [], componentIds: [] };
+    search: for (const fp of fromPins) {
+      for (const tp of toPins) {
+        const r = findPath(circuit, pinKey(fromId, fp), pinKey(toId, tp), {
+          through: conn.through,
+          maxHops: conn.through?.length ?? 0,
+          nets,
+        });
+        if (r.found) {
+          result = r;
+          break search;
+        }
+      }
+    }
 
     if (!result.found) {
       issues.push({
