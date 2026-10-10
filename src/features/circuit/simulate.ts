@@ -43,7 +43,14 @@ export interface SimulationFrame {
   buzzers: BuzzerState[];
   /** Co program vypsal do sériového monitoru. */
   serial: string[];
+  /** Kdy stav začal, v ms virtuálního času. */
   elapsedMs: number;
+  /**
+   * Jak dlouho stav trvá, než přijde další snímek. Nastaví `runProgram`; u
+   * snímků z jiného zdroje (testy) může chybět — přehrávač pak bere rozdíl
+   * k dalšímu snímku.
+   */
+  durationMs?: number;
 }
 
 export interface SimulationInputs {
@@ -504,42 +511,10 @@ function readInputsFromCircuit(
   return values;
 }
 
-/* ── Celý běh ───────────────────────────────────────────────────────────── */
-
-/**
- * Strop na počet snímků.
- *
- * Přechod jasu 0→255→0 s delay(5) jich vyrobí přes pět set za jediný
- * průchod. To je v pořádku a chceme to — animace je pak plynulá. Strop
- * je tu proti programu, který by jich chtěl statisíce.
- */
-const MAX_FRAMES = 2000;
-
-/**
- * Otisk snímku pro porovnání se sousedem.
- *
- * Čas do něj schválně nepatří: dva snímky se stejným obvodem a jiným
- * časem jsou pro diváka tentýž obrázek.
- */
-function frameSignature(frame: SimulationFrame): string {
-  const leds = frame.leds.map((l) => `${l.compId}:${l.brightness}`).join(",");
-  const buzzers = frame.buzzers.map((b) => `${b.compId}:${b.frequency}`).join(",");
-  return `${leds}|${buzzers}|${frame.serial.length}`;
-}
-
 /** Co program udělal jinak, než by udělala skutečná deska. */
 export interface PinDiagnostic {
   kind: "not-output";
   pin: number;
-}
-
-export interface RunResult {
-  ok: boolean;
-  error?: { message: string; line: number };
-  /** Zkrat zastavil běh. Věta pro dítě, pojmenuje pin. */
-  shortCircuit?: string;
-  frames: SimulationFrame[];
-  diagnostics: PinDiagnostic[];
 }
 
 const POWER_MESSAGE = (where: string) =>
@@ -597,8 +572,60 @@ function runtimeShortCircuit(
 /** Vyhodí se z `snapshot`, aby zkrat zastavil běh uprostřed `delay`. */
 class ShortCircuitSignal extends Error {}
 
+/* ── Celý běh ───────────────────────────────────────────────────────────── */
+
+/**
+ * Strop na počet snímků.
+ *
+ * Přechod jasu 0→255→0 s delay(5) jich vyrobí přes pět set za jeden průchod.
+ * Strop je tu proti programu, který by jich chtěl statisíce. Když ho běh
+ * překročí, končí se v čase posledního uloženého snímku — přehrávání se
+ * zkrátí, ale nezkreslí.
+ */
+const MAX_FRAMES = 4000;
+
+/**
+ * Kolik virtuálního času nejvýš simulovat kvůli smyčce.
+ *
+ * Smyčka se pouští v reálném čase, takže delší cyklus je delší čekání na
+ * opakování. Dvě iterace jsou minimum, aby se opakování vidělo; po minutě
+ * virtuálního času další iterace nepřidáváme.
+ */
+const MAX_CYCLE_MS = 60_000;
+
+/**
+ * Otisk vizuálního stavu snímku.
+ *
+ * Čas ani sériový výpis do něj nepatří: dva snímky se stejným obvodem jsou
+ * pro diváka tentýž obrázek. Sériový výpis se k poslednímu snímku připojí
+ * zvlášť, aby prostý výpis nezplodil nový snímek.
+ */
+function visualSignature(frame: SimulationFrame): string {
+  const leds = frame.leds.map((l) => `${l.compId}:${l.brightness}`).join(",");
+  const buzzers = frame.buzzers.map((b) => `${b.compId}:${b.frequency}`).join(",");
+  return `${leds}|${buzzers}`;
+}
+
+/**
+ * Interní signál: dosáhl se limitu času nebo snímků. Běh se ukončí, nikoli
+ * selže — přehrává se to, co už se stihlo.
+ */
+class RunLimitSignal extends Error {}
+
+export interface RunResult {
+  ok: boolean;
+  error?: { message: string; line: number };
+  /** Zkrat zastavil běh. Věta pro dítě, pojmenuje pin. */
+  shortCircuit?: string;
+  frames: SimulationFrame[];
+  diagnostics: PinDiagnostic[];
+}
+
 export interface RunConfig {
-  /** Kolik průchodů `loop()` spočítat. */
+  /**
+   * Nejvíc průchodů `loop()`. Běh se ale zastaví dřív, jakmile je cyklus
+   * dost dlouhý (viz `MAX_CYCLE_MS`), a vždy spočítá aspoň dva průchody.
+   */
   iterations?: number;
   inputs?: SimulationInputs;
   /** Hodnoty, které mají číst vstupní piny — z tlačítek a senzorů. */
@@ -609,7 +636,9 @@ export interface RunConfig {
  * Přeloží a spustí program nad obvodem.
  *
  * Vrací snímky, ne jeden konečný stav — z nich se poskládá animace a jde
- * z nich poznat, že LED bliká, ne jen že na konci svítí.
+ * z nich poznat, že LED bliká, ne jen že na konci svítí. Každý snímek nese
+ * `durationMs`: jak dlouho stav trvá, než přijde další. Poslední snímek
+ * drží až do konce simulovaného běhu.
  */
 export function runProgram(
   source: string,
@@ -646,38 +675,52 @@ export function runProgram(
 
   const nets = resolveNets(circuit);
   const frames: SimulationFrame[] = [];
-  let lastSignature: string | null = null;
 
-  /* Snímek se pořídí, kdykoli uplyne čas — a ještě po každém průchodu
-     smyčky, aby nezmizel program, který žádný delay nemá.
-
-     Dva po sobě jdoucí stejné snímky se zahodí: konec smyčky, která končí
-     delayem, by jinak pokaždé přidal kopii. Přechody se tím neztratí,
-     protože zahazujeme jen to, co se ničím neliší. */
+  /* Snímek se pořídí, kdykoli začne pauza, a ještě po každém průchodu
+     smyčky — aby nezmizel program, který žádný delay nemá. Stejný vizuální
+     stav jako předchozí snímek se nepřidá; jen se k němu připojí aktuální
+     sériový výpis. */
   const snapshot = (): void => {
     const short = runtimeShortCircuit(circuit, state, nets);
     if (short) throw new ShortCircuitSignal(short);
 
-    if (frames.length >= MAX_FRAMES) return;
+    /* Limit času platí i uvnitř jednoho průchodu: `while (true)` s delay
+       nikdy neskončí, na skutečném Arduinu taky ne. Simulace se zastaví,
+       až je cyklus dost dlouhý, a přehrává se ten úsek. */
+    if (state.elapsedMs >= MAX_CYCLE_MS) throw new RunLimitSignal();
 
     const frame = readFrame(circuit, state, config.inputs, nets);
-    const signature = frameSignature(frame);
-    if (signature === lastSignature) return;
+    const last = frames.at(-1);
+    if (last && visualSignature(last) === visualSignature(frame)) {
+      last.serial = frame.serial;
+      return;
+    }
 
-    lastSignature = signature;
+    if (frames.length >= MAX_FRAMES) throw new RunLimitSignal();
     frames.push(frame);
   };
 
   const board = createBoard(state, snapshot);
   const interp = new Interpreter(compiled.program!, board);
 
+  /* Délka každého snímku se dopočítá až na konci: je to čas do dalšího
+     snímku, u posledního čas do konce běhu. */
+  const finish = (ok: boolean, extra: Partial<RunResult> = {}): RunResult => {
+    const end = state.elapsedMs;
+    frames.forEach((frame, i) => {
+      frame.durationMs = (frames[i + 1]?.elapsedMs ?? end) - frame.elapsedMs;
+    });
+    return { ok, frames, diagnostics: diagnostics(), ...extra };
+  };
+
   /* Piny, do kterých se zapisovalo bez pinMode OUTPUT. Hlásí se až na
      konci — dítě se má dozvědět, co udělalo, ne každé jednotlivé zapsání. */
-  const diagnostics = (): PinDiagnostic[] =>
-    [...state.unsetWrites]
+  function diagnostics(): PinDiagnostic[] {
+    return [...state.unsetWrites]
       .filter((pin) => state.modes.get(pin) !== "output")
       .sort((a, b) => a - b)
       .map((pin) => ({ kind: "not-output" as const, pin }));
+  }
 
   try {
     interp.runSetup();
@@ -687,25 +730,33 @@ export function runProgram(
        stav z obvodu přečíst. */
     refreshInputs();
 
-    const iterations = config.iterations ?? 20;
-    for (let i = 0; i < iterations; i++) {
+    const maxIterations = config.iterations ?? 20;
+    const minIterations = Math.min(2, maxIterations);
+    let count = 0;
+    while (
+      count < maxIterations &&
+      (count < minIterations || state.elapsedMs < MAX_CYCLE_MS)
+    ) {
       if (!interp.runLoopOnce()) break;
+      count += 1;
       snapshot();
     }
   } catch (e) {
+    if (e instanceof RunLimitSignal) {
+      /* Limit: běh končí tady. Stav na pinech se od posledního snímku
+         změnil, takže ten poslední drží až do teď. */
+      return finish(true);
+    }
     if (e instanceof ShortCircuitSignal) {
-      return { ok: false, shortCircuit: e.message, frames, diagnostics: diagnostics() };
+      return finish(false, { shortCircuit: e.message });
     }
     if (e instanceof RuntimeError) {
-      return { ok: false, error: { message: e.message, line: e.line }, frames, diagnostics: diagnostics() };
+      return finish(false, { error: { message: e.message, line: e.line } });
     }
-    return {
-      ok: false,
+    return finish(false, {
       error: { message: "Program se zasekl. Zkontroluj smyčky a delay.", line: 1 },
-      frames,
-      diagnostics: diagnostics(),
-    };
+    });
   }
 
-  return { ok: true, frames, diagnostics: diagnostics() };
+  return finish(true);
 }

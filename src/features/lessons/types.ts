@@ -158,6 +158,16 @@ export function ledFaded(frames: SimulationFrame[], comp?: string | null): boole
   return levels.size >= 3;
 }
 
+/**
+ * Jak dlouho běh trval, v ms virtuálního času. Poslední snímek začíná
+ * v okamžiku svého stavu a drží až do konce — proto ne `elapsedMs` posledního.
+ */
+export function runDurationMs(frames: SimulationFrame[]): number {
+  const last = frames.at(-1);
+  if (!last) return 0;
+  return last.elapsedMs + (last.durationMs ?? 0);
+}
+
 /** Rozezněl se bzučák? */
 export function buzzerSounded(frames: SimulationFrame[]): boolean {
   return frames.some((f) => f.buzzers.some((b) => b.frequency > 0));

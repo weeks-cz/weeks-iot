@@ -73,10 +73,9 @@ export function emptyBoardState(): BoardState {
  * by nešlo spočítat, co se stane za deset sekund, aniž bys deset sekund
  * čekal.
  *
- * `onTimePasses` se ozve pokaždé, když se virtuální čas pohne. Tam si
- * simulace bere snímek obvodu — protože „být vidět" znamená „chvíli
- * trvat". Bez toho by celý přechod jasu proběhl mezi dvěma snímky a
- * nikdo by ho nezahlédl.
+ * `onTimePasses` se ozve pokaždé, když začne pauza — PŘED posunem času.
+ * Tam si simulace bere snímek obvodu: stav, který v tu chvíli platí, drží
+ * celou pauzu. „Být vidět" znamená „chvíli trvat".
  */
 export function createBoard(state: BoardState, onTimePasses?: () => void): Board {
   const readPin = (pin: number): number => {
@@ -118,8 +117,11 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     },
 
     delay(ms) {
-      state.elapsedMs += Math.max(0, ms);
+      /* Snímek se pořizuje PŘED posunem času: stav, který stojí na pinech
+         teď, drží právě tenhle delay. Kdyby se pořídil až po něm, každý
+         stav by se ukázal o jednu pauzu později a blikání by se obrátilo. */
       onTimePasses?.();
+      state.elapsedMs += Math.max(0, ms);
     },
 
     millis() {

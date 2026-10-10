@@ -210,7 +210,10 @@ describe("blikání se pozná ze snímků", () => {
 
   it("virtuální čas roste podle delay", () => {
     const r = runProgram(BLINK, correctCircuit(), { iterations: 3 });
-    expect(r.frames.at(-1)!.elapsedMs).toBe(3000);
+    const last = r.frames.at(-1)!;
+    /* Poslední snímek začíná v čase svého stavu a drží do konce běhu —
+       konec běhu je začátek + délka. */
+    expect(last.elapsedMs + (last.durationMs ?? 0)).toBe(3000);
   });
 });
 

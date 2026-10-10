@@ -1,4 +1,4 @@
-import { ledFaded, type Lesson } from "../types";
+import { ledFaded, runDurationMs, type Lesson } from "../types";
 import {
   analogWrite,
   loopValue,
@@ -144,7 +144,7 @@ void loop() {
     {
       label: "Přechod trvá, není okamžitý",
       iterations: 1,
-      verify: (frames) => (frames.at(-1)?.elapsedMs ?? 0) > 0,
+      verify: (frames) => runDurationMs(frames) > 0,
       hint:
         "Bez delay() uvnitř smyčky proběhne přechod tak rychle, že ho nikdo neuvidí. " +
         "Přidej delay(5).",

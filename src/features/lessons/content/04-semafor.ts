@@ -1,4 +1,4 @@
-import { ledBlinked, type Lesson } from "../types";
+import { ledBlinked, runDurationMs, type Lesson } from "../types";
 import {
   digitalWrite,
   pinMode,
@@ -186,7 +186,7 @@ void loop() {
     {
       label: "Mezi barvami je pauza",
       iterations: 2,
-      verify: (frames) => (frames.at(-1)?.elapsedMs ?? 0) >= 1000,
+      verify: (frames) => runDurationMs(frames) >= 1000,
       hint:
         "Bez delay() by se barvy střídaly tak rychle, že by to vypadalo jako " +
         "svítící všechno naráz. Přidej pauzu za každou barvu.",
