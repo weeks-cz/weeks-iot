@@ -2,10 +2,11 @@
 
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/Field";
+import { Checkbox, TextField } from "@/components/ui/Field";
 import { Alert, Badge, Card, MonoLabel } from "@/components/ui/Surface";
 import type { ActionState } from "@/features/actions";
-import { birthDateRange } from "@/features/onboarding/schema";
+import { PARENTAL_TEXT } from "@/features/consent/texts";
+import { birthDateRange, needsParentalConsent } from "@/features/onboarding/schema";
 import {
   archiveChildAction,
   createChildAction,
@@ -21,7 +22,15 @@ function formatBirthDate(iso: string): string {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString("cs-CZ", { timeZone: "UTC" });
 }
 
-function BirthDateField({ defaultValue, error }: { defaultValue?: string; error?: string }) {
+function BirthDateField({
+  value,
+  onChange,
+  error,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+}) {
   const { min, max } = birthDateRange();
 
   return (
@@ -33,7 +42,8 @@ function BirthDateField({ defaultValue, error }: { defaultValue?: string; error?
       mono
       min={min}
       max={max}
-      defaultValue={defaultValue ?? ""}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       hint="Podle data poznáme, kdo musí podepsat souhlas. Hranice je 15 let."
       error={error}
     />
@@ -45,6 +55,10 @@ function BirthDateField({ defaultValue, error }: { defaultValue?: string; error?
 function AddChildForm() {
   const [state, submit, pending] = useActionState(createChildAction, EMPTY);
   const [open, setOpen] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
+  /* Souhlas se ptá až u vyplněného data: prázdné pole nic neříká a
+     nečitelné datum by jinak vyvolalo souhlas, který se pak nedá dát. */
+  const isMinor = birthDate !== "" && needsParentalConsent(birthDate);
 
   if (!open) {
     return (
@@ -79,7 +93,34 @@ function AddChildForm() {
           error={state.fieldErrors?.nick}
         />
 
-        <BirthDateField error={state.fieldErrors?.birthDate} />
+        <BirthDateField
+          value={birthDate}
+          onChange={setBirthDate}
+          error={state.fieldErrors?.birthDate}
+        />
+
+        {isMinor && (
+          <Checkbox
+            name="parentalConsent"
+            required
+            /* Žádné defaultChecked — předvyplněný souhlas není souhlas. Znění
+               je stejné jako u registrace, verze se proto počítá stejně. */
+            label={PARENTAL_TEXT.label}
+            error={state.fieldErrors?.parentalConsent}
+            details={
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-primary-600 underline underline-offset-4">
+                  Zobrazit plné znění
+                </summary>
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-sm bg-paper-soft p-3">
+                  <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-500">
+                    {PARENTAL_TEXT.full}
+                  </pre>
+                </div>
+              </details>
+            }
+          />
+        )}
 
         <div>
           <MonoLabel className="mb-2">Avatar</MonoLabel>

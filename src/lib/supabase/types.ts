@@ -44,7 +44,10 @@ export type ParentRow = {
 
 export type ConsentRow = {
   id: number;
-  parent_id: string;
+  /** NULL po smazání účtu (migrace 013) — ledger přežije jako doklad. */
+  parent_id: string | null;
+  /** Vyplněno jen u souhlasu zákonného zástupce za konkrétní dítě (migrace 014). */
+  child_id: string | null;
   kind: ConsentKind;
   version: string;
   text_snapshot: string;
@@ -211,6 +214,18 @@ export interface Database {
     Functions: {
       record_consent: {
         Args: {
+          p_kind: ConsentKind;
+          p_version: string;
+          p_text_snapshot: string;
+          p_granted: boolean;
+          p_ip?: string | null;
+          p_user_agent?: string | null;
+        };
+        Returns: number;
+      };
+      record_child_consent: {
+        Args: {
+          p_child_id: string;
           p_kind: ConsentKind;
           p_version: string;
           p_text_snapshot: string;
