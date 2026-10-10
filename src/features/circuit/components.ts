@@ -220,7 +220,7 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     type: "breadboard-half",
     intro: {
       what: "Deska plná dírek, do kterých se zapichují součástky. Nic se nepájí — všechno jde zase vytáhnout.",
-      why: "Dírky ve stejném sloupci jsou uvnitř propojené. Dvě nožičky spojíš tím, že je zapíchneš do stejného sloupce.",
+      why: "Pět dírek v jednom sloupci (a–e, nebo f–j) je uvnitř propojených. Dvě nožičky spojíš tím, že je zapíchneš do stejného sloupce na stejné polovině desky. Dlouhé řady + a − u okrajů jsou propojené po celé délce.",
     },
     label: "Breadboard",
     wokwiTag: "wokwi-breadboard-half",
@@ -234,13 +234,13 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     paletteIcon: "/cad/palette/breadboard-half.png",
   },
   "led-red":    { ...led("red"),    type: "led-red",
-    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." },    label: "LED červená", paletteIcon: "/cad/palette/led-red.png" },
+    intro: { what: "Světélko. Je to dioda, takže proud pustí jen jedním směrem.", why: "Delší nožička (anoda, +) míří k pinu Arduina, kratší (katoda, −) k zemi. Obráceně zapojená LED nesvítí." },    label: "LED červená", paletteIcon: "/cad/palette/led-red.png" },
   "led-yellow": { ...led("yellow"), type: "led-yellow",
-    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." }, label: "LED žlutá",   paletteIcon: "/cad/palette/led-yellow.png" },
+    intro: { what: "Světélko. Je to dioda, takže proud pustí jen jedním směrem.", why: "Delší nožička (anoda, +) míří k pinu Arduina, kratší (katoda, −) k zemi. Obráceně zapojená LED nesvítí." }, label: "LED žlutá",   paletteIcon: "/cad/palette/led-yellow.png" },
   "led-green":  { ...led("green"),  type: "led-green",
-    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." },  label: "LED zelená",  paletteIcon: "/cad/palette/led-green.png" },
+    intro: { what: "Světélko. Je to dioda, takže proud pustí jen jedním směrem.", why: "Delší nožička (anoda, +) míří k pinu Arduina, kratší (katoda, −) k zemi. Obráceně zapojená LED nesvítí." },  label: "LED zelená",  paletteIcon: "/cad/palette/led-green.png" },
   "led-blue":   { ...led("blue"),   type: "led-blue",
-    intro: { what: "Světélko. Svítí, jen když jí proud teče správným směrem — je to dioda.", why: "Delší nožička je plus a patří k pinu, kratší je mínus a patří na zem. Obráceně nesvítí." },   label: "LED modrá",   paletteIcon: "/cad/palette/led-blue.png" },
+    intro: { what: "Světélko. Je to dioda, takže proud pustí jen jedním směrem.", why: "Delší nožička (anoda, +) míří k pinu Arduina, kratší (katoda, −) k zemi. Obráceně zapojená LED nesvítí." },   label: "LED modrá",   paletteIcon: "/cad/palette/led-blue.png" },
   "led-rgb": {
     type: "led-rgb",
     intro: {
@@ -261,8 +261,8 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
   "resistor-220": {
     type: "resistor-220",
     intro: {
-      what: "Brzda na proud. Sama nic nedělá, ale propustí jen tolik, kolik LED unese.",
-      why: "Bez ní by si LED vzala všechno, co jí Arduino nabídne, a spálila by se. Na jejím místě v obvodu nezáleží — hlavně ať je v cestě.",
+      what: "Brzdí proud. Sám nic nedělá, ale pustí dál jen tolik proudu, kolik LED unese.",
+      why: "Bez něj by si LED vzala všechno, co jí Arduino nabídne, a spálila by se. Je jedno, jestli stojí před LED, nebo za ní — hlavně ať je v cestě.",
     }, label: "Rezistor 220 Ω",
     wokwiTag: "wokwi-resistor",
     wokwiAttrs: { value: "220" },
@@ -275,8 +275,8 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
   "pushbutton": {
     type: "pushbutton",
     intro: {
-      what: "Tlačítko. Má čtyři nožičky, ale dělá dvě věci: každá dvojice nožiček na jedné straně je uvnitř spojená a stisk spojí obě strany mezi sebou.",
-      why: "Arduino díky němu pozná, že se něco stalo. Dává se přes prostřední drážku desky, aby každá strana seděla v jiném sloupci.",
+      what: "Tlačítko má čtyři nožičky, ale jen dvě strany. Nožičky jedné strany jsou uvnitř spojené pořád, stisk spojí obě strany navzájem.",
+      why: "Díky němu Arduino pozná, že jsi něco zmáčkl. Na desku ho posaď přes prostřední drážku, aby každá strana seděla v jiném sloupci.",
     }, label: "Tlačítko",
     wokwiTag: "weeks-tact-switch",
     /* Skutečný spínač 6×6 mm, ne Wokwi tlačítko. Wokwi má nožičky daleko od
@@ -296,7 +296,7 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
   "piezo-buzzer": {
     type: "piezo-buzzer",
     intro: {
-      what: "Bzučák. Dělá to co LED, ale slyšitelně — čím vyšší číslo mu pošleš, tím vyšší tón.",
+      what: "Bzučák. Dělá to, co LED, jen slyšitelně: čím vyšší číslo mu pošleš, tím vyšší tón.",
       why: "Nožička + patří k pinu, nožička − na zem. Rezistor nepotřebuje.",
     }, label: "Piezo buzzer",
     wokwiTag: "wokwi-buzzer",
