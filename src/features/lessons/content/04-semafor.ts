@@ -1,4 +1,4 @@
-import { ledBlinked, type Lesson } from "../types";
+import { ledBlinked, runDurationMs, type Lesson } from "../types";
 import {
   digitalWrite,
   pinMode,
@@ -51,39 +51,28 @@ export const lesson4: Lesson = {
       { role: "r2", type: "resistor-220", label: "druhý rezistor" },
       { role: "r3", type: "resistor-220", label: "třetí rezistor" },
     ],
-    connections: [
+    connections: [],
+    series: [
       {
         from: { role: "arduino", pin: "D2" },
-        to: { role: "cervena", pin: "anode" },
-        through: ["resistor-220"],
-        hint: "Červenou LED zapoj na pin 2 přes rezistor.",
+        to: { role: "arduino", pin: "GND-1" },
+        led: { role: "cervena", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
+        hint: "Červenou LED zapoj na pin 2. Rezistor patří do téže řady.",
       },
       {
         from: { role: "arduino", pin: "D3" },
-        to: { role: "oranzova", pin: "anode" },
-        through: ["resistor-220"],
-        hint: "Žlutou LED zapoj na pin 3 přes rezistor.",
+        to: { role: "arduino", pin: "GND-1" },
+        led: { role: "oranzova", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
+        hint: "Žlutou LED zapoj na pin 3. Rezistor patří do téže řady.",
       },
       {
         from: { role: "arduino", pin: "D4" },
-        to: { role: "zelena", pin: "anode" },
-        through: ["resistor-220"],
-        hint: "Zelenou LED zapoj na pin 4 přes rezistor.",
-      },
-      {
-        from: { role: "cervena", pin: "cathode" },
         to: { role: "arduino", pin: "GND-1" },
-        hint: "Katodu červené LED spoj se zemí — nejlíp přes napájecí lištu.",
-      },
-      {
-        from: { role: "oranzova", pin: "cathode" },
-        to: { role: "arduino", pin: "GND-1" },
-        hint: "Katodu žluté LED spoj se zemí.",
-      },
-      {
-        from: { role: "zelena", pin: "cathode" },
-        to: { role: "arduino", pin: "GND-1" },
-        hint: "Katodu zelené LED spoj se zemí.",
+        led: { role: "zelena", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
+        hint: "Zelenou LED zapoj na pin 4. Rezistor patří do téže řady.",
       },
     ],
   },
@@ -197,7 +186,7 @@ void loop() {
     {
       label: "Mezi barvami je pauza",
       iterations: 2,
-      verify: (frames) => (frames.at(-1)?.elapsedMs ?? 0) >= 1000,
+      verify: (frames) => runDurationMs(frames) >= 1000,
       hint:
         "Bez delay() by se barvy střídaly tak rychle, že by to vypadalo jako " +
         "svítící všechno naráz. Přidej pauzu za každou barvu.",

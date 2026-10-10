@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SimulationFrame } from "@/features/circuit/simulate";
 
 /**
@@ -21,15 +21,15 @@ import type { SimulationFrame } from "@/features/circuit/simulate";
  * na kterém nic nevidí.
  */
 
-/** Nejdelší přehrání jednoho cyklu. Delší běh se zrychlí. */
-const MAX_PLAYBACK_MS = 8000;
+/**
+ * Jeden animační snímek prohlížeče (60 Hz). Kratší stav než tohle se
+ * v rAF klidně ztratí, proto má aspoň jeden snímek svůj čas.
+ */
+export const TICK_MS = 1000 / 60;
 
 /**
- * Který snímek patří k danému okamžiku běhu.
- *
- * Vytažené ven, protože tohle je celá logika přehrávání a v prohlížeči se
- * testuje mizerně: requestAnimationFrame na skryté kartě vůbec neběží.
- * Jako funkce se to dá ověřit přesně.
+ * Který snímek patří k danému okamžiku běhu, když se počítá z času snímků
+ * (`elapsedMs`), bez zkrácení a bez délek. Pro testy a rychlé dotazy.
  */
 export function frameIndexAt(frames: SimulationFrame[], virtualMs: number): number {
   let index = 0;
@@ -37,6 +37,71 @@ export function frameIndexAt(frames: SimulationFrame[], virtualMs: number): numb
     index += 1;
   }
   return index;
+}
+
+/**
+ * Rozvrh přehrávání: kdy který snímek začne a jak dlouho je vidět.
+ *
+ * Přehrává se v reálném čase, 1 : 1. Stav, který trvá aspoň tick, se ukáže
+ * přesně tak dlouho, jak trvá. Krátký stav uprostřed dlouhých (třeba 10 ms
+ * zhasnutí mezi dvěma půlsekundami) se natáhne na jeden snímek — jinak by
+ * do obrazovky vůbec nedosáhl. Řada krátkých stavů za sebou (přechod jasu
+ * s delay(5)) zůstává v reálném čase: je to plynulý náběh, ne jednotlivé
+ * záblesky.
+ */
+export interface PlaybackSchedule {
+  /** Začátek každého snímku na časové ose přehrávání. */
+  starts: number[];
+  /** Jak dlouho je každý snímek vidět. 0 = nikdy (zero-length stav). */
+  shown: number[];
+  /** Délka celého cyklu. */
+  total: number;
+}
+
+export function playbackSchedule(frames: SimulationFrame[]): PlaybackSchedule {
+  const raw = frames.map((frame, i) => {
+    if (frame.durationMs !== undefined) return frame.durationMs;
+    const next = frames[i + 1]?.elapsedMs ?? frame.elapsedMs;
+    return Math.max(0, next - frame.elapsedMs);
+  });
+
+  /* Nejdelší čas, který se ukáže sám od sebe. Sousedé na hranici se počítají
+     jako dlouzí — první nebo poslední krátký stav tak dostane svůj tick. */
+  const long = (d: number | undefined) => d === undefined || d >= TICK_MS;
+
+  const shown = raw.map((d, i) => {
+    if (d <= 0) return 0;
+    if (d >= TICK_MS) return d;
+    const isolated = long(raw[i - 1]) || long(raw[i + 1]);
+    return isolated ? TICK_MS : d;
+  });
+
+  const starts: number[] = [];
+  let at = 0;
+  for (const d of shown) {
+    starts.push(at);
+    at += d;
+  }
+
+  return { starts, shown, total: at };
+}
+
+/** Index snímku, který je v daném okamžiku cyklu vidět. */
+export function playbackIndexAt(schedule: PlaybackSchedule, virtualMs: number): number {
+  let index = 0;
+  for (let i = 0; i < schedule.starts.length; i++) {
+    if ((schedule.shown[i] ?? 0) > 0 && (schedule.starts[i] ?? 0) <= virtualMs) index = i;
+  }
+  return index;
+}
+
+/** Snímek, který se ukáže v čase `virtualMs` cyklu přehrávání. */
+export function stateAtPlayback(
+  frames: SimulationFrame[],
+  virtualMs: number,
+): SimulationFrame | null {
+  if (frames.length === 0) return null;
+  return frames[playbackIndexAt(playbackSchedule(frames), virtualMs)] ?? null;
 }
 
 export interface FramePlayer {
@@ -62,7 +127,8 @@ export function useFramePlayer(frames: SimulationFrame[]): FramePlayer {
   const [shown, setShown] = useState(frames);
   const raf = useRef<number | null>(null);
 
-  const total = frames.at(-1)?.elapsedMs ?? 0;
+  const schedule = useMemo(() => playbackSchedule(frames), [frames]);
+  const total = schedule.total;
   const animated = total > 0 && frames.length > 1;
 
   /* Nové snímky = nový běh. Srovnává se to při renderu, ne v efektu: kdyby
@@ -79,23 +145,19 @@ export function useFramePlayer(frames: SimulationFrame[]): FramePlayer {
   useEffect(() => {
     if (!playing || !animated) return;
 
-    /* Dlouhý běh se zrychlí, aby dítě nečekalo minutu. Krátký běží
-       v reálném čase — půl vteřiny má vypadat jako půl vteřiny. */
-    const rate = total > MAX_PLAYBACK_MS ? total / MAX_PLAYBACK_MS : 1;
+    /* Reálný čas, 1 : 1. Cyklus se posouvá o celé délky, ne resetuje na nulu,
+       aby se čas nerozjížděl o zlomky tiku při každém obratu. */
     let cycleStart = performance.now();
 
     const tick = (now: number) => {
-      let virtual = (now - cycleStart) * rate;
-
-      /* Doběhlo? Znovu od začátku — blikání má blikat pořád. Cyklus se
-         uzavírá až po uplynutí času POSLEDNÍHO snímku, takže i ten je
-         chvíli vidět. */
+      let virtual = now - cycleStart;
       if (virtual >= total) {
-        cycleStart = now;
-        virtual = 0;
+        const cycles = Math.floor(virtual / total);
+        cycleStart += cycles * total;
+        virtual -= cycles * total;
       }
 
-      setIndex(frameIndexAt(frames, virtual));
+      setIndex(playbackIndexAt(schedule, virtual));
 
       raf.current = requestAnimationFrame(tick);
     };
@@ -106,7 +168,7 @@ export function useFramePlayer(frames: SimulationFrame[]): FramePlayer {
       if (raf.current !== null) cancelAnimationFrame(raf.current);
       raf.current = null;
     };
-  }, [playing, animated, total, frames]);
+  }, [playing, animated, total, schedule]);
 
   return {
     frame: frames[Math.min(index, frames.length - 1)] ?? null,

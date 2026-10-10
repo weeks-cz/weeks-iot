@@ -76,16 +76,14 @@ export const lesson7: Lesson = {
           "Výstup AO (analog out) veď na pin A0. Tudy chodí naměřená hodnota — " +
           "pin DO vedle něj umí jen ano/ne, a to nám nestačí.",
       },
+    ],
+    series: [
       {
         from: { role: "arduino", pin: "D9" },
-        to: { role: "led", pin: "anode" },
-        through: ["resistor-220"],
-        hint: "LED zapoj na pin 9 přes rezistor — jako v lekci o plynulém jasu.",
-      },
-      {
-        from: { role: "led", pin: "cathode" },
         to: { role: "arduino", pin: "GND-1" },
-        hint: "Katoda LED na GND.",
+        led: { role: "led", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
+        hint: "LED zapoj na pin 9, rezistor v téže řadě — jako v lekci o plynulém jasu.",
       },
     ],
   },
@@ -203,13 +201,24 @@ void loop() {
         "Ve světle LED pořád svítí. V části „jinak“ ji zhasni — nebo máš porovnání otočené.",
     },
     {
-      label: "Hranice je někde mezi tmou a světlem",
+      label: "Senzor na obvodu: ve tmě LED svítí",
       iterations: 3,
-      pinInputs: { 14: 500 },
-      /* Při střední hodnotě je správně obojí — jde jen o to, že program
-         nespadl a rozhodl se. Dítě si smí zvolit vlastní hranici. */
-      verify: (frames) => frames.length > 0,
-      hint: "Program se při střední hodnotě zasekl. Zkontroluj podmínku.",
+      /* Hodnota přichází z fotorezistoru přes AO na A0, ne z kontroly.
+         Když chybí napájení nebo zem, senzor nic neříká a tenhle bod padne. */
+      sensors: { senzor: 100 },
+      verify: (frames) => ledEverOn(frames),
+      hint:
+        "Fotorezistor na obvodu nehlásí tmu. Je napájený (VCC na 5 V, GND na zem) " +
+        "a jeho AO vede na A0?",
+    },
+    {
+      label: "Senzor na obvodu: na světle LED zhasne",
+      iterations: 3,
+      sensors: { senzor: 900 },
+      verify: (frames) => ledNeverOn(frames),
+      hint:
+        "Na světle LED pořád svítí. Zkontroluj zapojení fotorezistoru a to, " +
+        "jestli podmínka porovnává hodnotu z A0.",
     },
   ],
 };

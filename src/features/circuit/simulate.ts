@@ -2,7 +2,7 @@ import { createBoard, emptyBoardState, type BoardState } from "@/features/arduin
 import { Interpreter, RuntimeError, compile } from "@/features/arduino/interpreter";
 import { getComponentSpec } from "./components";
 import { pinKey, resolveNets, type NetMap } from "./nets";
-import type { Circuit, CircuitComponent } from "./types";
+import type { Circuit, CircuitComponent, ComponentType } from "./types";
 
 /**
  * Most mezi programem a obvodem.
@@ -43,7 +43,14 @@ export interface SimulationFrame {
   buzzers: BuzzerState[];
   /** Co program vypsal do sériového monitoru. */
   serial: string[];
+  /** Kdy stav začal, v ms virtuálního času. */
   elapsedMs: number;
+  /**
+   * Jak dlouho stav trvá, než přijde další snímek. Nastaví `runProgram`; u
+   * snímků z jiného zdroje (testy) může chybět — přehrávač pak bere rozdíl
+   * k dalšímu snímku.
+   */
+  durationMs?: number;
 }
 
 export interface SimulationInputs {
@@ -120,6 +127,8 @@ class NetVoltage {
   constructor(
     private readonly nets: NetMap,
     private readonly circuit: Circuit,
+    /** Tlačítka, která jsou právě stisknutá — nestisknuté přerušuje zem. */
+    private readonly pressed: Set<string>,
   ) {}
 
   /** Nastaví úroveň sítě, do které patří daný pin. */
@@ -149,52 +158,14 @@ class NetVoltage {
     return this.groundNets().has(this.nets.netOf(pinKey(compId, pinName)));
   }
 
-  /** Sítě, ze kterých se dá dostat na zem. Počítá se jednou za snímek. */
+  /**
+   * Sítě, ze kterých se dá dostat na zem. Počítá se jednou za snímek a
+   * stisk tlačítka se započítává: nestisknuté tlačítko svoje poloviny
+   * nespojuje, takže LED za ním nedostane zem (stejně jako na desce).
+   */
   private groundNets(): Set<string> {
-    if (this.grounded) return this.grounded;
-
-    const found = new Set<string>();
-    this.grounded = found;
-
-    const uno = this.circuit.comps.find((c) => c.type === "arduino-uno");
-    if (!uno) return found;
-
-    const spec = getComponentSpec("arduino-uno");
-    const queue: string[] = [];
-    for (const g of GROUND_PINS) {
-      if (!spec.pins.some((p) => p.name === g)) continue;
-      const net = this.nets.netOf(pinKey(uno.id, g));
-      if (found.has(net)) continue;
-      found.add(net);
-      queue.push(net);
-    }
-
-    /* Zem se šíří pasivními součástkami — rezistorem, sepnutým tlačítkem,
-       dráhou potenciometru. Stisk se tu záměrně neřeší: tlačítko v cestě
-       k zemi je pro tuhle otázku vodič, protože jinak by se obvod dítěte
-       tvářil rozpojeně, dokud ho někdo nedrží. */
-    const passive = new Set(["resistor-220", "pushbutton", "potentiometer"]);
-
-    while (queue.length > 0) {
-      const net = queue.shift()!;
-
-      for (const comp of this.circuit.comps) {
-        if (!passive.has(comp.type)) continue;
-
-        const pins = getComponentSpec(comp.type).pins;
-        const touches = pins.some((p) => this.nets.netOf(pinKey(comp.id, p.name)) === net);
-        if (!touches) continue;
-
-        for (const p of pins) {
-          const other = this.nets.netOf(pinKey(comp.id, p.name));
-          if (found.has(other)) continue;
-          found.add(other);
-          queue.push(other);
-        }
-      }
-    }
-
-    return found;
+    if (!this.grounded) this.grounded = groundedNets(this.circuit, this.nets, this.pressed);
+    return this.grounded;
   }
 }
 
@@ -214,7 +185,7 @@ export function readFrame(
      U přechodu jasu se snímků pořizují stovky — počítat sítě u každého
      zvlášť je ta nejdražší věc, kterou by simulace mohla dělat. */
   const nets = precomputed ?? resolveNets(circuit);
-  const voltage = new NetVoltage(nets, circuit);
+  const voltage = new NetVoltage(nets, circuit, inputs.pressed ?? new Set<string>());
 
   const uno = circuit.comps.find((c) => c.type === "arduino-uno");
 
@@ -224,6 +195,10 @@ export function readFrame(
     for (const pin of spec.pins) {
       const number = arduinoPinNumber(pin.name);
       if (number === null) continue;
+      /* Pin řídí obvod jen jako výstup. Zapsaná hodnota bez pinMode
+         OUTPUT zůstane v paměti, ale do drátu nejde — stejně jako na
+         skutečné desce, kde se to projeví jen jako zhasnutá LED. */
+      if (board.modes.get(number) !== "output") continue;
       const out = board.outputs.get(number);
       if (out !== undefined && out > 0) voltage.drive(uno.id, pin.name, out);
     }
@@ -273,7 +248,10 @@ export function readFrame(
     }
 
     if (comp.type === "piezo-buzzer") {
-      buzzers.push({ compId: comp.id, frequency: buzzerFrequency(circuit, comp, board, nets) });
+      buzzers.push({
+        compId: comp.id,
+        frequency: buzzerFrequency(circuit, comp, board, nets, voltage),
+      });
     }
   }
 
@@ -356,13 +334,22 @@ function buzzerFrequency(
   buzzer: CircuitComponent,
   board: BoardState,
   nets: NetMap,
+  voltage: NetVoltage,
 ): number {
   const uno = circuit.comps.find((c) => c.type === "arduino-uno");
   if (!uno) return 0;
 
+  /* Bzučák pípá, jen když jeho druhý pól vede na zem. Bez ní nemá proud kam
+     téct a tón nezazní. */
+  if (!voltage.isGround(buzzer.id, "-")) return 0;
+
   const spec = getComponentSpec("arduino-uno");
 
   for (const [pinNumber, frequency] of board.tones) {
+    /* Tón s délkou dozněl — pin už nic nehraje. */
+    const endsAt = board.toneEnds.get(pinNumber);
+    if (endsAt !== undefined && endsAt <= board.elapsedMs) continue;
+
     const pinName = spec.pins.find((p) => arduinoPinNumber(p.name) === pinNumber)?.name;
     if (!pinName) continue;
 
@@ -448,8 +435,8 @@ function readInputsFromCircuit(
   if (!uno) return values;
 
   const nets = resolveNets(circuit);
-  const voltage = new NetVoltage(nets, circuit);
   const pressed = inputs.pressed ?? new Set<string>();
+  const voltage = new NetVoltage(nets, circuit, pressed);
 
   const spec = getComponentSpec("arduino-uno");
   for (const p of POWER_PINS) {
@@ -485,6 +472,17 @@ function readInputsFromCircuit(
     const number = arduinoPinNumber(pin.name);
     if (number === null) continue;
 
+    /* Analogový pin se čte bez ohledu na pinMode. Hodnotu dá senzor, který
+       je napájený a jeho výstup sedí na tomhle pinu; bez senzoru jde o
+       napětí z drátu, jako u digitálního čtení. */
+    if (number >= 14) {
+      const reading = sensorReading(circuit, uno.id, pin.name, nets, grounded, inputs);
+      if (reading !== null) values.set(number, reading);
+      else if (voltage.level(uno.id, pin.name) > 0) values.set(number, 1023);
+      else values.set(number, 0);
+      continue;
+    }
+
     const mode = board.modes.get(number);
     if (mode !== "input" && mode !== "input_pullup") continue;
 
@@ -500,37 +498,162 @@ function readInputsFromCircuit(
   return values;
 }
 
+/** Co program udělal jinak, než by udělala skutečná deska. */
+export interface PinDiagnostic {
+  /** `not-output`: zápis bez pinMode OUTPUT. `no-pwm`: analogWrite na pinu bez vlnovky. */
+  kind: "not-output" | "no-pwm";
+  pin: number;
+}
+
+const POWER_MESSAGE = (where: string) =>
+  `Zkrat! ${where} je spojené přímo se zemí — ve skutečnosti by se deska mohla poškodit.`;
+
+/** Statický zkrat: napájecí pin je drátem spojený přímo se zemí. */
+export function shortCircuitInCircuit(circuit: Circuit): string | null {
+  const uno = circuit.comps.find((c) => c.type === "arduino-uno");
+  if (!uno) return null;
+
+  const nets = resolveNets(circuit);
+  const grounds = new Set(
+    GROUND_PINS.map((g) => nets.netOf(pinKey(uno.id, g))),
+  );
+  const power = POWER_PINS.find((p) => grounds.has(nets.netOf(pinKey(uno.id, p))));
+  return power ? POWER_MESSAGE(power) : null;
+}
+
+/**
+ * Běhový zkrat: výstup v HIGH přímo na zemi, nebo v LOW přímo na 5 V.
+ *
+ * Počítá se jen z drátů (sítě), ne přes součástky — LED s rezistorem mezi
+ * pinem a zemí zkrat není. Vstupní piny se nepočítají: INPUT_PULLUP stažený
+ * tlačítkem k zemi je správné zapojení.
+ */
+function runtimeShortCircuit(
+  circuit: Circuit,
+  board: BoardState,
+  nets: NetMap,
+): string | null {
+  const uno = circuit.comps.find((c) => c.type === "arduino-uno");
+  if (!uno) return null;
+
+  const grounds = new Set(GROUND_PINS.map((g) => nets.netOf(pinKey(uno.id, g))));
+  const powers = new Set(POWER_PINS.map((p) => nets.netOf(pinKey(uno.id, p))));
+
+  for (const pin of getComponentSpec("arduino-uno").pins) {
+    const number = arduinoPinNumber(pin.name);
+    if (number === null || board.modes.get(number) !== "output") continue;
+
+    const net = nets.netOf(pinKey(uno.id, pin.name));
+    const high = (board.outputs.get(number) ?? 0) > 0;
+
+    if (high && grounds.has(net)) {
+      return `Zkrat! Pin ${number} je nastavený jako výstup a je spojený přímo se zemí — ve skutečnosti by se deska mohla poškodit. Mezi pin a zem patří vždycky součástka, třeba LED s rezistorem.`;
+    }
+    if (!high && powers.has(net)) {
+      return `Zkrat! Pin ${number} je nastavený jako výstup a je spojený přímo s napájením 5 V — ve skutečnosti by se deska mohla poškodit.`;
+    }
+  }
+
+  return null;
+}
+
+/** Vyhodí se z `snapshot`, aby zkrat zastavil běh uprostřed `delay`. */
+class ShortCircuitSignal extends Error {}
+
+/** Senzory, které dávají analogový signál: součástka → (signální pin, napájení, zem). */
+const SENSOR_PINS: Partial<Record<ComponentType, { signal: string; vcc: string; gnd: string }>> = {
+  photoresistor: { signal: "aout", vcc: "vcc", gnd: "gnd" },
+  potentiometer: { signal: "signal", vcc: "terminal-a", gnd: "terminal-b" },
+};
+
+/**
+ * Hodnota senzoru, který je na analogový pin připojený.
+ *
+ * Senzor čte, jen když je napájený z 5 V a má zem — jinak jeho výstup nic
+ * neříká. Hodnota přichází z `inputs.analog` podle id součástky (slider
+ * v lekci); když chybí, bere se střed rozsahu.
+ */
+function sensorReading(
+  circuit: Circuit,
+  unoId: string,
+  analogPin: string,
+  nets: NetMap,
+  grounded: Set<string>,
+  inputs: SimulationInputs,
+): number | null {
+  const net = nets.netOf(pinKey(unoId, analogPin));
+  const fiveVolts = nets.netOf(pinKey(unoId, "5V"));
+
+  for (const comp of circuit.comps) {
+    const pins = SENSOR_PINS[comp.type];
+    if (!pins) continue;
+    if (nets.netOf(pinKey(comp.id, pins.signal)) !== net) continue;
+
+    const powered = nets.netOf(pinKey(comp.id, pins.vcc)) === fiveVolts;
+    const earthed = grounded.has(nets.netOf(pinKey(comp.id, pins.gnd)));
+    if (!powered || !earthed) return 0;
+
+    const value = inputs.analog?.get(comp.id) ?? 512;
+    return Math.max(0, Math.min(1023, Math.round(value)));
+  }
+
+  return null;
+}
+
 /* ── Celý běh ───────────────────────────────────────────────────────────── */
 
 /**
  * Strop na počet snímků.
  *
- * Přechod jasu 0→255→0 s delay(5) jich vyrobí přes pět set za jediný
- * průchod. To je v pořádku a chceme to — animace je pak plynulá. Strop
- * je tu proti programu, který by jich chtěl statisíce.
+ * Přechod jasu 0→255→0 s delay(5) jich vyrobí přes pět set za jeden průchod.
+ * Strop je tu proti programu, který by jich chtěl statisíce. Když ho běh
+ * překročí, končí se v čase posledního uloženého snímku — přehrávání se
+ * zkrátí, ale nezkreslí.
  */
-const MAX_FRAMES = 2000;
+const MAX_FRAMES = 4000;
 
 /**
- * Otisk snímku pro porovnání se sousedem.
+ * Kolik virtuálního času nejvýš simulovat kvůli smyčce.
  *
- * Čas do něj schválně nepatří: dva snímky se stejným obvodem a jiným
- * časem jsou pro diváka tentýž obrázek.
+ * Smyčka se pouští v reálném čase, takže delší cyklus je delší čekání na
+ * opakování. Dvě iterace jsou minimum, aby se opakování vidělo; po minutě
+ * virtuálního času další iterace nepřidáváme.
  */
-function frameSignature(frame: SimulationFrame): string {
+const MAX_CYCLE_MS = 60_000;
+
+/**
+ * Otisk vizuálního stavu snímku.
+ *
+ * Čas ani sériový výpis do něj nepatří: dva snímky se stejným obvodem jsou
+ * pro diváka tentýž obrázek. Sériový výpis se k poslednímu snímku připojí
+ * zvlášť, aby prostý výpis nezplodil nový snímek.
+ */
+function visualSignature(frame: SimulationFrame): string {
   const leds = frame.leds.map((l) => `${l.compId}:${l.brightness}`).join(",");
   const buzzers = frame.buzzers.map((b) => `${b.compId}:${b.frequency}`).join(",");
-  return `${leds}|${buzzers}|${frame.serial.length}`;
+  return `${leds}|${buzzers}`;
 }
+
+/**
+ * Interní signál: dosáhl se limitu času nebo snímků. Běh se ukončí, nikoli
+ * selže — přehrává se to, co už se stihlo.
+ */
+class RunLimitSignal extends Error {}
 
 export interface RunResult {
   ok: boolean;
   error?: { message: string; line: number };
+  /** Zkrat zastavil běh. Věta pro dítě, pojmenuje pin. */
+  shortCircuit?: string;
   frames: SimulationFrame[];
+  diagnostics: PinDiagnostic[];
 }
 
 export interface RunConfig {
-  /** Kolik průchodů `loop()` spočítat. */
+  /**
+   * Nejvíc průchodů `loop()`. Běh se ale zastaví dřív, jakmile je cyklus
+   * dost dlouhý (viz `MAX_CYCLE_MS`), a vždy spočítá aspoň dva průchody.
+   */
   iterations?: number;
   inputs?: SimulationInputs;
   /** Hodnoty, které mají číst vstupní piny — z tlačítek a senzorů. */
@@ -541,16 +664,25 @@ export interface RunConfig {
  * Přeloží a spustí program nad obvodem.
  *
  * Vrací snímky, ne jeden konečný stav — z nich se poskládá animace a jde
- * z nich poznat, že LED bliká, ne jen že na konci svítí.
+ * z nich poznat, že LED bliká, ne jen že na konci svítí. Každý snímek nese
+ * `durationMs`: jak dlouho stav trvá, než přijde další. Poslední snímek
+ * drží až do konce simulovaného běhu.
  */
 export function runProgram(
   source: string,
   circuit: Circuit,
   config: RunConfig = {},
 ): RunResult {
+  /* Zkrat na napájení se pozná bez programu. Běh se nezačne vůbec — na
+     skutečné desce by se do takového obvodu nikdo nepustil. */
+  const staticShort = shortCircuitInCircuit(circuit);
+  if (staticShort) {
+    return { ok: false, shortCircuit: staticShort, frames: [], diagnostics: [] };
+  }
+
   const compiled = compile(source);
   if (!compiled.ok) {
-    return { ok: false, error: compiled.error, frames: [] };
+    return { ok: false, error: compiled.error, frames: [], diagnostics: [] };
   }
 
   const state = emptyBoardState();
@@ -571,27 +703,56 @@ export function runProgram(
 
   const nets = resolveNets(circuit);
   const frames: SimulationFrame[] = [];
-  let lastSignature: string | null = null;
 
-  /* Snímek se pořídí, kdykoli uplyne čas — a ještě po každém průchodu
-     smyčky, aby nezmizel program, který žádný delay nemá.
-
-     Dva po sobě jdoucí stejné snímky se zahodí: konec smyčky, která končí
-     delayem, by jinak pokaždé přidal kopii. Přechody se tím neztratí,
-     protože zahazujeme jen to, co se ničím neliší. */
+  /* Snímek se pořídí, kdykoli začne pauza, a ještě po každém průchodu
+     smyčky — aby nezmizel program, který žádný delay nemá. Stejný vizuální
+     stav jako předchozí snímek se nepřidá; jen se k němu připojí aktuální
+     sériový výpis. */
   const snapshot = (): void => {
-    if (frames.length >= MAX_FRAMES) return;
+    const short = runtimeShortCircuit(circuit, state, nets);
+    if (short) throw new ShortCircuitSignal(short);
+
+    /* Limit času platí i uvnitř jednoho průchodu: `while (true)` s delay
+       nikdy neskončí, na skutečném Arduinu taky ne. Simulace se zastaví,
+       až je cyklus dost dlouhý, a přehrává se ten úsek. */
+    if (state.elapsedMs >= MAX_CYCLE_MS) throw new RunLimitSignal();
 
     const frame = readFrame(circuit, state, config.inputs, nets);
-    const signature = frameSignature(frame);
-    if (signature === lastSignature) return;
+    const last = frames.at(-1);
+    if (last && visualSignature(last) === visualSignature(frame)) {
+      last.serial = frame.serial;
+      return;
+    }
 
-    lastSignature = signature;
+    if (frames.length >= MAX_FRAMES) throw new RunLimitSignal();
     frames.push(frame);
   };
 
   const board = createBoard(state, snapshot);
   const interp = new Interpreter(compiled.program!, board);
+
+  /* Délka každého snímku se dopočítá až na konci: je to čas do dalšího
+     snímku, u posledního čas do konce běhu. */
+  const finish = (ok: boolean, extra: Partial<RunResult> = {}): RunResult => {
+    const end = state.elapsedMs;
+    frames.forEach((frame, i) => {
+      frame.durationMs = (frames[i + 1]?.elapsedMs ?? end) - frame.elapsedMs;
+    });
+    return { ok, frames, diagnostics: diagnostics(), ...extra };
+  };
+
+  /* Co program udělal jinak, než by udělala deska. Hlásí se až na konci —
+     dítě se má dozvědět, co udělalo, ne každé jednotlivé zapsání. */
+  function diagnostics(): PinDiagnostic[] {
+    const notOutput = [...state.unsetWrites]
+      .filter((pin) => state.modes.get(pin) !== "output")
+      .sort((a, b) => a - b)
+      .map((pin) => ({ kind: "not-output" as const, pin }));
+    const noPwm = [...state.noPwmWrites]
+      .sort((a, b) => a - b)
+      .map((pin) => ({ kind: "no-pwm" as const, pin }));
+    return [...notOutput, ...noPwm];
+  }
 
   try {
     interp.runSetup();
@@ -601,21 +762,33 @@ export function runProgram(
        stav z obvodu přečíst. */
     refreshInputs();
 
-    const iterations = config.iterations ?? 20;
-    for (let i = 0; i < iterations; i++) {
+    const maxIterations = config.iterations ?? 20;
+    const minIterations = Math.min(2, maxIterations);
+    let count = 0;
+    while (
+      count < maxIterations &&
+      (count < minIterations || state.elapsedMs < MAX_CYCLE_MS)
+    ) {
       if (!interp.runLoopOnce()) break;
+      count += 1;
       snapshot();
     }
   } catch (e) {
-    if (e instanceof RuntimeError) {
-      return { ok: false, error: { message: e.message, line: e.line }, frames };
+    if (e instanceof RunLimitSignal) {
+      /* Limit: běh končí tady. Stav na pinech se od posledního snímku
+         změnil, takže ten poslední drží až do teď. */
+      return finish(true);
     }
-    return {
-      ok: false,
+    if (e instanceof ShortCircuitSignal) {
+      return finish(false, { shortCircuit: e.message });
+    }
+    if (e instanceof RuntimeError) {
+      return finish(false, { error: { message: e.message, line: e.line } });
+    }
+    return finish(false, {
       error: { message: "Program se zasekl. Zkontroluj smyčky a delay.", line: 1 },
-      frames,
-    };
+    });
   }
 
-  return { ok: true, frames };
+  return finish(true);
 }

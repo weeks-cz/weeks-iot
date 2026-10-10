@@ -1,4 +1,4 @@
-import { ledEverOn, ledNeverOn, type Lesson } from "../types";
+import { ledEverOn, ledNeverOn, ledStaysOn, type Lesson } from "../types";
 import {
   digitalWrite,
   pinMode,
@@ -47,28 +47,23 @@ export const lesson1: Lesson = {
       { role: "led", type: "led-red", label: "červená LED" },
       { role: "odpor", type: "resistor-220", label: "rezistor" },
     ],
-    connections: [
+    connections: [],
+    series: [
       {
         from: { role: "arduino", pin: "D8" },
-        to: { role: "led", pin: "anode" },
-        through: ["resistor-220"],
-        hint:
-          "Delší nožička LED (anoda) musí vést na pin 8 — ale přes rezistor. " +
-          "Bez něj se LED spálí.",
-      },
-      {
-        from: { role: "led", pin: "cathode" },
         to: { role: "arduino", pin: "GND-1" },
+        led: { role: "led", anode: "anode", cathode: "cathode" },
+        resistor: "resistor-220",
         hint:
-          "Kratší nožička LED (katoda) musí vést na GND. Proud potřebuje cestu tam " +
-          "i zpátky — bez zpáteční nepoteče vůbec.",
+          "Delší nožička LED (anoda) musí být v řadě s pinem 8 a rezistorem. " +
+          "Rezistor může stát na kterékoli straně LED — bez něj se LED spálí.",
       },
     ],
   },
 
   wiringHints: [
     "Začni od Arduina: vytáhni drátek z pinu 8.",
-    "Do cesty mezi pin 8 a LED vlož rezistor.",
+    "Do cesty mezi pin 8 a zemí vlož rezistor — kterákoli strana LED.",
     "Druhou nožičku LED spoj s GND, aby se obvod uzavřel.",
     "Nožičky LED nejsou stejné. Delší je anoda (kladná), kratší katoda.",
   ],
@@ -135,11 +130,17 @@ void loop() {
         "LED zatím nesvítí. Do „pak pořád dokola“ patří „na pin 8 pošli HIGH“ — a do „na začátku jednou“ blok „nastav pin 8 jako výstup“, jinak Arduino neví, že má pin ovládat.",
     },
     {
-      label: "Program řídí pin 8",
+      label: "LED zůstane svítit",
       iterations: 3,
-      pinInputs: {},
-      verify: (frames) => ledEverOn(frames),
-      hint: "Zkontroluj, že píšeš na stejný pin, na kterém máš LED zapojenou.",
+      /* Lekce 1 je o tom, že LED svítí a svítí dál. Blikání patří do lekce 2:
+         program, který LED zase zhasne, tady neprojde. */
+      verify: (frames) => ledStaysOn(frames),
+      hint:
+        "LED po chvíli zhasne. Tady má svítit pořád — zkontroluj, že v loop() " +
+        "nezapisuješ LOW a že píšeš na pin, na kterém máš LED zapojenou.",
+      blockHint:
+        "LED po chvíli zhasne. Tady má svítit pořád — zkontroluj, jestli v „pak pořád dokola“ " +
+        "nic LED nevypíná a jestli posíláš signál na pin, na kterém máš LED.",
     },
   ],
 };

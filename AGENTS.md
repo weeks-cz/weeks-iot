@@ -108,8 +108,14 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
 - **`findPath({ through })` je seznam POVOLENÝCH typů, ne vyžadovaných.**
   „Vede tam cesta a je na ní rezistor?" se ptá `result.through.includes(...)`.
   Bez toho svítila LED zapojená napřímo — přesně ta chyba, kterou lekce 1 učí.
-- **Snímek obvodu se pořizuje, když uplyne čas, ne na konci `loop()`.**
-  Blikání i přechod jasu se dějí uvnitř jednoho průchodu; jinak nejsou vidět.
+- **Snímek obvodu se pořizuje na ZAČÁTKU každé pauzy, před `delay()`.**
+  Stav, který na pinech platí, drží celou pauzu, takže snímek se razí před
+  posunem času a nese svou délku (`durationMs`). Dřív se razil po posunu
+  a „HIGH 500 ms, LOW 10 ms" se ukázalo obráceně. Přehrávání jde 1 : 1
+  (`playbackSchedule` v `useFramePlayer.ts`); stav kratší než jeden tick
+  mezi dlouhými se natáhne na tick, aby nezmizel.
+  Sériový výpis nevyrábí nové snímky: připojí se k poslednímu. Běh končí
+  limitem 60 s virtuálního času nebo 4000 snímků (`RunLimitSignal`).
 - **Kontroly poznávají součástky podle ROLE, ne podle pořadí.** Pořadí v obvodu
   je pořadí, v jakém je dítě položilo. Role dává `checkWiring(...).roles`.
 - **`useFramePlayer` porovnává reference snímků.** Nové pole při každém renderu
@@ -124,8 +130,10 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
 - **Zapíchnutí do breadboardu spojuje podle POLOHY.** Piny na téže souřadnici
   jsou jedna síť, když je jedna strana deska (`breadboardContacts` v
   `nets.ts`). Testy proto nesmí skládat součástky na (0,0) — propojí se.
-- **`NetVoltage.isGround` pouští proud tlačítkem bez ohledu na stisk.** Je to
-  tak správně u LED, ale u čtení vstupů ne — na to je `groundedNets`.
+- **`NetVoltage.isGround` počítá stisk tlačítka.** Nestisknuté tlačítko
+  svoje poloviny nespojuje, takže LED za ním ani bzučák nedostanou zem —
+  stejně jako na desce. Čtení vstupů i `isGround` sdílí `groundedNets`.
+  Rezistor a potenciometr zemi vedou vždycky.
 - **Náhled běhu je vlastní běh, ne snímky z první kontroly.** Kontroly si
   vstupy nastavují samy, takže by v lekci o tlačítku svítila LED bez stisku.
 - **Skutečné pozice nožiček dává `element.pinInfo` Wokwi prvků.** Piny ve
@@ -135,6 +143,23 @@ kontroly, které vzorové řešení neprojde, a startovní kód, co se nepřelo�
 - **Přímý spoj v zadání znamená nula součástek po cestě** (`maxHops:
   through?.length ?? 0`). S `+1` prošla „zem" protažená skrz samotné
   tlačítko — a stisk pak nic neměnil.
+- **LED s rezistorem je `series`, ne dva `connections`.** Rezistor smí být na
+  kterékoli straně LED. Pár spojů s `through` na anodě by katodovou variantu
+  odmítl. `resolveConnections` vybere stranu podle toho, kde rezistor už
+  stojí; průvodce i `referenceCircuit(spec, side)` jedou stejnou variantou.
+  Lekce 3 a 6 zatím mají spoje ručně (jejich zadání se nesmí měnit).
+- **Pin řídí obvod jen jako výstup.** `digitalWrite` bez `pinMode(OUTPUT)`
+  zapíše do stavu desky, ale do drátu nejde. `analogWrite` a `tone` přepnou
+  pin na výstup samy. Zápis bez režimu a `analogWrite` na pinu bez PWM
+  (mimo 3, 5, 6, 9, 10, 11) jdou do `diagnostics` s větou pro kód i bloky.
+- **Zkrat se počítá z drátů, ne přes součástky.** 5 V přímo na zemi se
+  pozná před během; výstup HIGH přímo na zemi nebo LOW přímo na 5 V
+  zastaví běh. LED s rezistorem mezi tím zkrat není; vstup s tlačítkem k zemi
+  taky ne.
+- **Analogový pin čte senzor přes obvod.** Fotorezistor dává hodnotu z
+  `inputs.analog` (slider), jen když je napájený z 5 V a má zem. Nenapájený
+  čte jako tmu. Kontrola to ověřuje přes `sensors` podle role, ne přes
+  `pinInputs`.
 - **Kontroly tlačítkových lekcí mačkají roli (`pressed`), ne pin.** Vnucený
   `pinInputs` pustí i obvod s trvale uzemněným pinem.
 - **Editor musí barvit komentáře.** Dokud byl text jednobarevný, dítě napsalo
@@ -251,7 +276,7 @@ Mobile-first od 320 px. Dotykové cíle minimálně 44 px.
 
 ```bash
 npx tsc --noEmit    # musí být čistý pro nový kód
-npm test            # 499 testů
+npm test            # 684 testů
 npm run build       # odhalí úniky server→klient, které tsc nevidí
 ```
 

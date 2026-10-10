@@ -13,6 +13,12 @@ export type PinMode = "input" | "output" | "input_pullup" | "unset";
 export const HIGH = 1;
 export const LOW = 0;
 
+/**
+ * Piny Uno s PWM (vlnovka `~`). Na ostatních se analogWrite chová jako
+ * vypínač: od 128 výš zapne, jinak vypne.
+ */
+export const PWM_PINS: ReadonlySet<number> = new Set([3, 5, 6, 9, 10, 11]);
+
 export interface SerialLine {
   text: string;
   /** Kolik milisekund běhu uplynulo, když se řádek vypsal. */
@@ -45,6 +51,15 @@ export interface BoardState {
   /** Piny, na kterých zní tón, a jejich frekvence. */
   tones: Map<number, number>;
   elapsedMs: number;
+  /**
+   * Piny, do kterých program zapsal digitalWrite, aniž je nastavil jako
+   * výstup. Skutečná deska na nich nic nezapne — kid dostane vysvětlení.
+   */
+  unsetWrites: Set<number>;
+  /** Konec tónu (ms virtuálního času) u tónů s délkou. Bez konce tón zní pořád. */
+  toneEnds: Map<number, number>;
+  /** Piny bez PWM, na které program psal analogWrite. */
+  noPwmWrites: Set<number>;
 }
 
 export function emptyBoardState(): BoardState {
@@ -56,6 +71,9 @@ export function emptyBoardState(): BoardState {
     serialBaud: null,
     tones: new Map(),
     elapsedMs: 0,
+    unsetWrites: new Set(),
+    toneEnds: new Map(),
+    noPwmWrites: new Set(),
   };
 }
 
@@ -67,10 +85,9 @@ export function emptyBoardState(): BoardState {
  * by nešlo spočítat, co se stane za deset sekund, aniž bys deset sekund
  * čekal.
  *
- * `onTimePasses` se ozve pokaždé, když se virtuální čas pohne. Tam si
- * simulace bere snímek obvodu — protože „být vidět" znamená „chvíli
- * trvat". Bez toho by celý přechod jasu proběhl mezi dvěma snímky a
- * nikdo by ho nezahlédl.
+ * `onTimePasses` se ozve pokaždé, když začne pauza — PŘED posunem času.
+ * Tam si simulace bere snímek obvodu: stav, který v tu chvíli platí, drží
+ * celou pauzu. „Být vidět" znamená „chvíli trvat".
  */
 export function createBoard(state: BoardState, onTimePasses?: () => void): Board {
   const readPin = (pin: number): number => {
@@ -91,6 +108,7 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     },
 
     digitalWrite(pin, value) {
+      if (state.modes.get(pin) !== "output") state.unsetWrites.add(pin);
       state.outputs.set(pin, value > 0 ? 255 : 0);
     },
 
@@ -100,7 +118,16 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     },
 
     analogWrite(pin, value) {
-      state.outputs.set(pin, Math.max(0, Math.min(255, Math.round(value))));
+      /* Jako na skutečné desce: analogWrite přepne pin na výstup sám. */
+      state.modes.set(pin, "output");
+      const v = Math.max(0, Math.min(255, Math.round(value)));
+      if (PWM_PINS.has(pin)) {
+        state.outputs.set(pin, v);
+      } else {
+        /* Bez PWM je to jen vypínač. Dítě to má vědět — diagnostika to řekne. */
+        state.noPwmWrites.add(pin);
+        state.outputs.set(pin, v >= 128 ? 255 : 0);
+      }
     },
 
     analogRead(pin) {
@@ -109,8 +136,11 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     },
 
     delay(ms) {
-      state.elapsedMs += Math.max(0, ms);
+      /* Snímek se pořizuje PŘED posunem času: stav, který stojí na pinech
+         teď, drží právě tenhle delay. Kdyby se pořídil až po něm, každý
+         stav by se ukázal o jednu pauzu později a blikání by se obrátilo. */
       onTimePasses?.();
+      state.elapsedMs += Math.max(0, ms);
     },
 
     millis() {
@@ -141,12 +171,17 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
       state.serial.push({ text: `${text}\n`, atMs: state.elapsedMs });
     },
 
-    tone(pin, frequency) {
+    tone(pin, frequency, duration) {
+      /* tone() také přepne pin na výstup. */
+      state.modes.set(pin, "output");
       state.tones.set(pin, frequency);
+      if (duration === undefined) state.toneEnds.delete(pin);
+      else state.toneEnds.set(pin, state.elapsedMs + Math.max(0, duration));
     },
 
     noTone(pin) {
       state.tones.delete(pin);
+      state.toneEnds.delete(pin);
     },
   };
 }

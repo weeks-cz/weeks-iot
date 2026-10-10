@@ -1,6 +1,10 @@
 import { getComponentSpec } from "@/features/circuit/components";
 import type { Circuit, CircuitComponent, ComponentType, Wire } from "@/features/circuit/types";
-import type { WiringSpec } from "@/features/circuit/wiring-check";
+import {
+  seriesConnections,
+  type SeriesSide,
+  type WiringSpec,
+} from "@/features/circuit/wiring-check";
 
 /**
  * Vzorový obvod ze zadání lekce.
@@ -31,7 +35,11 @@ function throughPins(type: ComponentType): [string, string] {
   return [first.name, last.name];
 }
 
-export function referenceCircuit(spec: WiringSpec): Circuit {
+/**
+ * @param side Na které straně LED stojí rezistor v řadách (`spec.series`).
+ *   Výchozí anoda. Test s katodou ověřuje, že i druhá varianta projde.
+ */
+export function referenceCircuit(spec: WiringSpec, side: SeriesSide = "anode"): Circuit {
   const comps: CircuitComponent[] = [];
   const wires: Wire[] = [];
 
@@ -44,8 +52,13 @@ export function referenceCircuit(spec: WiringSpec): Circuit {
   /* Součástky, které zadání zmiňuje jen jako „přes co" — typicky rezistory.
      Nemají vlastní spoj, ale musí se do cesty vložit, a to právě ty, které
      zadání vyjmenovalo. Až když dojdou, doplní se nová. */
+  const connections = [
+    ...spec.connections,
+    ...(spec.series ?? []).flatMap((s) => seriesConnections(s, side)),
+  ];
+
   const endpoints = new Set<string>();
-  for (const conn of spec.connections) {
+  for (const conn of connections) {
     endpoints.add(conn.from.role);
     endpoints.add(conn.to.role);
   }
@@ -84,7 +97,7 @@ export function referenceCircuit(spec: WiringSpec): Circuit {
     });
   };
 
-  for (const conn of spec.connections) {
+  for (const conn of connections) {
     let cursor: [string, string] = [conn.from.role, conn.from.pin];
 
     for (const type of conn.through ?? []) {

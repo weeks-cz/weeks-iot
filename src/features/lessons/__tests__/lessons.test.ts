@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getComponentSpec } from "@/features/circuit/components";
-import { checkWiring } from "@/features/circuit/wiring-check";
+import { checkWiring, defaultConnections } from "@/features/circuit/wiring-check";
 import { compile } from "@/features/arduino/interpreter";
 import { findTask } from "@/legacy/lib/tasks";
 import { COURSE_LESSONS } from "../content";
@@ -67,7 +67,7 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))(
     it("každý spoj míří na pin, který na součástce opravdu je", () => {
       const typeOf = new Map(lesson.wiring.parts.map((p) => [p.role, p.type]));
 
-      for (const conn of lesson.wiring.connections) {
+      for (const conn of defaultConnections(lesson.wiring)) {
         for (const side of [conn.from, conn.to]) {
           const type = typeOf.get(side.role);
           expect(type, `role „${side.role}" není mezi parts`).toBeDefined();
@@ -121,3 +121,23 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))(
     });
   },
 );
+
+/* Rezistor smí být na kterékoli straně LED. Správný obvod s rezistorem na
+   katodě musí projít kontrolou zapojení i všemi kontrolami lekce — stejně
+   jako ten s rezistorem na anodě. */
+describe.each(
+  COURSE_LESSONS.filter((l) => (l.wiring.series ?? []).length > 0).map((l) => [l.slug, l] as const),
+)("%s — rezistor na straně katody", (_slug, lesson) => {
+  const circuit = referenceCircuit(lesson.wiring, "cathode");
+
+  it("obvod s rezistorem na katodě projde kontrolou zapojení", () => {
+    const result = checkWiring(circuit, lesson.wiring);
+    expect(result.issues.map((i) => i.hint)).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("vzorové řešení projde všemi kontrolami lekce", () => {
+    const result = runLessonChecks(lesson, circuit, lesson.solution);
+    expect(result.outcomes.filter((o) => !o.passed).map((o) => o.label)).toEqual([]);
+  });
+});

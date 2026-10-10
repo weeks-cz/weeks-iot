@@ -267,3 +267,22 @@ describe("chyby zapojení tlačítka", () => {
     expect(result.passed).toBe(false);
   });
 });
+
+describe("průvodce s rezistorem na katodě", () => {
+  it("hotový obvod s rezistorem na katodě má všechny kroky odškrtnuté", () => {
+    const steps = wiringSteps(referenceCircuit(lesson1.wiring, "cathode"), lesson1.wiring);
+    expect(steps.filter((s) => !s.done).map((s) => s.instruction)).toEqual([]);
+  });
+
+  it("ukazuje tu variantu, kterou dítě staví — krok vede z katody do rezistoru", () => {
+    const steps = wiringSteps(referenceCircuit(lesson1.wiring, "cathode"), lesson1.wiring);
+    const viaCathode = steps.filter((s) => s.from.some((p) => p.pinName === "cathode"));
+    expect(viaCathode.length).toBeGreaterThan(0);
+    expect(viaCathode.every((s) => s.done)).toBe(true);
+  });
+
+  it("obvod s rezistorem na anodě je hotový i v kroku podle katody", () => {
+    const steps = wiringSteps(referenceCircuit(lesson1.wiring, "anode"), lesson1.wiring);
+    expect(steps.every((s) => s.done)).toBe(true);
+  });
+});

@@ -1,6 +1,6 @@
+import { equivalentPins, getComponentSpec } from "./components";
 import { pinKey, resolveNets, type NetMap } from "./nets";
 import { findPath } from "./paths";
-import { equivalentPins } from "./components";
 import type { Circuit, ComponentType } from "./types";
 
 function typeOf(circuit: Circuit, compId: string): ComponentType {
@@ -43,9 +43,66 @@ export interface ConnectionSpec {
   hint: string;
 }
 
+/**
+ * LED v sérii s rezistorem: pin Arduina → rezistor → LED → zem.
+ *
+ * Rezistor smí být na KTERÉKOLIV straně LED — mezi pinem a anodou, nebo mezi
+ * katodou a zemí. Elektricky je to totéž a dítě si smí vybrat. Zadání proto
+ * neříká „přes rezistor do anody", ale „v řadě je jeden rezistor". Kontrola
+ * vyzkouší obě varianty a vezme tu, která sedí (viz `seriesConnections`).
+ */
+export interface SeriesSpec {
+  /** Pin Arduina, odkud proud přichází. */
+  from: { role: string; pin: string };
+  /** Pin, kam proud odchází (typicky GND). */
+  to: { role: string; pin: string };
+  /** Součástka v řadě — LED — a její dvě nožičky. */
+  led: { role: string; anode: string; cathode: string };
+  /** Typ ochranného rezistoru. */
+  resistor: ComponentType;
+  /** Co dítě uvidí, když řada neplatí. Věta, ne kód. */
+  hint: string;
+}
+
 export interface WiringSpec {
   parts: PartSpec[];
   connections: ConnectionSpec[];
+  /** Řady LED s rezistorem, viz `SeriesSpec`. Volitelné. */
+  series?: SeriesSpec[];
+}
+
+/** Která strana LED nese rezistor. */
+export type SeriesSide = "anode" | "cathode";
+
+/**
+ * Dvě varianty jedné řady jako obyčejné spoje.
+ *
+ * Rezistor na straně anody: pin → R → anoda, katoda → zem.
+ * Rezistor na straně katody: pin → anoda, katoda → R → zem.
+ * Kontrola a kroky průvodce pak pracují se stejnými typy spojů jako dřív.
+ */
+export function seriesConnections(s: SeriesSpec, side: SeriesSide): ConnectionSpec[] {
+  const anode = { role: s.led.role, pin: s.led.anode };
+  const cathode = { role: s.led.role, pin: s.led.cathode };
+
+  if (side === "anode") {
+    return [
+      { from: s.from, to: anode, through: [s.resistor], hint: s.hint },
+      { from: cathode, to: s.to, hint: s.hint },
+    ];
+  }
+  return [
+    { from: s.from, to: anode, hint: s.hint },
+    { from: cathode, to: s.to, through: [s.resistor], hint: s.hint },
+  ];
+}
+
+/** Spoje zadání bez volby strany: řady jsou v základu na straně anody. */
+export function defaultConnections(spec: WiringSpec): ConnectionSpec[] {
+  return [
+    ...spec.connections,
+    ...(spec.series ?? []).flatMap((s) => seriesConnections(s, "anode")),
+  ];
 }
 
 export interface WiringIssue {
@@ -70,6 +127,12 @@ export interface WiringResult {
    * ptát na tu LED, která hraje roli „cervena", a to ví jedině tohle.
    */
   roles: Record<string, string> | null;
+  /**
+   * Spoje, proti kterým se kontrolovalo — řady rozbalené do zvolené strany.
+   * Průvodce podle nich kreslí kroky, takže ukazuje tu variantu, kterou dítě
+   * skutečně staví.
+   */
+  connections: ConnectionSpec[];
 }
 
 /**
@@ -112,68 +175,130 @@ function assignRoles(circuit: Circuit, parts: PartSpec[]): Map<string, string>[]
   return assignments;
 }
 
-function checkAssignment(
+/** Jeden spoj proti přiřazení rolí. Null = sedí. */
+function connectionIssue(
   circuit: Circuit,
-  spec: WiringSpec,
+  conn: ConnectionSpec,
   roles: Map<string, string>,
   nets: NetMap,
-): WiringIssue[] {
-  const issues: WiringIssue[] = [];
+): WiringIssue | null {
+  const fromId = roles.get(conn.from.role);
+  const toId = roles.get(conn.to.role);
+  if (!fromId || !toId) return null;
 
-  for (const conn of spec.connections) {
-    const fromId = roles.get(conn.from.role);
-    const toId = roles.get(conn.to.role);
-    if (!fromId || !toId) continue;
-
-    /* Tlačítko: kterákoli nožička téže strany je pro spoj stejná (strany
-       jsou uvnitř spojené). Zkouší se všechny kombinace a první, která
-       sedí, rozhoduje. */
-    const fromPins = equivalentPins(typeOf(circuit, fromId), conn.from.pin);
-    const toPins = equivalentPins(typeOf(circuit, toId), conn.to.pin);
-    let result: ReturnType<typeof findPath> = { found: false, through: [], componentIds: [] };
-    search: for (const fp of fromPins) {
-      for (const tp of toPins) {
-        const r = findPath(circuit, pinKey(fromId, fp), pinKey(toId, tp), {
-          through: conn.through,
-          maxHops: conn.through?.length ?? 0,
-          nets,
-        });
-        if (r.found) {
-          result = r;
-          break search;
-        }
-      }
-    }
-
-    if (!result.found) {
-      issues.push({
-        hint: conn.hint,
-        roles: [conn.from.role, conn.to.role],
-        kind: "missing-connection",
+  /* Tlačítko: kterákoli nožička téže strany je pro spoj stejná (strany
+     jsou uvnitř spojené). Zkouší se všechny kombinace a první, která
+     sedí, rozhoduje. */
+  const fromPins = equivalentPins(typeOf(circuit, fromId), conn.from.pin);
+  const toPins = equivalentPins(typeOf(circuit, toId), conn.to.pin);
+  let result: ReturnType<typeof findPath> = { found: false, through: [], componentIds: [] };
+  search: for (const fp of fromPins) {
+    for (const tp of toPins) {
+      const r = findPath(circuit, pinKey(fromId, fp), pinKey(toId, tp), {
+        through: conn.through,
+        maxHops: conn.through?.length ?? 0,
+        nets,
       });
-      continue;
-    }
-
-    /* Spoj existuje, ale bez požadované součástky — typicky LED bez
-       rezistoru. To je jiná chyba než „nic tam není" a zaslouží si
-       vlastní hlášku. */
-    if (conn.through?.length) {
-      const missing = conn.through.filter((t) => !result.through.includes(t));
-      if (missing.length > 0) {
-        issues.push({
-          hint: conn.hint,
-          roles: [conn.from.role, conn.to.role],
-          kind: "missing-component-on-path",
-        });
+      if (r.found) {
+        result = r;
+        break search;
       }
     }
   }
 
+  if (!result.found) {
+    return {
+      hint: conn.hint,
+      roles: [conn.from.role, conn.to.role],
+      kind: "missing-connection",
+    };
+  }
+
+  /* Spoj existuje, ale bez požadované součástky — typicky LED bez
+     rezistoru. To je jiná chyba než „nic tam není" a zaslouží si
+     vlastní hlášku. */
+  if (conn.through?.length) {
+    const missing = conn.through.filter((t) => !result.through.includes(t));
+    if (missing.length > 0) {
+      return {
+        hint: conn.hint,
+        roles: [conn.from.role, conn.to.role],
+        kind: "missing-component-on-path",
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Spoje zadání rozbalené pro dané přiřazení rolí.
+ *
+ * Strana řady se volí podle toho, kde dítě rezistor už má: stojí-li některý
+ * rezistor v síti anody, počítá se anoda, stojí-li v síti katody, katoda.
+ * Tak se nejen uznají obě správné varianty, ale i zkrat přes rezistor
+ * (oba drátky na téže nožičce) se nepřepne na jinou stranu, kde by průvodce
+ * mlčel. Když rezistor nestojí nikde, zkusí se obě strany a vyhraje ta, která
+ * sedí víc; při shodě zůstane anoda — tu návody kreslí nejčastěji.
+ */
+function resolveConnections(
+  circuit: Circuit,
+  spec: WiringSpec,
+  roles: Map<string, string>,
+  nets: NetMap,
+): ConnectionSpec[] {
+  const out: ConnectionSpec[] = [...spec.connections];
+
+  for (const s of spec.series ?? []) {
+    const anodeConns = seriesConnections(s, "anode");
+    const cathodeConns = seriesConnections(s, "cathode");
+    const ledId = roles.get(s.led.role);
+
+    const touching = (pin: string): number => {
+      if (!ledId) return 0;
+      const net = nets.netOf(pinKey(ledId, pin));
+      return circuit.comps.filter(
+        (c) =>
+          c.type === s.resistor &&
+          getComponentSpec(c.type).pins.some((p) => nets.netOf(pinKey(c.id, p.name)) === net),
+      ).length;
+    };
+    const anodeTouch = touching(s.led.anode);
+    const cathodeTouch = touching(s.led.cathode);
+
+    if (cathodeTouch > anodeTouch) {
+      out.push(...cathodeConns);
+      continue;
+    }
+    if (anodeTouch > cathodeTouch) {
+      out.push(...anodeConns);
+      continue;
+    }
+
+    const score = (conns: ConnectionSpec[]) =>
+      conns.filter((c) => connectionIssue(circuit, c, roles, nets) === null).length;
+    out.push(...(score(cathodeConns) > score(anodeConns) ? cathodeConns : anodeConns));
+  }
+
+  return out;
+}
+
+function checkAssignment(
+  circuit: Circuit,
+  connections: ConnectionSpec[],
+  roles: Map<string, string>,
+  nets: NetMap,
+): WiringIssue[] {
+  const issues: WiringIssue[] = [];
+  for (const conn of connections) {
+    const issue = connectionIssue(circuit, conn, roles, nets);
+    if (issue) issues.push(issue);
+  }
   return issues;
 }
 
 export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
-  const total = spec.connections.length;
+  const total = spec.connections.length + 2 * (spec.series?.length ?? 0);
 
   /* Nejdřív součástky. Chybějící díl je jiná zpráva než chybějící drátek
      a dítě má nejdřív slyšet, že mu něco chybí na desce. */
@@ -194,7 +319,14 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
         kind: "missing-part",
       });
     }
-    return { ok: false, issues, satisfied: 0, total, roles: null };
+    return {
+      ok: false,
+      issues,
+      satisfied: 0,
+      total,
+      roles: null,
+      connections: defaultConnections(spec),
+    };
   }
 
   const assignments = assignRoles(circuit, spec.parts);
@@ -211,6 +343,7 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
       satisfied: 0,
       total,
       roles: null,
+      connections: defaultConnections(spec),
     };
   }
 
@@ -220,10 +353,11 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
      nezávisí na tom, které součástce zrovna říkáme „ta výstupní". */
   const nets = resolveNets(circuit);
 
-  let best: { issues: WiringIssue[]; roles: Map<string, string> } | null = null;
+  let best: { issues: WiringIssue[]; roles: Map<string, string>; connections: ConnectionSpec[] } | null = null;
 
   for (const roles of assignments) {
-    const issues = checkAssignment(circuit, spec, roles, nets);
+    const connections = resolveConnections(circuit, spec, roles, nets);
+    const issues = checkAssignment(circuit, connections, roles, nets);
 
     if (issues.length === 0) {
       return {
@@ -232,10 +366,13 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
         satisfied: total,
         total,
         roles: Object.fromEntries(roles),
+        connections,
       };
     }
 
-    if (best === null || issues.length < best.issues.length) best = { issues, roles };
+    if (best === null || issues.length < best.issues.length) {
+      best = { issues, roles, connections };
+    }
   }
 
   const issues = best?.issues ?? [];
@@ -248,5 +385,6 @@ export function checkWiring(circuit: Circuit, spec: WiringSpec): WiringResult {
        chování to stačí — a dítě díky tomu vidí zvýrazněnou tu součástku,
        o které je řeč. */
     roles: best ? Object.fromEntries(best.roles) : null,
+    connections: best?.connections ?? defaultConnections(spec),
   };
 }

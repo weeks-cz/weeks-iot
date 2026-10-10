@@ -137,6 +137,16 @@ function connectionSatisfied(
 export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
   const steps: WiringStep[] = [];
 
+  /* Spoje. Role se přiřadí jednou — kontrola je umí dohledat i u obvodu,
+        který ještě není hotový. Spoje jdou z kontroly, ne ze zadání: řada
+        LED s rezistorem je v nich rozbalená do TÉ strany, kterou dítě staví.
+        Jinak by průvodce ukazoval rezistor na anodě, zatímco obvod ho má na
+        katodě, a krok by se neodškrtl ani u hotového obvodu. */
+  const wiring = checkWiring(circuit, spec);
+  const nets = resolveNets(circuit);
+  const connections = wiring.connections;
+  const withConnections: WiringSpec = { ...spec, connections };
+
   /* 1. Součástky, které ještě nejsou na desce. Arduino a breadboard se
         nepočítají — ty tam leží od začátku. */
   const present = new Map<ComponentType, number>();
@@ -165,7 +175,7 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
             : `Polož na desku: ${label}`,
         detail: getComponentSpec(type).intro?.what,
         place: type,
-        ...nearPin(spec, type, i),
+        ...nearPin(withConnections, type, i),
         pins: [],
         from: [],
         to: [],
@@ -174,20 +184,16 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
     }
   }
 
-  /* 2. Spoje. Role se přiřadí jednou — kontrola je umí dohledat i u obvodu,
-        který ještě není hotový. */
-  const wiring = checkWiring(circuit, spec);
-  const nets = resolveNets(circuit);
 
   /* Role, které v zadání nefigurují jako konec žádného spoje. Jsou to
      mezičlánky (rezistory) a jejich název se hodí do instrukce. */
   const endpoints = new Set<string>();
-  for (const conn of spec.connections) {
+  for (const conn of connections) {
     endpoints.add(conn.from.role);
     endpoints.add(conn.to.role);
   }
 
-  for (const conn of spec.connections) {
+  for (const conn of connections) {
     const fromId = wiring.roles?.[conn.from.role];
     const toId = wiring.roles?.[conn.to.role];
 

@@ -39,6 +39,12 @@ export interface LessonCheck {
   label: string;
   /** Co mají číst vstupní piny během běhu. */
   pinInputs?: Record<number, number>;
+  /**
+   * Hodnoty senzorů podle role (0–1023), jako by je dítě nastavilo na
+   * slideru. Na rozdíl od `pinInputs` jde signál přes obvod — kontrola tak
+   * ověří i zapojení senzoru, ne jen program.
+   */
+  sensors?: Record<string, number>;
   /** Které tlačítko je při běhu stisknuté. Role z `wiring.parts`. */
   pressed?: string[];
   /** Kolik průchodů `loop()` spočítat, než se výsledek posoudí. */
@@ -156,6 +162,46 @@ export function ledFaded(frames: SimulationFrame[], comp?: string | null): boole
   const levels = new Set(brightnesses(frames, comp));
   levels.delete(0);
   return levels.size >= 3;
+}
+
+/**
+ * Jak dlouho běh trval, v ms virtuálního času. Poslední snímek začíná
+ * v okamžiku svého stavu a drží až do konce — proto ne `elapsedMs` posledního.
+ */
+export function runDurationMs(frames: SimulationFrame[]): number {
+  const last = frames.at(-1);
+  if (!last) return 0;
+  return last.elapsedMs + (last.durationMs ?? 0);
+}
+
+/**
+ * Nejkratší doba, po kterou musí stav vydržet, aby se počítal jako pauza.
+ * Kratší zhasnutí je už jen záblesk, ne pauza mezi změnami.
+ */
+export const PAUSE_MS = 50;
+
+/**
+ * Je mezi svícením a tmou pauza? Stav „svítí" i stav „nesvítí" musí každý
+ * vydržet aspoň PAUSE_MS. Bez delay() obojí trvá nula a LED jen svítí.
+ */
+export function ledPausesBetweenChanges(frames: SimulationFrame[], comp?: string | null): boolean {
+  let onLong = false;
+  let offLong = false;
+  frames.forEach((f, i) => {
+    const b = brightnesses([f], comp)[0] ?? 0;
+    const d = f.durationMs ?? (frames[i + 1]?.elapsedMs ?? f.elapsedMs) - f.elapsedMs;
+    if (d < PAUSE_MS) return;
+    if (b > 0) onLong = true;
+    else offLong = true;
+  });
+  return onLong && offLong;
+}
+
+/** Rozsvítí se a pak už nezhasne? Pro lekci „rozsviť", ne „blikej". */
+export function ledStaysOn(frames: SimulationFrame[], comp?: string | null): boolean {
+  const states = brightnesses(frames, comp).map((b) => b > 0);
+  const first = states.indexOf(true);
+  return first >= 0 && states.slice(first).every(Boolean);
 }
 
 /** Rozezněl se bzučák? */

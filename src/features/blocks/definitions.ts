@@ -42,7 +42,7 @@ export const BLOCK_DEFINITIONS = [
         name: "MODE",
         options: [
           ["výstup", "OUTPUT"],
-          ["vstup s tlačítkem", "INPUT_PULLUP"],
+          ["vstup (pull-up)", "INPUT_PULLUP"],
         ],
       },
     ],
@@ -198,7 +198,7 @@ export const BLOCK_DEFINITIONS = [
     args0: [{ ...PIN, value: 7 }],
     output: null,
     colour: C.pins,
-    tooltip: "Tlačítko s „vstupem s tlačítkem“: zmáčknuté je LOW, puštěné HIGH.",
+    tooltip: "Tlačítko s „vstupem (pull-up)“: zmáčknuté je LOW, puštěné HIGH.",
   },
   {
     type: "analog_read",

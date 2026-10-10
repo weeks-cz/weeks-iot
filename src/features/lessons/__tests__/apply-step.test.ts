@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getComponentSpec } from "@/features/circuit/components";
 import { PITCH } from "@/features/circuit/constants";
 import { PLUGGABLE, pinKey, resolveNets } from "@/features/circuit/nets";
-import { checkWiring } from "@/features/circuit/wiring-check";
+import { checkWiring, defaultConnections } from "@/features/circuit/wiring-check";
 import type { Circuit } from "@/features/circuit/types";
 import { applyStep } from "../apply-step";
 import { COURSE_LESSONS } from "../content";
@@ -128,7 +128,7 @@ function unexpectedMerges(circuit: Circuit, lesson: (typeof COURSE_LESSONS)[numb
     union(pinKey(comp.id, "2a"), pinKey(comp.id, "2b"));
   }
 
-  for (const conn of lesson.wiring.connections) {
+  for (const conn of defaultConnections(lesson.wiring)) {
     const from = pinKey(roles[conn.from.role]!, conn.from.pin);
     const to = pinKey(roles[conn.to.role]!, conn.to.pin);
     if (!conn.through?.length) {
@@ -211,7 +211,7 @@ describe.each(COURSE_LESSONS.map((l) => [l.slug, l] as const))(
       const arduino = circuit.comps.find((c) => c.type === "arduino-uno")!;
       const nets = resolveNets(circuit);
       const used = new Set(
-        lesson.wiring.connections.flatMap((c) =>
+        defaultConnections(lesson.wiring).flatMap((c) =>
           [c.from, c.to]
             .filter((e) => e.role === "arduino" && !e.pin.startsWith("GND"))
             .map((e) => e.pin),

@@ -115,6 +115,9 @@ export function LessonWorkbench({
      stisk je vidět na obvodu okamžitě — a lekce o tlačítku má konečně
      smysl. */
   const [pressed, setPressed] = useState<Set<string>>(new Set());
+  /* Hodnoty senzorů (0–1023) podle id součástky. Hýbe jimi slider pod obvodem
+     a stejně jako stisk tlačítka se po každé změně přepočítá náhled. */
+  const [sensors, setSensors] = useState<Map<string, number>>(new Map());
   const [solved, setSolved] = useState(false);
   /* Rozdělaná práce z minula. Ukazuje se jako nabídka, ne jako skok:
      dřív se rovnou přepnulo na zapojování a dítě, které lekci jen kdysi
@@ -293,8 +296,8 @@ export function LessonWorkbench({
   /* Přepočet běhu, když dítě zmáčkne nebo pustí tlačítko. Program se
      pustí znovu s novým stavem obvodu — jinak by stisk nic neudělal. */
   const rerun = useCallback(
-    (held: Set<string>) => {
-      setRun((prev) => (prev ? runLessonChecks(lesson, circuit, source, held) : prev));
+    (held: Set<string>, values: Map<string, number>) => {
+      setRun((prev) => (prev ? runLessonChecks(lesson, circuit, source, held, values) : prev));
     },
     [lesson, circuit, source],
   );
@@ -305,11 +308,22 @@ export function LessonWorkbench({
         const next = new Set(prev);
         if (down) next.add(compId);
         else next.delete(compId);
-        rerun(next);
+        rerun(next, sensors);
         return next;
       });
     },
-    [rerun],
+    [rerun, sensors],
+  );
+
+  /* Slider senzoru: nová hodnota a okamžitý přepočet náhledu. */
+  const handleSensor = useCallback(
+    (compId: string, value: number) => {
+      const next = new Map(sensors);
+      next.set(compId, value);
+      setSensors(next);
+      rerun(pressed, next);
+    },
+    [sensors, pressed, rerun],
   );
 
   function handleRun() {
@@ -323,7 +337,7 @@ export function LessonWorkbench({
       /* Přehrávání spustí sám přehrávač, jakmile dostane nové snímky.
          Volat to odsud by znamenalo sáhnout na stav, který se v tomhle
          renderu ještě nezměnil. */
-      const result = runLessonChecks(lesson, circuit, source, pressed);
+      const result = runLessonChecks(lesson, circuit, source, pressed, sensors);
       setRun(result);
       setRunning(false);
 
@@ -339,6 +353,11 @@ export function LessonWorkbench({
 
   /* Součástky, se kterými se dá při běhu hýbat. Zatím jen tlačítka. */
   const interactive = circuit.comps.filter((c) => c.type === "pushbutton");
+
+  /* Senzory, které mají hodnotu, a jak se jejich slider jmenuje. */
+  const analogSensors = circuit.comps.filter(
+    (c) => c.type === "photoresistor" || c.type === "potentiometer",
+  );
 
   /* Tahák k příkazům téhle lekce. Vybírá se podle vzorového řešení —
      má obsahovat to, co dítě bude potřebovat, ne to, co už napsalo. */
@@ -809,6 +828,52 @@ export function LessonWorkbench({
                 </Alert>
               )}
 
+              {analogSensors.length > 0 && (
+                <div className="flex flex-col gap-3 rounded-md border border-ink/15 bg-paper-soft px-3 py-3">
+                  {analogSensors.map((comp) => {
+                    const percent = Math.round(((sensors.get(comp.id) ?? 512) / 1023) * 100);
+                    const label = comp.type === "photoresistor" ? "Světlo v místnosti" : "Otočení";
+                    return (
+                      <label key={comp.id} className="flex flex-col gap-1.5">
+                        <span className="text-sm text-ink-700">
+                          {label}: <span className="font-mono tabular-nums">{percent} %</span>
+                        </span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={percent}
+                          onChange={(e) =>
+                            handleSensor(comp.id, Math.round((Number(e.target.value) / 100) * 1023))
+                          }
+                          className="w-full accent-primary-600"
+                          aria-label={label}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              {run?.shortCircuit && (
+                <Alert tone="danger" title="Zkrat — program se nespustil">
+                  {run.shortCircuit}
+                </Alert>
+              )}
+
+              {/* Program zapsal na pin, který není výstup. Skutečná deska by
+                  tam nic nezapnula — dítě to má vědět, ne hádat. */}
+              {run && run.diagnostics.length > 0 && (
+                <Alert tone="warning" title="Program dělá něco jiného, než čekáš">
+                  <ul className="flex flex-col gap-1.5">
+                    {run.diagnostics.map((d) => (
+                      <li key={d.pin}>{mode === "blocks" ? d.blockMessage : d.message}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              )}
+
               {/* Program se přeložil a přitom neudělal vůbec nic. Doteď na to
                   nebyla hláška, takže dítě dostalo nápovědu „napiš
                   digitalWrite(led, HIGH)" ve chvíli, kdy tu větu mělo
@@ -821,7 +886,7 @@ export function LessonWorkbench({
                 </Alert>
               )}
 
-              {run && !run.error && (
+              {run && !run.error && !run.shortCircuit && (
                 <Card className="p-4">
                   <MonoLabel className="mb-3">Kontrola</MonoLabel>
 

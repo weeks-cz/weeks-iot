@@ -118,6 +118,7 @@ export class Interpreter {
 
   runSetup(): void {
     this.prepare();
+    this.steps = 0;
     const setup = this.functions.get("setup");
     if (setup) this.execBlock(setup.body, new Scope(this.globals));
   }
@@ -126,6 +127,10 @@ export class Interpreter {
   runLoopOnce(): boolean {
     const loop = this.functions.get("loop");
     if (!loop) return false;
+    /* Rozpočet kroků platí pro jeden průchod. Smyčka s delay se pak může
+       točit tak dlouho, jak potřebuje; nekonečná smyčka bez delay se pořád
+       zastaví, protože v jediném průchodu nevyčerpá rozpočet kroků. */
+    this.steps = 0;
     try {
       this.execBlock(loop.body, new Scope(this.globals));
     } catch (e) {
@@ -398,7 +403,8 @@ export class Interpreter {
       case "millis":
         return this.board.millis();
       case "tone":
-        this.board.tone(pin(), num(values[1]));
+        /* tone(pin, frekvence) zní pořád; tone(pin, frekvence, délka) jen tu dobu. */
+        this.board.tone(pin(), num(values[1]), values.length > 2 ? num(values[2]) : undefined);
         return 0;
       case "noTone":
         this.board.noTone(pin());
