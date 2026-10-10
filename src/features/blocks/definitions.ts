@@ -49,7 +49,7 @@ export const BLOCK_DEFINITIONS = [
     previousStatement: null,
     nextStatement: null,
     colour: C.pins,
-    tooltip: "Výstup = pin něco ovládá (LED, bzučák). Vstup = pin poslouchá (tlačítko).",
+    tooltip: "Výstup = pin něco ovládá (LED, bzučák). Vstup (pull-up) = pin poslouchá tlačítko.",
   },
   {
     type: "digital_write",

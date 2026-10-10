@@ -36,7 +36,7 @@ export const lesson6: Lesson = {
     body:
       "Na bzučák se nepíše HIGH a LOW, ale tone(pin, frekvence). Frekvence je v hertzech: " +
       "440 Hz je komorní A, 262 Hz je střední C. noTone(pin) zvuk zase vypne. " +
-      "Kdybys použil digitalWrite, ozvalo by se jen cvaknutí.",
+      "Při digitalWrite by se ozvalo jen cvaknutí.",
   },
 
   palette: ["breadboard-half", "piezo-buzzer", "pushbutton"],
@@ -149,7 +149,7 @@ void loop() {
       pressed: ["tlacitko"],
       verify: (frames) => buzzerSounded(frames),
       hint:
-        "Bzučák mlčí. Použil jsi tone(bzucak, 440)? A ptáš se na LOW — " +
+        "Bzučák mlčí. Máš tam tone(bzucak, 440)? A ptáš se na LOW — " +
         "zmáčknuté tlačítko je LOW, ne HIGH.",
       blockHint:
         "Bzučák mlčí. Máš v „udělej“ blok „tón na pinu 8“? A ptáš se na LOW — zmáčknuté tlačítko je LOW, ne HIGH.",

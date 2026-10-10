@@ -37,14 +37,14 @@ export const lesson7: Lesson = {
   brief: [
     "Závěrečný projekt. Postavíš noční světlo, které se rozsvítí samo, jakmile je kolem tma.",
     "Fotorezistor je součástka, která mění odpor podle světla. Sedí na destičce, která ho napájí a posílá do Arduina číslo — velké ve světle, malé ve tmě. Ne jen zapnuto a vypnuto, ale celou škálu.",
-    "Až to bude hotové, zakryj senzor rukou. LED se rozsvítí. To je celé — a přesně tohle si postavíš na táboře i naživo.",
+    "Až to bude hotové, posuň jezdec „Světlo v místnosti“ doleva, do tmy. LED se rozsvítí. Na skutečném senzoru stačí zakrýt ho rukou — a přesně takové světlo si postavíš i na táboře.",
   ],
 
   concept: {
     title: "analogRead vrací 0 až 1023",
     body:
-      "digitalRead umí jen dvě odpovědi. analogRead jich umí 1024 — od 0 (nic) " +
-      "po 1023 (naplno). Musíš si sám určit hranici, od které to bereš jako tmu. " +
+      "digitalRead umí jen dvě odpovědi. analogRead jich dává 1024 — od 0 (nic) " +
+      "po 1023 (naplno). Hranici, od které to bereš jako tmu, musíš určit ručně. " +
       "Žádné správné číslo neexistuje: záleží na senzoru i na místnosti. " +
       "Vypiš si hodnotu do sériového monitoru a podívej se, co ti chodí.",
   },
@@ -92,7 +92,7 @@ export const lesson7: Lesson = {
     "Senzor potřebuje tři drátky: napájení (VCC), zem (GND) a výstup (AO).",
     "VCC na 5V, GND na GND, AO na A0. Pin DO nech volný.",
     "LED zapoj jako v lekci 5 — pin 9, přes rezistor, katoda na zem.",
-    "Až budeš mít hotovo, spusť program a podívej se do sériového monitoru, jaká čísla chodí.",
+    "Až budeš mít hotovo, spusť program a podívej se do sériového monitoru, jaká čísla ti chodí.",
   ],
 
   programGoal: "Noční světlo: ve tmě se LED na pinu 9 rozsvítí, ve světle zhasne.",
@@ -122,8 +122,8 @@ void loop() {
     "Přečti senzor: int svetlo = analogRead(senzor);",
     "Vypiš si ho, ať víš, s čím pracuješ: Serial.println(svetlo);",
     "Rozhodni se: if (svetlo < hranice) { LED svítí } else { LED zhasne }",
-    "Hranici si uprav podle toho, jaká čísla ti chodí. Neexistuje jedno správné.",
-    "Zkus místo digitalWrite použít analogWrite — čím větší tma, tím jasnější světlo.",
+    "Hranici si uprav podle toho, jaká čísla ti chodí. Neexistuje jediná správná.",
+    "Zkus místo digitalWrite použít analogWrite: čím tmavěji, tím jasněji LED svítí.",
   ],
 
   solution: `int senzor = A0;
@@ -172,7 +172,7 @@ void loop() {
       "Do „pak pořád dokola“ dej „vypiš“ a do okénka „přečti analogový pin A0“. Uvidíš, jaká čísla senzor posílá.",
       "Pod to dej „když … udělej … jinak“ s porovnáním „přečti analogový pin A0“ < 400.",
       "Do „udělej“ rozsviť LED na pinu 9, do „jinak“ ji zhasni. Nakonec „počkej 200 ms“, ať výpis neletí moc rychle.",
-      "Hranici si uprav podle toho, jaká čísla ti chodí. Neexistuje jedno správné.",
+      "Hranici si uprav podle toho, jaká čísla ti chodí. Neexistuje jediná správná.",
     ],
   },
 

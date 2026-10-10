@@ -68,7 +68,7 @@ export function CurrentStep({ steps, current }: Props) {
         </span>
         <span className="text-right text-sm font-medium text-ink-500">
           {current.kind === "place"
-            ? "přetáhni ji z nabídky na plochu"
+            ? "přetáhni součástku z nabídky na plochu"
             : "klepni na jednu blikající tečku a pak na druhou"}
         </span>
       </div>

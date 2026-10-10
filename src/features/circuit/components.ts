@@ -276,7 +276,7 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     type: "pushbutton",
     intro: {
       what: "Tlačítko má čtyři nožičky, ale jen dvě strany. Nožičky jedné strany jsou uvnitř spojené pořád, stisk spojí obě strany navzájem.",
-      why: "Díky němu Arduino pozná, že jsi něco zmáčkl. Na desku ho posaď přes prostřední drážku, aby každá strana seděla v jiném sloupci.",
+      why: "Díky němu Arduino pozná, že je zmáčknuté. Na desku ho posaď přes prostřední drážku, aby každá strana seděla v jiném sloupci.",
     }, label: "Tlačítko",
     wokwiTag: "weeks-tact-switch",
     /* Skutečný spínač 6×6 mm, ne Wokwi tlačítko. Wokwi má nožičky daleko od

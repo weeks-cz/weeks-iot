@@ -33,7 +33,7 @@ export const lesson5: Lesson = {
     title: "Ne každý pin umí PWM",
     body:
       "Na Arduinu Uno to zvládnou jen piny označené vlnovkou: 3, 5, 6, 9, 10 a 11. " +
-      "Na ostatních se analogWrite chová jako vypínač — všechno nad 127 je HIGH. " +
+      "Na ostatních se analogWrite chová jako vypínač — od 128 výš zapne, jinak vypne. " +
       "Proto tuhle lekci stavíš na pinu 9, ne na osmičce jako minule.",
   },
 
@@ -139,7 +139,7 @@ void loop() {
         "Jas se zatím mění jen skokem. Potřebuješ analogWrite (ne digitalWrite) " +
         "a smyčku for, která projede hodnoty mezi 0 a 255.",
       blockHint:
-        "Jas se zatím mění jen skokem. Potřebuješ „jas pinu 9 na“ (ne „pošli HIGH“) uvnitř opakování, které projede hodnoty mezi 0 a 255 — a v okénku „hodnota z opakování“.",
+        "Jas se zatím mění jen skokem. Potřebuješ „jas pinu 9 na“ (ne „pošli HIGH“) uvnitř opakování od 0 do 255 a v jeho okénku „hodnota z opakování“.",
     },
     {
       label: "Přechod trvá, není okamžitý",

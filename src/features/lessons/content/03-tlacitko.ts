@@ -29,7 +29,7 @@ export const lesson3: Lesson = {
   legacyTaskId: "beginner-led",
 
   brief: [
-    "Do teď jsi Arduinu poroučel. Teď se ho naučíš ptát.",
+    "Doteď Arduinu říkáš, co má dělat. Teď se ho naučíš ptát.",
     "Přidáš tlačítko a LED bude svítit jen tehdy, když ho držíš. Program se poprvé bude rozhodovat podle toho, co se děje venku.",
     "Tlačítko zapojíš mezi pin a GND. Když ho zmáčkneš, spojí je — a Arduino to pozná.",
   ],
@@ -39,7 +39,7 @@ export const lesson3: Lesson = {
     body:
       "Pin je normálně HIGH. Stisk tlačítka ho stáhne na zem (GND), takže čteš LOW. " +
       "Proto ti stačí dva drátky: jeden na pin, druhý na zem. Rezistor navíc " +
-      "nepotřebuješ, protože vstup (pull-up) drží pin nahoře sám.",
+      "nepotřebuješ, protože režim vstup (pull-up) drží pin nahoře sám.",
   },
 
   palette: ["breadboard-half", "led-red", "resistor-220", "pushbutton"],
@@ -78,7 +78,7 @@ export const lesson3: Lesson = {
 
   wiringHints: [
     "LED zapoj stejně jako minule na pin 8.",
-    "Tlačítko dej přes prostřední drážku desky: jedna strana do jednoho sloupce, druhá do druhého. Každou stranu tvoří dvě nožičky a stačí ti jedna z nich.",
+    "Tlačítko dej přes prostřední drážku desky: jedna strana do jednoho sloupce, druhá do druhého. Každá strana má dvě nožičky spojené uvnitř, stačí ti jedna z nich.",
     "Jedna strana tlačítka jde na pin 7, druhá na GND.",
   ],
 
@@ -96,7 +96,7 @@ void setup() {
 void loop() {
   // ÚKOL: Když je tlačítko zmáčknuté, rozsviť. Jinak zhasni.
   //   1) přečti tlačítko: digitalRead(tlacitko)
-  //   2) rozhodni se: if (…== LOW) { rozsviť } else { zhasni }
+  //   2) rozhodni se: if (… == LOW) { rozsviť } else { zhasni }
 
 }
 `,
