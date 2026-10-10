@@ -1,4 +1,5 @@
 import type { ComponentType } from "./types";
+import { PITCH } from "./constants";
 
 export interface PinSpec {
   name: string;                              // logical pin name
@@ -26,6 +27,13 @@ export interface ComponentSpec {
    * změřené z `element.pinInfo`; kdo mění scale, musí je přepočítat.
    */
   visualOffset?: { x: number; y: number };
+  /**
+   * Přirozená velikost kresby (před scale). Bez ní se bere rozpětí pinů —
+   * u prvků, jejichž kresba přesahuje rozpětí (deska, tlačítko), je třeba.
+   */
+  box?: { w: number; h: number };
+  /** Jde součástku otočit po 90°? Deska a Arduino ne. Výchozí ano. */
+  rotatable?: boolean;
   /**
    * Co to je, řečeno dítěti.
    *
@@ -97,7 +105,7 @@ const PIN_SHORT: Partial<Record<ComponentType, Record<string, string>>> = {
   "led-blue": { anode: "+", cathode: "−" },
   "led-rgb": { r: "R", g: "G", b: "B", cathode: "−" },
   "resistor-220": { a: "nožička", b: "nožička" },
-  "pushbutton": { "1a": "levá strana", "1b": "levá strana", "2a": "pravá strana", "2b": "pravá strana" },
+  "pushbutton": { "1a": "strana 1", "1b": "strana 1", "2a": "strana 2", "2b": "strana 2" },
   "piezo-buzzer": { "+": "+", "-": "−" },
   "potentiometer": { "terminal-a": "kraj", signal: "střed", "terminal-b": "druhý kraj" },
   "photoresistor": { vcc: "VCC", gnd: "GND", dout: "DO", aout: "AO" },
@@ -112,9 +120,11 @@ const PIN_LABELS: Partial<Record<ComponentType, Record<string, string>>> = {
     r: "červená", g: "zelená", b: "modrá", cathode: "společná nožička (−)",
   },
   "resistor-220": { a: "levá nožička", b: "pravá nožička" },
+  /* Jména nezávisí na natočení: „levá/pravá strana" by po otočení lhala.
+     Strana 1 a strana 2 jsou dvě dvojice, jak je dítě vidí na tlačítku. */
   "pushbutton": {
-    "1a": "levý horní kontakt", "1b": "levý dolní kontakt",
-    "2a": "pravý horní kontakt", "2b": "pravý dolní kontakt",
+    "1a": "strana 1 (jedna z nožiček)", "1b": "strana 1 (druhá nožička)",
+    "2a": "strana 2 (jedna z nožiček)", "2b": "strana 2 (druhá nožička)",
   },
   "piezo-buzzer": { "+": "nožička +", "-": "nožička −" },
   "potentiometer": {
@@ -203,6 +213,7 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
       { name: "A4", dx: 25.83,  dy: 20.107 }, { name: "A5", dx: 26.828, dy: 20.107 },
     ],
     spanX: 29, spanY: 22, scale: 1.68,
+    rotatable: false,
     paletteIcon: "/cad/palette/arduino-uno.png",
   },
   "breadboard-half": {
@@ -215,7 +226,11 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     wokwiTag: "wokwi-breadboard-half",
     pins: generateBreadboardHalfPins(),
     spanX: 30, spanY: 15, scale: 1.0,
-    visualOffset: { x: -22, y: -8 },
+    /* Okraj 16 px nahoře a dole: značky „+" a „−" lišt a jejich vlastní
+       popisky nesmí sedět na hraně kresby (dřív ořezané). */
+    visualOffset: { x: -22, y: -16 },
+    box: { w: 508, h: 256 },
+    rotatable: false,
     paletteIcon: "/cad/palette/breadboard-half.png",
   },
   "led-red":    { ...led("red"),    type: "led-red",
@@ -260,18 +275,22 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
   "pushbutton": {
     type: "pushbutton",
     intro: {
-      what: "Obyčejné tlačítko. Dokud ho držíš, propojí své dvě strany; jakmile pustíš, přeruší je.",
-      why: "Arduino díky němu pozná, že se něco stalo. Je to jeho jediný způsob, jak se tě zeptat.",
+      what: "Tlačítko. Má čtyři nožičky, ale dělá dvě věci: každá dvojice nožiček na jedné straně je uvnitř spojená a stisk spojí obě strany mezi sebou.",
+      why: "Arduino díky němu pozná, že se něco stalo. Dává se přes prostřední drážku desky, aby každá strana seděla v jiném sloupci.",
     }, label: "Tlačítko",
-    wokwiTag: "wokwi-pushbutton",
-    wokwiAttrs: { color: "red" },
-    // scale=1.0: 67×45px; left pins at x=0→dx=0, right at x=67→dx=4; top y=13→dy=1, bottom y=32→dy=2
+    wokwiTag: "weeks-tact-switch",
+    /* Skutečný spínač 6×6 mm, ne Wokwi tlačítko. Wokwi má nožičky daleko od
+       sebe a při otočení by to vypadalo jako jiná součástka. Nožičky leží
+       přesně v rozích čtverce o dvou rozteč, na desce přes příkop: strana 1
+       v řadě E (dy 0) a F (dy 2) ve sloupci c, strana 2 ve sloupci c+2.
+       Každá strana je jedna dvojice (1a–1b, 2a–2b), stisk spojí 1 s 2. */
     pins: [
-      { name: "1a", dx: 0, dy: 1 }, { name: "2a", dx: 4, dy: 1 },
-      { name: "1b", dx: 0, dy: 2 }, { name: "2b", dx: 4, dy: 2 },
+      { name: "1a", dx: 0, dy: 0 }, { name: "2a", dx: 2, dy: 0 },
+      { name: "1b", dx: 0, dy: 2 }, { name: "2b", dx: 2, dy: 2 },
     ],
-    spanX: 5, spanY: 3, scale: 0.955,
-    visualOffset: { x: 0, y: 2.63 },
+    spanX: 2, spanY: 2, scale: 1,
+    box: { w: 60, h: 60 },
+    visualOffset: { x: -14, y: -14 },
     paletteIcon: "/cad/palette/pushbutton.png",
   },
   "piezo-buzzer": {
@@ -323,6 +342,34 @@ export const COMPONENT_REGISTRY: Record<ComponentType, ComponentSpec> = {
     paletteIcon: "/cad/palette/photoresistor.png",
   },
 };
+
+/**
+ * Piny, které jsou pro obvod TÝŽ spoj.
+ *
+ * Tlačítko má dvě strany a každá je uvnitř spojená sama. Kdo má na straně 2
+ * drátek k zemi, nezáleží na tom, jestli je na 2a, nebo 2b. Jiné součástky
+ * jsou jen svůj pin.
+ */
+export function equivalentPins(type: ComponentType, pinName: string): string[] {
+  if (type === "pushbutton") {
+    const side = pinName.charAt(0);
+    return [`${side}a`, `${side}b`];
+  }
+  return [pinName];
+}
+
+/**
+ * Přirozená velikost kresby (před `scale`) — pro náhled v paletě.
+ *
+ * Prvek s `box` ji zná přesně; ostatní se odvodí z rozpětí pinů.
+ */
+export function naturalSize(spec: ComponentSpec): { width: number; height: number } {
+  if (spec.box) return { width: spec.box.w, height: spec.box.h };
+  return {
+    width: (spec.spanX * PITCH) / spec.scale,
+    height: (spec.spanY * PITCH) / spec.scale,
+  };
+}
 
 export function getComponentSpec(type: ComponentType): ComponentSpec {
   const spec = COMPONENT_REGISTRY[type];

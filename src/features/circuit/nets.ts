@@ -1,6 +1,6 @@
 import type { Circuit, CircuitComponent, PinRef } from "./types";
 import { getComponentSpec } from "./components";
-import { PITCH } from "./constants";
+import { positionKey, resolvePinPosition } from "./pins";
 
 /**
  * Elektrický model obvodu.
@@ -143,7 +143,9 @@ function breadboardContacts(circuit: Circuit): PinKey[][] {
     if (!boards.has(comp.id) && !PLUGGABLE.has(comp.type)) continue;
 
     for (const pin of getComponentSpec(comp.type).pins) {
-      const key = `${comp.x + pin.dx * PITCH},${comp.y + pin.dy * PITCH}`;
+      const pos = resolvePinPosition(comp, pin.name);
+      if (!pos) continue;
+      const key = positionKey(pos);
       const list = byPosition.get(key) ?? [];
       list.push(pinKey(comp.id, pin.name));
       byPosition.set(key, list);

@@ -1,6 +1,8 @@
 import { getComponentSpec } from "./components";
-import { PLUGGABLE } from "./nets";
+import { PLUGGABLE, pinKey } from "./nets";
 import { PITCH } from "./constants";
+import { holeMap, occupiedSockets } from "./occupancy";
+import { positionKey, toPlane, normalizeRotation, type Rotation } from "./pins";
 import type { Circuit, ComponentType } from "./types";
 
 /**
@@ -37,11 +39,14 @@ export interface Landing {
  * Levý horní roh pod prstem působil, jako by dítě drželo součástku za
  * roh: u LED pak nožičky skončily pět roztečí pod kurzorem.
  */
-export function grabAnchor(type: ComponentType): { x: number; y: number } {
+export function grabAnchor(type: ComponentType, rotation: Rotation = 0): { x: number; y: number } {
   const spec = getComponentSpec(type);
+  const quarter = rotation === 90 || rotation === 270;
+  const w = quarter ? spec.spanY : spec.spanX;
+  const h = quarter ? spec.spanX : spec.spanY;
   return {
-    x: Math.round(spec.spanX / 2) * PITCH,
-    y: Math.round(spec.spanY / 2) * PITCH,
+    x: Math.round(w / 2) * PITCH,
+    y: Math.round(h / 2) * PITCH,
   };
 }
 
@@ -53,36 +58,30 @@ export function landing(
   circuit: Circuit,
   type: ComponentType,
   raw: { x: number; y: number },
-  options: { excludeId?: string } = {},
+  options: { excludeId?: string; rotation?: Rotation } = {},
 ): Landing {
-  const others = circuit.comps.filter((c) => c.id !== options.excludeId);
-  const boards = others.filter((c) => c.type === "breadboard-half");
-  if (boards.length === 0) return { at: raw, snapped: false, points: [] };
+  /* Jen to, co se do desky zapichuje, se magnetem přitahuje. Deska sama ani
+     Arduino se nikam nezapichují — ty leží, kam je dítě položilo. */
+  if (!PLUGGABLE.has(type)) return { at: raw, snapped: false, points: [] };
 
-  const holes = new Set<string>();
-  for (const board of boards) {
-    for (const pin of getComponentSpec(board.type).pins) {
-      holes.add(`${board.x + pin.dx * PITCH},${board.y + pin.dy * PITCH}`);
-    }
-  }
+  const rotation = normalizeRotation(options.rotation ?? 0);
+  const holes = holeMap(circuit);
+  if (holes.size === 0) return { at: raw, snapped: false, points: [] };
 
-  /* Dírky, ve kterých už nožička je. Dvě nožičky do jedné dírky se na
-     skutečné desce nevejdou a dítě má vidět, že tohle je chyba. */
-  const occupied = new Set<string>();
-  for (const comp of others) {
-    if (!PLUGGABLE.has(comp.type)) continue;
-    for (const pin of getComponentSpec(comp.type).pins) {
-      occupied.add(`${comp.x + pin.dx * PITCH},${comp.y + pin.dy * PITCH}`);
-    }
-  }
+  /* Dírky, které drží něco jiného. Nožička přesouvané součástky je nesmí
+     blokovat — přesouvá se sama. */
+  const exclude = new Set(options.excludeId ? [options.excludeId] : []);
+  const taken = occupiedSockets(circuit, { exclude });
 
   const at = { x: snap(raw.x), y: snap(raw.y) };
+  const probe = { id: "_landing", type, x: at.x, y: at.y, rotation };
+
   const points: LandingPoint[] = [];
   for (const pin of getComponentSpec(type).pins) {
-    const x = at.x + pin.dx * PITCH;
-    const y = at.y + pin.dy * PITCH;
-    const key = `${x},${y}`;
-    if (holes.has(key)) points.push({ x, y, ok: !occupied.has(key) });
+    const pos = toPlane(probe, { x: pin.dx * PITCH, y: pin.dy * PITCH });
+    const hole = holes.get(positionKey(pos));
+    if (!hole) continue;
+    points.push({ x: pos.x, y: pos.y, ok: !taken.has(pinKey(hole.compId, hole.pinName)) });
   }
 
   if (points.length === 0) return { at: raw, snapped: false, points: [] };

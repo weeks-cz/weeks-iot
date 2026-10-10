@@ -6,7 +6,9 @@
 const P = 16;
 /** Okraj kresby kolem pole dírek — na písmena řad a čísla sloupců. */
 const MARGIN_X = 22;
-const MARGIN_Y = 8;
+/* 16, ne 8: horní a dolní značky lišt (+/−) jsou nad a pod dírkami
+   a při osmi pixelech je SVG ořezával. Musí sedět s visualOffset v components.ts. */
+const MARGIN_Y = 16;
 
 /**
  * ── Proč se to celé překreslilo ────────────────────────────────────────────
@@ -16,7 +18,7 @@ const MARGIN_Y = 8;
  * i když elektricky fungovalo.
  *
  * Teď platí: dírka k = pin k. Střed první dírky je v kresbě na
- * (MARGIN_X, MARGIN_Y) a spec breadboardu má visualOffset (−22, −8),
+ * (MARGIN_X, MARGIN_Y) a spec breadboardu má visualOffset (−22, −16),
  * takže po posunu leží přesně na mřížkovém bodu komponenty.
  *
  * Vzhled je odkoukaný z Tinkercadu: písmena řad po obou stranách, čísla
