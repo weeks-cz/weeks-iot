@@ -243,7 +243,7 @@ describe("chyby zapojení tlačítka", () => {
     };
 
     const steps = wiringSteps(spatne, lesson3.wiring);
-    const gndStep = steps.find((s) => s.kind === "connect" && s.instruction.includes("tlačítko pravá"));
+    const gndStep = steps.find((s) => s.kind === "connect" && s.instruction.includes("tlačítko strana 2"));
 
     expect(gndStep?.done).toBe(false);
   });

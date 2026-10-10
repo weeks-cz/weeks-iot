@@ -1,7 +1,8 @@
 import { getComponentSpec } from "@/features/circuit/components";
 import { PITCH } from "@/features/circuit/constants";
 import { PLUGGABLE } from "@/features/circuit/nets";
-import { resolvePinPosition } from "@/features/circuit/pins";
+import { resolvePinPosition, toPlane } from "@/features/circuit/pins";
+import { occupiedSockets } from "@/features/circuit/occupancy";
 import type { Circuit, CircuitComponent, ComponentType, PinRef } from "@/features/circuit/types";
 
 /**
@@ -55,15 +56,6 @@ function halfOfDy(dy: number): Half | null {
   return null;
 }
 
-/** Jméno dírky na dané pozici plochy, nebo null, když tam dírka není. */
-function holeAt(board: CircuitComponent, x: number, y: number): string | null {
-  const dx = (x - board.x) / PITCH;
-  const dy = (y - board.y) / PITCH;
-  if (!Number.isInteger(dx) || !Number.isInteger(dy)) return null;
-  const pin = getComponentSpec(board.type).pins.find((p) => p.dx === dx && p.dy === dy);
-  return pin?.name ?? null;
-}
-
 function holePosition(board: CircuitComponent, name: string): { x: number; y: number } {
   return resolvePinPosition(board, name)!;
 }
@@ -73,23 +65,14 @@ function holePosition(board: CircuitComponent, name: string): { x: number; y: nu
  * konec drátku. Do takové dírky se nic dalšího nezapíchne.
  */
 export function occupiedHoles(circuit: Circuit, board: CircuitComponent): Set<string> {
+  /* Jeden zdroj pravdy pro obsazenost — stejný jako na ploše (`occupancy.ts`).
+     Dřív tu byla vlastní kopie, která počítala konce drátků, a hit-test
+     počítal jen nožičky. */
   const taken = new Set<string>();
-
-  for (const comp of circuit.comps) {
-    if (!PLUGGABLE.has(comp.type)) continue;
-    for (const pin of getComponentSpec(comp.type).pins) {
-      const pos = resolvePinPosition(comp, pin.name)!;
-      const hole = holeAt(board, pos.x, pos.y);
-      if (hole) taken.add(hole);
-    }
+  for (const key of occupiedSockets(circuit)) {
+    const at = key.indexOf("#");
+    if (key.slice(0, at) === board.id) taken.add(key.slice(at + 1));
   }
-
-  for (const wire of circuit.wires) {
-    for (const end of [wire.from, wire.to]) {
-      if (end.compId === board.id) taken.add(end.pinName);
-    }
-  }
-
   return taken;
 }
 
@@ -109,7 +92,7 @@ function usedColumns(circuit: Circuit, board: CircuitComponent): Set<string> {
 
   /* Tělo součástky mezi nožičkami. Zapíchnout něco pod rezistor by šlo
      elektricky, ale na ploše by se to překrývalo a dítě by nevidělo, co
-     kam vede. */
+     kam vede. Tlačítko přes příkop obsadí obě poloviny — tělo je mezi nimi. */
   for (const comp of circuit.comps) {
     if (!PLUGGABLE.has(comp.type)) continue;
     const spots = getComponentSpec(comp.type)
@@ -117,8 +100,9 @@ function usedColumns(circuit: Circuit, board: CircuitComponent): Set<string> {
       .filter((p): p is Plugged => p !== null);
     if (spots.length === 0) continue;
     const cols = spots.map((s) => s.col);
+    const halves = new Set(spots.map((s) => s.half));
     for (let c = Math.min(...cols); c <= Math.max(...cols); c++) {
-      used.add(`${spots[0]!.half}:${c}`);
+      for (const half of halves) used.add(`${half}:${c}`);
     }
   }
 
@@ -159,6 +143,7 @@ export function placeOnBoard(
   targetX?: number,
 ): { x: number; y: number } | null {
   if (!PLUGGABLE.has(type)) return null;
+  if (type === "pushbutton") return placeAcrossTrench(circuit, board, targetX);
 
   const pins = getComponentSpec(type).pins;
   const minDx = Math.min(...pins.map((p) => p.dx));
@@ -195,7 +180,15 @@ export function placeOnBoard(
         targetX === undefined
           ? offset
           : Math.min(
-              ...pins.map((p) => Math.abs(board.x + (offset + p.dx) * PITCH - targetX) / PITCH),
+              ...pins.map(
+                (p) =>
+                  Math.abs(
+                    toPlane({ type, x: board.x + offset * PITCH, y: originY, rotation: 0 }, {
+                      x: p.dx * PITCH,
+                      y: p.dy * PITCH,
+                    }).x - targetX,
+                  ) / PITCH,
+              ),
             );
 
       if (!best || cost < best.cost) best = { offset, cost };
@@ -207,6 +200,41 @@ export function placeOnBoard(
   }
 
   return choice ? { x: choice.x, y: choice.y } : null;
+}
+
+/**
+ * Tlačítko přes prostřední drážku.
+ *
+ * Jeho strany leží ve dvou sloupcích (c a c+2) a každá má nožičku v horní
+ * půlce (řada E) i ve spodní (řada F). Dvojice přes příkop je uvnitř
+ * spojená, takže přes příkop se nic jiného nespojí — a obě strany dostanou
+ * vlastní sloupec. Sloupce c, c+1 a c+2 musí být volné na obou půlkách.
+ */
+function placeAcrossTrench(
+  circuit: Circuit,
+  board: CircuitComponent,
+  targetX?: number,
+): { x: number; y: number } | null {
+  const used = usedColumns(circuit, board);
+  const originY = board.y + 6 * PITCH; // řada E
+  let best: { offset: number; cost: number } | null = null;
+
+  for (let offset = 0; offset + 2 < COLUMNS; offset++) {
+    let free = true;
+    for (let c = offset; c <= offset + 2; c++) {
+      if (used.has(`top:${c}`) || used.has(`bottom:${c}`)) {
+        free = false;
+        break;
+      }
+    }
+    if (!free) continue;
+
+    /* Vzdálenost první strany od pinu Arduina; bez cíle se plní zleva. */
+    const cost = targetX === undefined ? offset : Math.abs(board.x + offset * PITCH - targetX) / PITCH;
+    if (!best || cost < best.cost) best = { offset, cost };
+  }
+
+  return best ? { x: board.x + best.offset * PITCH, y: originY } : null;
 }
 
 /**

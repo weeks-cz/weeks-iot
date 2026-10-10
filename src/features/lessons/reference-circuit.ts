@@ -60,7 +60,23 @@ export function referenceCircuit(spec: WiringSpec): Circuit {
 
   let extra = 0;
   let wireId = 0;
-  const wire = (from: [string, string], to: [string, string]): void => {
+
+  /* Piny Arduina smí mít jen jeden drátek. Zemí jsou tři, takže každý spoj
+     na GND dostane svou — jinak by dva drátky seděly na jedné nožičce, což
+     deska nepustí. */
+  const arduinoRoles = new Set(spec.parts.filter((p) => p.type === "arduino-uno").map((p) => p.role));
+  const usedPins = new Set<string>();
+  const pin = (ref: [string, string]): [string, string] => {
+    if (!arduinoRoles.has(ref[0]) || !ref[1].startsWith("GND")) return ref;
+    const free = ["GND-1", "GND-2", "GND-3"].find((g) => !usedPins.has(`${ref[0]}#${g}`));
+    const chosen = free ?? ref[1];
+    usedPins.add(`${ref[0]}#${chosen}`);
+    return [ref[0], chosen];
+  };
+
+  const wire = (rawFrom: [string, string], rawTo: [string, string]): void => {
+    const from = pin(rawFrom);
+    const to = pin(rawTo);
     wires.push({
       id: `ref-w${++wireId}`,
       from: { compId: from[0], pinName: from[1] },
