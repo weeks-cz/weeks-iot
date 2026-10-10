@@ -55,7 +55,9 @@ zástupce se váže na dítě (`consents.child_id`, migrace 014).
 
 **Anonymní relace nesmí nic poslat na server.** Do okamžiku, kdy rodič odešle
 registraci, žije postup výhradně v `localStorage`. Je to právní stav, ne
-optimalizace.
+optimalizace. Přihlášený rodič, který
+se vrátí na stejný počítač, dostane na `/ucet` NABÍDKU převzetí (`AdoptProgressPrompt`);
+nikdy k tomu nedojde automaticky. „Ne“ postup smaže z prohlížeče.
 
 **Anonym měří stejně jako přihlášený.** Bez `lesson_start` od anonyma
 neexistuje jmenovatel hlavní metriky a brána 1 se nedá vyhodnotit.

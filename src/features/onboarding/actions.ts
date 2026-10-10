@@ -12,7 +12,7 @@ import { EVENT } from "@/features/analytics/events";
 import { consentTextsForAge } from "@/features/consent/texts";
 import { writeLessonProgress } from "@/features/progress/write";
 import { issueEarnedCertificates } from "@/features/certificates/issue";
-import { anonSessionSchema, type AnonSession } from "@/features/anon-session/schema";
+import { parseAnonSession } from "@/features/anon-session/parse";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { needsParentalConsent, onboardingSchema } from "./schema";
 
@@ -27,21 +27,6 @@ import { needsParentalConsent, onboardingSchema } from "./schema";
  * Řádek v `parents` už existuje: zakládá ho trigger `handle_new_user`
  * při vzniku uživatele. Tady se jen doplňuje.
  */
-
-/** Anonymní relace přichází jako JSON z localStorage. Nedůvěryhodný vstup. */
-function parseAnonSession(raw: FormDataEntryValue | null): AnonSession | null {
-  if (typeof raw !== "string" || raw.length === 0) return null;
-  /* Strop na velikost dřív, než se to vůbec zkusí parsovat — jinak by šlo
-     poslat několikamegabajtový JSON a nechat server, ať se s ním pere. */
-  if (raw.length > 50_000) return null;
-
-  try {
-    const parsed = anonSessionSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function completeOnboardingAction(
   _prev: ActionState,
