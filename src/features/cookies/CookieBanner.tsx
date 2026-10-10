@@ -87,7 +87,7 @@ export function CookieBanner() {
           </div>
         )}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-end">
           <Button
             type="button"
             onClick={() => decide({ analytics: false, marketing: false })}
@@ -100,6 +100,7 @@ export function CookieBanner() {
               type="button"
               onClick={() => decide({ analytics, marketing })}
               variant="primary" size="sm"
+              className="col-span-2"
             >
               Uložit výběr
             </Button>

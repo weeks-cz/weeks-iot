@@ -68,11 +68,19 @@ export function fitCircuit(
     Math.min(1, (viewport.width - 2 * PADDING) / width, (viewport.height - 2 * PADDING) / height),
   );
 
+  /* Když se obvod na výšku nevejde (telefon), zarovná se nahoru: vystředěný
+     by měl useknutou horní lištu desky — a na desku se zapichuje nejdřív.
+     Arduino pod ní se dá dojet tahem. */
+  const overflowsY = height * zoom > viewport.height - 2 * PADDING;
+  const y = overflowsY
+    ? PADDING - PLANE_OFFSET - minY * zoom
+    : (viewport.height - height * zoom) / 2 - PLANE_OFFSET - minY * zoom;
+
   return {
     zoom: Number(zoom.toFixed(2)),
     pan: {
       x: (viewport.width - width * zoom) / 2 - PLANE_OFFSET - minX * zoom,
-      y: (viewport.height - height * zoom) / 2 - PLANE_OFFSET - minY * zoom,
+      y,
     },
   };
 }

@@ -61,12 +61,14 @@ export function CurrentStep({ steps, current }: Props) {
   return (
     <div className="rounded-md border border-ink/15 bg-paper px-4 py-3">
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <MonoLabel>
-          Krok {index + 1} z {steps.length}
-        </MonoLabel>
+        <span className="shrink-0 whitespace-nowrap">
+          <MonoLabel>
+            Krok {index + 1} z {steps.length}
+          </MonoLabel>
+        </span>
         <span className="text-right text-sm font-medium text-ink-500">
           {current.kind === "place"
-            ? "přetáhni ji z nabídky vlevo do plochy"
+            ? "přetáhni ji z nabídky na plochu"
             : "klepni na jednu blikající tečku a pak na druhou"}
         </span>
       </div>
