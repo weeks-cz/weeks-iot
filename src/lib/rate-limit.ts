@@ -29,6 +29,12 @@ export const RATE_LIMITS = {
   waitlist: { limit: 3, windowMs: 60 * 60_000 },
   /** Změna souhlasu — brání zaplavení ledgeru. */
   consent: { limit: 20, windowMs: 60 * 60_000 },
+  /** Žádost o odkaz na obnovu hesla — jinak jde poslat e-mail komukoli. */
+  passwordReset: { limit: 5, windowMs: 60 * 60_000 },
+  /** Nastavení nového hesla z odkazu. Vlastní kbelík, ne sdílený s onboardingem. */
+  passwordSet: { limit: 10, windowMs: 60 * 60_000 },
+  /** Heslo při přihlášení, na IP. Účet navíc chrání Supabase. */
+  signIn: { limit: 10, windowMs: 15 * 60_000 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

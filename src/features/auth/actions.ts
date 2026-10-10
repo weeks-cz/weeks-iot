@@ -96,6 +96,11 @@ export async function signInAction(
     return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
   }
 
+  const limit = await rateLimit("signIn", clientIp(await headers()) ?? "unknown");
+  if (!limit.allowed) {
+    return { error: "Příliš mnoho pokusů. Zkuste to prosím za chvíli." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
@@ -160,6 +165,17 @@ export async function requestPasswordResetAction(
     return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
   }
 
+  /* Bez limitu by formulář rozesílal e-maily na libovolné adresy. Odpověď
+     je přitom stejná při úspěchu i při překročení — jinak by šlo zjistit,
+     kdo má účet. */
+  const limit = await rateLimit("passwordReset", clientIp(await headers()) ?? "unknown");
+  if (!limit.allowed) {
+    return {
+      success:
+        "Pokud u téhle adresy existuje účet, poslali jsme na ni odkaz pro nastavení nového hesla.",
+    };
+  }
+
   const supabase = await createClient();
   await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     redirectTo: callbackUrl("/obnova-hesla/nove"),
@@ -196,7 +212,7 @@ export async function setNewPasswordAction(
   }
 
   const ip = clientIp(await headers()) ?? data.user.id;
-  const limit = await rateLimit("onboarding", ip);
+  const limit = await rateLimit("passwordSet", ip);
   if (!limit.allowed) {
     return { error: "Příliš mnoho pokusů. Zkuste to prosím za hodinu." };
   }

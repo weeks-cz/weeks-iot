@@ -5,15 +5,10 @@ import { Alert } from "@/components/ui/Surface";
 import { GoogleButton } from "@/features/auth/components/GoogleButton";
 import { SignInForm } from "@/features/auth/components/SignInForm";
 import { isSafeNextPath } from "@/features/auth/safe-path";
+import { loginErrorMessage } from "@/features/auth/errors";
 
 export const metadata: Metadata = {
   title: "Přihlášení",
-};
-
-const ERRORS: Record<string, string> = {
-  google: "Přihlášení přes Google se nepovedlo. Zkuste to prosím znovu nebo použijte e-mail.",
-  callback: "Odkaz už není platný. Požádejte prosím o nový.",
-  expired: "Odkaz vypršel. Požádejte prosím o nový.",
 };
 
 export default async function SignInPage({
@@ -27,7 +22,7 @@ export default async function SignInPage({
      nepovolená hodnota jen předala dál, doputovala by do skrytého pole
      formuláře a byla by o krok blíž k přesměrování ven. */
   const next = isSafeNextPath(params.next) ? params.next : "/ucet";
-  const error = params.chyba ? ERRORS[params.chyba] : undefined;
+  const error = loginErrorMessage(params.chyba);
 
   return (
     <AuthShell
