@@ -64,6 +64,10 @@ drží datum, přezdívku, avatar a kraj. Souhlasy se neukládají nikdy — ani
 předvyplněné, ani po obnovení. Koncept se maže až na `/ucet?vitejte=1`, tedy po
 úspěšném zápisu účtu.
 
+Hlavička lekce ukazuje, kdo se učí (`activeChild`: přezdívka, avatar), a odkaz
+„Přepnout“ vede na `/ucim-se/prepnout`. Přihlášený rodič bez vybraného profilu
+hlavičku nevidí a postup se nezapisuje (`needsChildProfile`).
+
 **Anonym měří stejně jako přihlášený.** Bez `lesson_start` od anonyma
 neexistuje jmenovatel hlavní metriky a brána 1 se nedá vyhodnotit.
 
