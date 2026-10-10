@@ -324,6 +324,33 @@ export function wiringSteps(circuit: Circuit, spec: WiringSpec): WiringStep[] {
           "Tlačítko je otočené špatně — jeho dvě strany spojuje breadboard, takže je " +
           "pořád jako stisknuté. Otoč ho (tlačítko Otočit) nebo ho posaď přes prostřední drážku.";
       }
+      continue;
+    }
+
+    /* Oba drátky (pin i zem) končí na TÉŽE straně tlačítka. Nožičky jedné
+       strany jsou uvnitř spojené pořád, takže pin je trvale na zemi a stisk
+       nic nezmění. Typicky po otočení tlačítka, které už mělo drátky. */
+    const outside = spec.connections
+      .filter((c) => c.from.role === part.role || c.to.role === part.role)
+      .map((c) => (c.from.role === part.role ? c.to : c.from))
+      .map((end) => {
+        const endId = wiring.roles?.[end.role];
+        return endId ? pinKey(endId, end.pin) : null;
+      })
+      .filter((k): k is string => k !== null);
+    const touchesSide = (side: "1" | "2", key: string) =>
+      equivalentPins("pushbutton", `${side}a`).some((p) => nets.connected(pinKey(id, p), key));
+    const sameSide = (["1", "2"] as const).some(
+      (side) => outside.length >= 2 && outside.every((key) => touchesSide(side, key)),
+    );
+    if (sameSide) {
+      const step = steps.find((st) => !st.done) ?? steps[steps.length - 1];
+      if (step) {
+        step.warning =
+          "Oba drátky vedou na stejnou stranu tlačítka. Ta je uvnitř spojená pořád, " +
+          "takže stisk nic nezmění. Otoč tlačítko (tlačítko Otočit), nebo přendej jeden " +
+          "drátek na druhou stranu.";
+      }
     }
   }
 

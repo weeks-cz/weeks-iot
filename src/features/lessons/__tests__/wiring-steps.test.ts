@@ -246,6 +246,9 @@ describe("chyby zapojení tlačítka", () => {
     const gndStep = steps.find((s) => s.kind === "connect" && s.instruction.includes("tlačítko strana 2"));
 
     expect(gndStep?.done).toBe(false);
+
+    /* A dítě se dozví proč — jinak vidí jen obecnou nápovědu ke kroku. */
+    expect(steps.some((s) => s.warning?.includes("stejnou stranu tlačítka"))).toBe(true);
   });
 
   it("kontroly lekce 3 mačkají skutečné tlačítko — trvale uzemněný pin neprojde", async () => {
