@@ -224,6 +224,10 @@ export function readFrame(
     for (const pin of spec.pins) {
       const number = arduinoPinNumber(pin.name);
       if (number === null) continue;
+      /* Pin řídí obvod jen jako výstup. Zapsaná hodnota bez pinMode
+         OUTPUT zůstane v paměti, ale do drátu nejde — stejně jako na
+         skutečné desce, kde se to projeví jen jako zhasnutá LED. */
+      if (board.modes.get(number) !== "output") continue;
       const out = board.outputs.get(number);
       if (out !== undefined && out > 0) voltage.drive(uno.id, pin.name, out);
     }
@@ -523,11 +527,75 @@ function frameSignature(frame: SimulationFrame): string {
   return `${leds}|${buzzers}|${frame.serial.length}`;
 }
 
+/** Co program udělal jinak, než by udělala skutečná deska. */
+export interface PinDiagnostic {
+  kind: "not-output";
+  pin: number;
+}
+
 export interface RunResult {
   ok: boolean;
   error?: { message: string; line: number };
+  /** Zkrat zastavil běh. Věta pro dítě, pojmenuje pin. */
+  shortCircuit?: string;
   frames: SimulationFrame[];
+  diagnostics: PinDiagnostic[];
 }
+
+const POWER_MESSAGE = (where: string) =>
+  `Zkrat! ${where} je spojené přímo se zemí — ve skutečnosti by se deska mohla poškodit.`;
+
+/** Statický zkrat: napájecí pin je drátem spojený přímo se zemí. */
+export function shortCircuitInCircuit(circuit: Circuit): string | null {
+  const uno = circuit.comps.find((c) => c.type === "arduino-uno");
+  if (!uno) return null;
+
+  const nets = resolveNets(circuit);
+  const grounds = new Set(
+    GROUND_PINS.map((g) => nets.netOf(pinKey(uno.id, g))),
+  );
+  const power = POWER_PINS.find((p) => grounds.has(nets.netOf(pinKey(uno.id, p))));
+  return power ? POWER_MESSAGE(power) : null;
+}
+
+/**
+ * Běhový zkrat: výstup v HIGH přímo na zemi, nebo v LOW přímo na 5 V.
+ *
+ * Počítá se jen z drátů (sítě), ne přes součástky — LED s rezistorem mezi
+ * pinem a zemí zkrat není. Vstupní piny se nepočítají: INPUT_PULLUP stažený
+ * tlačítkem k zemi je správné zapojení.
+ */
+function runtimeShortCircuit(
+  circuit: Circuit,
+  board: BoardState,
+  nets: NetMap,
+): string | null {
+  const uno = circuit.comps.find((c) => c.type === "arduino-uno");
+  if (!uno) return null;
+
+  const grounds = new Set(GROUND_PINS.map((g) => nets.netOf(pinKey(uno.id, g))));
+  const powers = new Set(POWER_PINS.map((p) => nets.netOf(pinKey(uno.id, p))));
+
+  for (const pin of getComponentSpec("arduino-uno").pins) {
+    const number = arduinoPinNumber(pin.name);
+    if (number === null || board.modes.get(number) !== "output") continue;
+
+    const net = nets.netOf(pinKey(uno.id, pin.name));
+    const high = (board.outputs.get(number) ?? 0) > 0;
+
+    if (high && grounds.has(net)) {
+      return `Zkrat! Pin ${number} je nastavený jako výstup a je spojený přímo se zemí — ve skutečnosti by se deska mohla poškodit. Mezi pin a zem patří vždycky součástka, třeba LED s rezistorem.`;
+    }
+    if (!high && powers.has(net)) {
+      return `Zkrat! Pin ${number} je nastavený jako výstup a je spojený přímo s napájením 5 V — ve skutečnosti by se deska mohla poškodit.`;
+    }
+  }
+
+  return null;
+}
+
+/** Vyhodí se z `snapshot`, aby zkrat zastavil běh uprostřed `delay`. */
+class ShortCircuitSignal extends Error {}
 
 export interface RunConfig {
   /** Kolik průchodů `loop()` spočítat. */
@@ -548,9 +616,16 @@ export function runProgram(
   circuit: Circuit,
   config: RunConfig = {},
 ): RunResult {
+  /* Zkrat na napájení se pozná bez programu. Běh se nezačne vůbec — na
+     skutečné desce by se do takového obvodu nikdo nepustil. */
+  const staticShort = shortCircuitInCircuit(circuit);
+  if (staticShort) {
+    return { ok: false, shortCircuit: staticShort, frames: [], diagnostics: [] };
+  }
+
   const compiled = compile(source);
   if (!compiled.ok) {
-    return { ok: false, error: compiled.error, frames: [] };
+    return { ok: false, error: compiled.error, frames: [], diagnostics: [] };
   }
 
   const state = emptyBoardState();
@@ -580,6 +655,9 @@ export function runProgram(
      delayem, by jinak pokaždé přidal kopii. Přechody se tím neztratí,
      protože zahazujeme jen to, co se ničím neliší. */
   const snapshot = (): void => {
+    const short = runtimeShortCircuit(circuit, state, nets);
+    if (short) throw new ShortCircuitSignal(short);
+
     if (frames.length >= MAX_FRAMES) return;
 
     const frame = readFrame(circuit, state, config.inputs, nets);
@@ -592,6 +670,14 @@ export function runProgram(
 
   const board = createBoard(state, snapshot);
   const interp = new Interpreter(compiled.program!, board);
+
+  /* Piny, do kterých se zapisovalo bez pinMode OUTPUT. Hlásí se až na
+     konci — dítě se má dozvědět, co udělalo, ne každé jednotlivé zapsání. */
+  const diagnostics = (): PinDiagnostic[] =>
+    [...state.unsetWrites]
+      .filter((pin) => state.modes.get(pin) !== "output")
+      .sort((a, b) => a - b)
+      .map((pin) => ({ kind: "not-output" as const, pin }));
 
   try {
     interp.runSetup();
@@ -607,15 +693,19 @@ export function runProgram(
       snapshot();
     }
   } catch (e) {
+    if (e instanceof ShortCircuitSignal) {
+      return { ok: false, shortCircuit: e.message, frames, diagnostics: diagnostics() };
+    }
     if (e instanceof RuntimeError) {
-      return { ok: false, error: { message: e.message, line: e.line }, frames };
+      return { ok: false, error: { message: e.message, line: e.line }, frames, diagnostics: diagnostics() };
     }
     return {
       ok: false,
       error: { message: "Program se zasekl. Zkontroluj smyčky a delay.", line: 1 },
       frames,
+      diagnostics: diagnostics(),
     };
   }
 
-  return { ok: true, frames };
+  return { ok: true, frames, diagnostics: diagnostics() };
 }

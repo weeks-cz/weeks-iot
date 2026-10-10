@@ -45,6 +45,11 @@ export interface BoardState {
   /** Piny, na kterých zní tón, a jejich frekvence. */
   tones: Map<number, number>;
   elapsedMs: number;
+  /**
+   * Piny, do kterých program zapsal digitalWrite, aniž je nastavil jako
+   * výstup. Skutečná deska na nich nic nezapne — kid dostane vysvětlení.
+   */
+  unsetWrites: Set<number>;
 }
 
 export function emptyBoardState(): BoardState {
@@ -56,6 +61,7 @@ export function emptyBoardState(): BoardState {
     serialBaud: null,
     tones: new Map(),
     elapsedMs: 0,
+    unsetWrites: new Set(),
   };
 }
 
@@ -91,6 +97,7 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     },
 
     digitalWrite(pin, value) {
+      if (state.modes.get(pin) !== "output") state.unsetWrites.add(pin);
       state.outputs.set(pin, value > 0 ? 255 : 0);
     },
 
@@ -100,6 +107,8 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     },
 
     analogWrite(pin, value) {
+      /* Jako na skutečné desce: analogWrite přepne pin na výstup sám. */
+      state.modes.set(pin, "output");
       state.outputs.set(pin, Math.max(0, Math.min(255, Math.round(value))));
     },
 
@@ -142,6 +151,8 @@ export function createBoard(state: BoardState, onTimePasses?: () => void): Board
     },
 
     tone(pin, frequency) {
+      /* tone() také přepne pin na výstup. */
+      state.modes.set(pin, "output");
       state.tones.set(pin, frequency);
     },
 

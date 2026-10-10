@@ -827,6 +827,24 @@ export function LessonWorkbench({
                 </Alert>
               )}
 
+              {run?.shortCircuit && (
+                <Alert tone="danger" title="Zkrat — program se nespustil">
+                  {run.shortCircuit}
+                </Alert>
+              )}
+
+              {/* Program zapsal na pin, který není výstup. Skutečná deska by
+                  tam nic nezapnula — dítě to má vědět, ne hádat. */}
+              {run && run.diagnostics.length > 0 && (
+                <Alert tone="warning" title="Program dělá něco jiného, než čekáš">
+                  <ul className="flex flex-col gap-1.5">
+                    {run.diagnostics.map((d) => (
+                      <li key={d.pin}>{mode === "blocks" ? d.blockMessage : d.message}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              )}
+
               {/* Program se přeložil a přitom neudělal vůbec nic. Doteď na to
                   nebyla hláška, takže dítě dostalo nápovědu „napiš
                   digitalWrite(led, HIGH)" ve chvíli, kdy tu větu mělo
@@ -839,7 +857,7 @@ export function LessonWorkbench({
                 </Alert>
               )}
 
-              {run && !run.error && (
+              {run && !run.error && !run.shortCircuit && (
                 <Card className="p-4">
                   <MonoLabel className="mb-3">Kontrola</MonoLabel>
 

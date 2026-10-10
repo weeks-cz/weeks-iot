@@ -1,5 +1,10 @@
 import { silentProgramReason, type SilentReason } from "@/features/arduino/silent-program";
-import { runProgram, type SimulationFrame } from "@/features/circuit/simulate";
+import {
+  runProgram,
+  shortCircuitInCircuit,
+  type PinDiagnostic,
+  type SimulationFrame,
+} from "@/features/circuit/simulate";
 import { checkWiring } from "@/features/circuit/wiring-check";
 import type { Circuit } from "@/features/circuit/types";
 import type { CheckContext, Lesson, LessonCheck } from "./types";
@@ -35,10 +40,35 @@ export interface LessonRunResult {
    * stranou schválně.
    */
   silent: SilentReason | null;
+  /**
+   * Zkrat v obvodu. Když je, program se vůbec nepouští a kontroly se
+   * neposuzují — dítě nemá dostat „splněno" na obvodu, který by se spálil.
+   */
+  shortCircuit: string | null;
+  /**
+   * Co program zapsal na pin, aniž byl výstup. Hlášky jsou dvě: režim kódu
+   * (ukáže pinMode) a režim bloků (jen jmenuje blok — nediktuje kód).
+   */
+  diagnostics: PinDiagnosticMessage[];
   /** Prošly všechny body? */
   passed: boolean;
   /** Snímky prvního běhu — do animace obvodu. */
   preview: SimulationFrame[];
+}
+
+export interface PinDiagnosticMessage {
+  pin: number;
+  message: string;
+  blockMessage: string;
+}
+
+/** Hlášky k diagnostice pinů. Pin je číslo, jak ho dítě vidí v kódu i v blocích. */
+export function pinDiagnosticMessage(d: PinDiagnostic): PinDiagnosticMessage {
+  return {
+    pin: d.pin,
+    message: `Pin ${d.pin} není nastavený jako výstup — přidej do setup() pinMode(${d.pin}, OUTPUT).`,
+    blockMessage: `Pin ${d.pin} není nastavený jako výstup — přidej do „na začátku jednou“ blok „nastav pin ${d.pin} jako výstup“.`,
+  };
 }
 
 export function runLessonChecks(
@@ -63,6 +93,27 @@ export function runLessonChecks(
   const outcomes: CheckOutcome[] = [];
   let error: LessonRunResult["error"] = null;
 
+  /* Zkrat na napájení se pozná před během — program se nepustí vůbec. */
+  const staticShort = shortCircuitInCircuit(circuit);
+  if (staticShort) {
+    return {
+      error: null,
+      outcomes: [],
+      silent: null,
+      shortCircuit: staticShort,
+      diagnostics: [],
+      passed: false,
+      preview: [],
+    };
+  }
+
+  const diagnostics = new Map<number, PinDiagnosticMessage>();
+  const collect = (run: { diagnostics: PinDiagnostic[] }) => {
+    for (const d of run.diagnostics) {
+      if (!diagnostics.has(d.pin)) diagnostics.set(d.pin, pinDiagnosticMessage(d));
+    }
+  };
+
   /* Náhled je samostatný běh: ukazuje, co obvod dělá TEĎ — s tlačítky,
      která dítě drží, a bez umělých vstupů kontrol.
 
@@ -74,13 +125,23 @@ export function runLessonChecks(
     inputs: { pressed: held },
   });
   const preview = previewRun.frames;
+  collect(previewRun);
+
+  let shortCircuit: string | null = previewRun.shortCircuit ?? null;
 
   for (const check of lesson.checks) {
+    if (shortCircuit) break;
     const run = runProgram(source, circuit, {
       iterations: check.iterations,
       pinInputs: toPinInputs(check),
       inputs: { pressed: new Set([...toPressed(check, ctx), ...held]) },
     });
+    collect(run);
+
+    if (run.shortCircuit) {
+      shortCircuit = run.shortCircuit;
+      break;
+    }
 
     if (!run.ok) {
       /* Chyba v kódu není „neprošla kontrola". Dítě má slyšet, co je
@@ -98,6 +159,18 @@ export function runLessonChecks(
     });
   }
 
+  if (shortCircuit) {
+    return {
+      error: null,
+      outcomes: [],
+      silent: null,
+      shortCircuit,
+      diagnostics: [...diagnostics.values()],
+      passed: false,
+      preview,
+    };
+  }
+
   const passed = error === null && outcomes.length > 0 && outcomes.every((o) => o.passed);
 
   /* Program, který se přeložil a přitom neudělal vůbec nic, byl doteď
@@ -110,6 +183,8 @@ export function runLessonChecks(
     error,
     outcomes,
     silent: nothingWorks ? silentProgramReason(source, lesson.starterCode) : null,
+    shortCircuit: null,
+    diagnostics: [...diagnostics.values()],
     passed,
     preview,
   };
