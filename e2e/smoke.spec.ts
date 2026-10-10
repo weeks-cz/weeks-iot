@@ -53,3 +53,24 @@ test("cookie lišta se ukáže a bez souhlasu neodejde žádné měření", asyn
   await page.waitForTimeout(1_000);
   expect(external).toEqual([]);
 });
+
+test("přihlášení a obnova hesla se vykreslí bez účtu", async ({ page }) => {
+  await page.goto("/prihlaseni/");
+  await expect(page.getByRole("heading", { level: 1, name: "Přihlášení" })).toBeVisible();
+  await expect(page.getByLabel("Heslo")).toBeVisible();
+
+  await page.goto("/obnova-hesla/");
+  await expect(page.getByRole("heading", { level: 1, name: "Zapomenuté heslo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Poslat odkaz" })).toBeVisible();
+});
+
+test("chráněný /ucet přesměruje na přihlášení s návratem", async ({ page }) => {
+  await page.goto("/ucet/");
+  await expect(page).toHaveURL(/\/prihlaseni\/?\?next=%2Fucet/);
+});
+
+test("neznámý kód chyby na přihlášení nevyhodí stránku", async ({ page }) => {
+  const response = await page.goto("/prihlaseni/?chyba=constructor");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1, name: "Přihlášení" })).toBeVisible();
+});
