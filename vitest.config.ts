@@ -12,6 +12,8 @@ export default defineConfig({
     environmentMatchGlobs: [["src/**/__tests__/**/*.test.tsx", "jsdom"]],
     globals: true,
     include: ["src/**/__tests__/**/*.test.ts", "src/**/__tests__/**/*.test.tsx"],
+    /* Playwright testy (e2e/) běží přes `npm run e2e`, ne přes vitest. */
+    exclude: ["e2e/**", "node_modules/**"],
     css: false,
   },
   resolve: {
