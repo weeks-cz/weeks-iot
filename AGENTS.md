@@ -59,6 +59,11 @@ optimalizace. Přihlášený rodič, který
 se vrátí na stejný počítač, dostane na `/ucet` NABÍDKU převzetí (`AdoptProgressPrompt`);
 nikdy k tomu nedojde automaticky. „Ne“ postup smaže z prohlížeče.
 
+**Rozdělaný onboarding je v sessionStorage, bez souhlasů.** `onboarding/draft.ts`
+drží datum, přezdívku, avatar a kraj. Souhlasy se neukládají nikdy — ani jako
+předvyplněné, ani po obnovení. Koncept se maže až na `/ucet?vitejte=1`, tedy po
+úspěšném zápisu účtu.
+
 **Anonym měří stejně jako přihlášený.** Bez `lesson_start` od anonyma
 neexistuje jmenovatel hlavní metriky a brána 1 se nedá vyhodnotit.
 

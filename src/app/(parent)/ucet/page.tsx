@@ -17,6 +17,7 @@ import { CertificateCard } from "@/features/certificates/components/CertificateC
 import { earnedCertificates } from "@/features/certificates/queries";
 import { RegistrationPixel } from "@/features/cookies/RegistrationPixel";
 import { ClearAnonSession } from "@/features/anon-session/components/ClearAnonSession";
+import { ClearOnboardingDraft } from "@/features/onboarding/components/ClearOnboardingDraft";
 import { AdoptProgressPrompt } from "@/features/anon-session/components/AdoptProgressPrompt";
 import { ACTIVE_CHILD_COOKIE } from "@/features/children/constants";
 import { pickActiveChild } from "@/features/children/active";
@@ -80,6 +81,7 @@ export default async function AccountPage({
     <div className="flex flex-col gap-8">
       {params.vitejte === "1" && <RegistrationPixel userId={session.userId} />}
       {params.vitejte === "1" && params.postup !== "chyba" && <ClearAnonSession />}
+      {params.vitejte === "1" && <ClearOnboardingDraft />}
       {params.vitejte && (
         <Alert tone="success" title="Účet je hotový">
           Profil dítěte je připravený. Můžete rovnou začít první lekcí.
