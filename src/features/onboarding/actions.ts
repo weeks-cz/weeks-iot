@@ -226,30 +226,32 @@ export async function completeOnboardingAction(
   ]);
 
   /* ── 6. Serverová konverze do Meta ───────────────────────────────────
-     Pixel v prohlížeči vystřelí jen při přijatých cookies a ve sledovaném
-     prohlížeči — iOS, blokovače a odmítnutý souhlas jsou pro něj
-     neviditelné. Bez serverového měření se cena za registraci nedá
-     spočítat spolehlivě, a na ní stojí vyhodnocení brány 1.
+     Posílá e-mail (hashovaný), IP, user agent a Meta cookies — to je osobní
+     údaj zpracovávaný pro marketing, proto jen s marketingovým souhlasem
+     (souhlas `marketing` v ledgeru, text v features/consent/texts.ts).
+     Bez souhlasu se neposílá nic: ani hash, ani IP.
 
      Běží až úplně nakonec a nikdy nevyhazuje: měření je důležité,
      dokončená registrace důležitější. */
-  await sendMetaEvent({
-    eventName: "CompleteRegistration",
-    /* Id uživatele jako eventId — prohlížečová událost pošle totéž
-       a Meta ten pár sloučí, takže se registrace nepočítá dvakrát. */
-    eventId: auth.user.id,
-    userData: {
-      email: auth.user.email ?? undefined,
-      fbp: requestHeaders.get("cookie")?.match(/_fbp=([^;]+)/)?.[1],
-      fbc:
-        requestHeaders.get("cookie")?.match(/_fbc=([^;]+)/)?.[1] ??
-        buildFbc(anon?.attribution.fbclid),
-      clientIp: ip ?? undefined,
-      userAgent: userAgent ?? undefined,
-    },
-    customData: { contentName: "ucebna-registrace" },
-    eventSourceUrl: `${SITE.url}/registrace/onboarding`,
-  });
+  if (input.marketingConsent) {
+    await sendMetaEvent({
+      eventName: "CompleteRegistration",
+      /* Id uživatele jako eventId — prohlížečová událost pošle totéž
+         a Meta ten pár sloučí, takže se registrace nepočítá dvakrát. */
+      eventId: auth.user.id,
+      userData: {
+        email: auth.user.email ?? undefined,
+        fbp: requestHeaders.get("cookie")?.match(/_fbp=([^;]+)/)?.[1],
+        fbc:
+          requestHeaders.get("cookie")?.match(/_fbc=([^;]+)/)?.[1] ??
+          buildFbc(anon?.attribution.fbclid),
+        clientIp: ip ?? undefined,
+        userAgent: userAgent ?? undefined,
+      },
+      customData: { contentName: "ucebna-registrace" },
+      eventSourceUrl: `${SITE.url}/registrace/onboarding`,
+    });
+  }
 
   redirect("/ucet?vitejte=1");
 }

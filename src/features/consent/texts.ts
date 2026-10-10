@@ -223,7 +223,10 @@ jako doklad o tom, že souhlas byl udělen.`,
 
 export const MARKETING_TEXT: ConsentText = {
   kind: "marketing",
-  version: "marketing-v2",
+  /* v3: souhlas je zároveň základem pro serverovou konverzi do Meta
+     (hash e-mailu, IP, prohlížeč) a pro měření v Google Analytics.
+     Starý souhlas v2 se o tom nezmiňoval. */
+  version: "marketing-v3",
   required: false,
   label: "Chci e-mailem novinky o učebně, nových kurzech a letních táborech.",
   full: `SOUHLAS SE ZASÍLÁNÍM OBCHODNÍCH SDĚLENÍ
@@ -233,6 +236,11 @@ Správce osobních údajů: ${CONTROLLER_LINE}
 Souhlasím, aby správce zpracovával mou e-mailovou adresu za účelem zasílání
 informací o nových kurzech a lekcích v učebně, o termínech letních táborů
 Weeks a o souvisejících nabídkách.
+
+Souhlasím také s tím, aby správce po mé registraci předal společnosti Meta
+Platforms Ireland Limited (Facebook) informaci o registraci ve formě otisku
+e-mailové adresy (hash), IP adresy a údajů o prohlížeči, pro měření a cílení
+reklam. Meta v tomto případě jedná jako samostatný správce údajů.
 
 Právní základ: souhlas podle čl. 6 odst. 1 písm. a) GDPR a § 7 zákona
 č. 480/2004 Sb., o některých službách informační společnosti.
