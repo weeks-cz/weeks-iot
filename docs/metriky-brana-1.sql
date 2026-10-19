@@ -1,5 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- Brána 1 — 19. 10. 2026
+-- Brána 1 — vyhodnocení 15. 12. 2026 (posunuto z 19. 10.: měří se od prvního
+-- IG postu; brána pouští placenou reklamu, ne první marketing)
 --
 -- Podmínka: 40 registrovaných zvenčí a ≥ 40 % z těch, kdo začali, dokončí
 -- první lekci.
@@ -23,7 +24,7 @@
 -- žádné rodiče nezakládá, takže je stačí odlišit podle zdroje.
 --
 -- Registrace není věkově omezená (strop by jen odmítal staršího sourozence
--- nebo učitele), takže se cílová skupina 10–15 let počítá až tady. Jde to
+-- nebo učitele), takže se cílová skupina 9–15 let (stejně jako tábor) počítá až tady. Jde to
 -- přesně, protože se od migrace 006 ukládá celé datum narození.
 
 select
@@ -36,7 +37,7 @@ from public.parents p;
 
 -- ── 1b. Registrovaní v cílové skupině ─────────────────────────────────────
 -- Tohle je číslo pro bránu. Účet se počítá tehdy, když má aspoň jeden
--- profil ve věku 10–15 let.
+-- profil ve věku 9–15 let. Tým a testovací účty se nepočítají.
 
 with vek as (
   select
@@ -47,12 +48,16 @@ with vek as (
 )
 select
   count(distinct p.id)                                          as vsech_uctu,
-  count(distinct p.id) filter (where v.let between 10 and 15)   as v_cilove_skupine,
-  count(distinct p.id) filter (where v.let < 10)                as mladsi,
+  count(distinct p.id) filter (where v.let between 9 and 15)    as v_cilove_skupine,
+  count(distinct p.id) filter (where v.let < 9)                 as mladsi,
   count(distinct p.id) filter (where v.let > 15)                as starsi
 from public.parents p
 join vek v on v.parent_id = p.id
-where p.onboarding_completed_at is not null;
+where p.onboarding_completed_at is not null
+  -- Zvenčí = bez týmu a testů (rozhodnutí 19. 10.).
+  and p.email not ilike '%@weeks.cz'
+  and p.email not ilike '%@resend.dev'
+  and p.email not ilike 'test+%';
 
 
 -- ── 2. Hlavní metrika brány: dokončení první lekce ────────────────────────
