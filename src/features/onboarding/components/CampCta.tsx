@@ -1,4 +1,5 @@
 import type { AudienceSegment } from "@/lib/regions";
+import { CAMP_CITIES, type CampCity } from "@/lib/camp-offer";
 import { DarkSection, MonoLabel } from "@/components/ui/Surface";
 import { CampLink } from "./CampLink";
 import { CityWaitlistForm } from "./CityWaitlistForm";
@@ -16,13 +17,18 @@ import { CityWaitlistForm } from "./CityWaitlistForm";
  */
 export function CampCta({
   segment,
+  city = null,
   placement,
 }: {
   segment: AudienceSegment;
+  /** Město tábora podle kraje rodiče; null = obecná karta pro oba spády. */
+  city?: CampCity | null;
   /** Kam se propíše do utm_content — bez toho nejde vyhodnotit, co prodává. */
   placement: string;
 }) {
   if (segment === "camp") {
+    const offer = city ? CAMP_CITIES[city] : null;
+
     return (
       <DarkSection className="rounded-md p-6 sm:p-8">
         <MonoLabel dark className="mb-3">
@@ -34,11 +40,14 @@ export function CampCta({
         </h2>
 
         <p className="mb-5 max-w-prose leading-relaxed text-paper/70">
-          Příměstský tábor chytrých technologií v Praze a Karlových Varech. Skutečné
-          Arduino, skutečná 3D tiskárna, lektor u stolu.
+          {!offer
+            ? "Příměstský tábor chytrých technologií v Praze a Karlových Varech. Skutečné Arduino, skutečná 3D tiskárna, lektor u stolu."
+            : offer.prihlasky
+              ? `Příměstský tábor chytrých technologií ${offer.locative} — přihlašování na léto 2027 je otevřené. Skutečné Arduino, skutečná 3D tiskárna, lektor u stolu.`
+              : `Příměstský tábor chytrých technologií ${offer.locative} na léto 2027 připravujeme. Nechte nám e-mail a ozveme se, jakmile otevřeme přihlašování.`}
         </p>
 
-        <CampLink placement={placement} />
+        <CampLink placement={placement} city={city} />
       </DarkSection>
     );
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendTemplate } from "@/lib/email/send";
+import { campCityForRegion } from "@/lib/camp-offer";
 import {
   COURSE_SLUG,
   SEQUENCE,
@@ -224,6 +225,7 @@ export async function GET(request: Request) {
         nick: child.nick,
         formal: parent.account_type !== "self",
         inCatchment: catchment.has(parent.region_code ?? ""),
+        campCity: campCityForRegion(parent.region_code),
         startedLearning: completedChildren.has(child.id),
         nextLessonSlug:
           nextUnfinishedLesson(courseLessons, completedByChild.get(child.id) ?? new Set())?.slug ??

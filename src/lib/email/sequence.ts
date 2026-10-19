@@ -1,5 +1,6 @@
 import type { EmailTemplate } from "./templates";
 import { SITE } from "@/lib/site";
+import { CAMP_CITIES, campUrl, type CampCity } from "@/lib/camp-offer";
 
 /**
  * Sekvence po registraci.
@@ -106,6 +107,8 @@ export interface SequenceContext {
   formal: boolean;
   /** Ve spádu se zve na tábor, jinak na čekačku měst. */
   inCatchment: boolean;
+  /** Město tábora podle kraje (jen ve spádu); null = obecná pozvánka. */
+  campCity?: CampCity | null;
   /** Dokončil aspoň jednu lekci? Mění text připomenutí. */
   startedLearning: boolean;
 }
@@ -181,21 +184,33 @@ export function campEmail(ctx: SequenceContext): EmailTemplate {
   /* Jediné místo, kde se z uživatele stává zákazník. Ve spádu karta
      termínu, mimo něj čekačka — ta je zároveň podkladem pro expanzi. */
   if (ctx.inCatchment) {
+    const city = ctx.campCity ?? null;
+    const offer = city ? CAMP_CITIES[city] : null;
+
     return {
       subject: "To, co staví v učebně, si u nás postaví naživo",
       content: {
-        preheader: "Příměstský tábor chytrých technologií v Praze a Karlových Varech.",
+        preheader: offer
+          ? `Příměstský tábor chytrých technologií ${offer.locative}.`
+          : "Příměstský tábor chytrých technologií v Praze a Karlových Varech.",
         heading: "Za aplikací stojí lektor a léto",
         paragraphs: [
           "Weeks pořádá příměstské tábory chytrých technologií v Praze a Karlových Varech. Skutečné Arduino, skutečná 3D tiskárna a lektor u stolu.",
+          ...(offer
+            ? [
+                offer.prihlasky
+                  ? `Přihlašování na léto 2027 ${offer.locative} je otevřené.`
+                  : `Tábor ${offer.locative} na léto 2027 připravujeme. Nechte nám e-mail a ozveme se, jakmile otevřeme přihlašování.`,
+              ]
+            : []),
           /* Dřív tu stálo „Roční předplatné učebny za 699 Kč se z ceny
              tábora odečítá". Předplatné v učebně není a odpočet nemá
              z čeho vzniknout. Vrátit, až bude obojí skutečné — stejně
              jako u CampCta. */
         ],
         button: {
-          label: "Podívat se na termíny",
-          url: `https://weeks.cz/tabory?${utm("email-camp")}`,
+          label: offer && !offer.prihlasky ? "Dát mi vědět o termínech" : "Podívat se na termíny",
+          url: campUrl(city, utm("email-camp")),
         },
         footnote:
           "Tohle je obchodní sdělení. Odhlásíte se jedním tlačítkem v sekci Účet → Souhlasy.",
