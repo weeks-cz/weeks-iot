@@ -170,7 +170,10 @@ export function LessonRunner({
         {isAuthenticated && needsChildProfile && (
           <Alert tone="warning" title="Postup se zatím neukládá" className="mb-6">
             Nevybrali jste, kdo se učí. Vyberte profil dítěte, ať se lekce zapíše k němu.{" "}
-            <Link href="/ucim-se" className="font-semibold underline underline-offset-4">
+            <Link
+              href={`/ucim-se?zapsat=${encodeURIComponent(`${courseSlug}/${lessonSlug}`)}`}
+              className="font-semibold underline underline-offset-4"
+            >
               Vybrat profil
             </Link>
           </Alert>

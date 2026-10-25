@@ -11,6 +11,7 @@ import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { ACTIVE_CHILD_COOKIE } from "./constants";
 import { childSchema } from "@/features/onboarding/schema";
 import { consentTextFor } from "@/features/consent/texts";
+import { parseLessonKey } from "@/features/progress/lesson-key";
 import { SELF_UNDER_15_MESSAGE, childCreationRule } from "./rules";
 import {
   PIN_LOCK_MINUTES,
@@ -358,7 +359,10 @@ export async function switchChildAction(
     props: { had_pin: Boolean(child.pin_hash) },
   });
 
-  redirect("/ucim-se");
+  /* Hotová lekce, kterou rodič chtěl uložit, putuje dál; zapíše ji až
+     přehled, kde už je profil vybraný. */
+  const zapsat = parseLessonKey(formData.get("zapsat"));
+  redirect(zapsat ? `/ucim-se?zapsat=${encodeURIComponent(zapsat)}` : "/ucim-se");
 }
 
 /* ── Archivace ─────────────────────────────────────────────────────────── */

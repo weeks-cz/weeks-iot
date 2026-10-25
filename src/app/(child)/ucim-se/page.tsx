@@ -8,13 +8,22 @@ import { createClient } from "@/lib/supabase/server";
 import { ProfileSwitcher } from "@/features/children/components/ProfileSwitcher";
 import { Avatar } from "@/features/children/avatars";
 import { getActiveChild } from "@/features/children/queries";
+import { ZapsatLekci } from "@/features/progress/components/ZapsatLekci";
+import { parseLessonKey } from "@/features/progress/lesson-key";
 
 export const metadata: Metadata = {
   title: "Učím se",
   robots: { index: false, follow: false },
 };
 
-export default async function LearnPage() {
+export default async function LearnPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ zapsat?: string }>;
+}) {
+  /* Hotová lekce z obrazovky „Postup se zatím neukládá" — viz ZapsatLekci. */
+  const zapsat = parseLessonKey((await searchParams).zapsat);
+
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/prihlaseni?next=%2Fucim-se");
@@ -32,7 +41,7 @@ export default async function LearnPage() {
           <Logo className="mb-8" />
           <MonoLabel className="mb-2">Výběr profilu</MonoLabel>
           <h1 className="heading-2 mb-6">Kdo se dneska učí?</h1>
-          <ProfileSwitcher profiles={children} />
+          <ProfileSwitcher profiles={children} zapsat={zapsat} />
         </div>
       </main>
     );
@@ -87,6 +96,8 @@ export default async function LearnPage() {
       <div className="section-container py-8">
         <MonoLabel className="mb-2">{course?.title ?? "Kurz"}</MonoLabel>
         <h1 className="heading-2 mb-2">Ahoj {active.nick}!</h1>
+
+        {zapsat && <ZapsatLekci lessonKey={zapsat} />}
 
         {total > 0 && (
           <div className="mb-8 max-w-md">

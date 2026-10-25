@@ -21,10 +21,13 @@ const EMPTY: ActionState = {};
 export function ProfileSwitcher({
   profiles,
   preselectedId = null,
+  zapsat = null,
 }: {
   profiles: ChildSummary[];
   /** Z `?dite=` v odkazu z účtu. Předvýběr, ne oprávnění. */
   preselectedId?: string | null;
+  /** Z `?zapsat=` — hotová lekce, která se po výběru zapíše k profilu. */
+  zapsat?: string | null;
 }) {
   const [state, submit, pending] = useActionState(switchChildAction, EMPTY);
 
@@ -52,6 +55,7 @@ export function ProfileSwitcher({
 
         <form action={submit} className="flex flex-col gap-4" noValidate>
           <input type="hidden" name="childId" value={selected.id} />
+          {zapsat && <input type="hidden" name="zapsat" value={zapsat} />}
 
           <TextField
             label="Zadej svůj PIN"
@@ -103,6 +107,7 @@ export function ProfileSwitcher({
               <form action={submit}>
                 <input type="hidden" name="childId" value={child.id} />
                 <input type="hidden" name="pin" value="" />
+                {zapsat && <input type="hidden" name="zapsat" value={zapsat} />}
                 <button
                   type="submit"
                   className="card-maker card-maker-hover flex w-full flex-col items-center gap-2 p-6
