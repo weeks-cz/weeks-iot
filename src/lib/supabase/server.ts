@@ -32,6 +32,20 @@ export async function createClient() {
 }
 
 /**
+ * Anonymní klient bez cookies — session drží jen v paměti požadavku.
+ *
+ * Pro ověření, které NESMÍ nikoho přihlásit v prohlížeči (`/auth/confirm`).
+ * Do odpovědi se nezapíše žádná auth cookie, ani když se cokoli pokazí.
+ */
+export function createStatelessClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+  );
+}
+
+/**
  * Klient se servisní rolí — obchází RLS.
  *
  * Používat VÝHRADNĚ v Server Actions, route handlerech a cronech, a jen tam,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createStatelessClient } from "@/lib/supabase/server";
 import { isSafeNextPath } from "@/features/auth/safe-path";
 
 /**
@@ -13,7 +13,8 @@ import { isSafeNextPath } from "@/features/auth/safe-path";
  * Právě proto tady NIKOHO NEPŘIHLAŠUJEME: odkaz není vázaný na prohlížeč,
  * takže by kdokoli mohl poslat odkaz ke svému účtu cizímu rodiči — ten by
  * se ocitl přihlášený v cizím účtu a vyplnil do něj údaje o svém dítěti
- * (login CSRF). Adresu jen potvrdíme, session zahodíme a rodič se přihlásí
+ * (login CSRF). Adresu jen potvrdíme klientem bez cookies — session vznikne
+ * jen v paměti požadavku, do prohlížeče se nedostane — a rodič se přihlásí
  * heslem. Obnova hesla, magic link a pozvánka přihlašují, a proto zůstávají
  * na PKCE přes `/auth/callback`.
  *
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/prihlaseni?chyba=callback`);
   }
 
-  const supabase = await createClient();
+  const supabase = createStatelessClient();
   const { error } = await supabase.auth.verifyOtp({ type: "signup", token_hash: tokenHash });
 
   if (error) {
@@ -45,9 +46,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/prihlaseni?chyba=${reason}${nextParam}`);
   }
 
-  /* verifyOtp session založil — zahodíme ji jen v tomhle prohlížeči,
-     ostatní přihlášení rodiče nechává `scope: "local"` být. */
-  await supabase.auth.signOut({ scope: "local" });
+  /* Session z verifyOtp žije jen v paměti; zrušíme ji i na serveru, ať po
+     ní nezůstane platný refresh token. `scope: "local"` nechá ostatní
+     přihlášení rodiče být. Když to selže, nic se neděje — token nikdo nemá. */
+  await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
   return NextResponse.redirect(`${origin}/prihlaseni?potvrzeno=1${nextParam}`);
 }
