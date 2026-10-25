@@ -6,6 +6,7 @@ describe("loginErrorMessage", () => {
     expect(loginErrorMessage("google")).toMatch(/Google/);
     expect(loginErrorMessage("callback")).toMatch(/platný/);
     expect(loginErrorMessage("expired")).toMatch(/vypršel/);
+    expect(loginErrorMessage("potvrzeni")).toMatch(/přihlaste se/);
   });
 
   it("neznámý nebo chybějící kód nic nehlásí", () => {

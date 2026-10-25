@@ -38,7 +38,9 @@ export async function GET(request: Request) {
 
   if (exchangeError) {
     console.warn("[auth/callback] Výměna kódu selhala:", exchangeError.message);
-    return NextResponse.redirect(`${origin}/prihlaseni?chyba=callback`);
+    /* Chybí-li PKCE cookie (odkaz otevřen v jiném prohlížeči), adresa může
+       být přesto potvrzená. Proto mírnější hláška místo „odkaz neplatný". */
+    return NextResponse.redirect(`${origin}/prihlaseni?chyba=potvrzeni`);
   }
 
   /* Obnova hesla má vlastní cíl a onboarding se u ní nekontroluje — kdo si

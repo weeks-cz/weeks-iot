@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendTemplate } from "@/lib/email/send";
+import { SITE } from "@/lib/site";
 import {
   confirmSignupEmail,
   emailChangeEmail,
@@ -40,17 +41,42 @@ const payloadSchema = z.object({
   }),
 });
 
+/* Typy, které ověřujeme vlastní cestou `/auth/confirm` (verifyOtp přes
+   token_hash). Bez PKCE cookie, takže odkaz funguje i v jiném prohlížeči
+   než tom, ve kterém se člověk registroval. Ostatní typy zůstávají na
+   /auth/v1/verify. */
+const OWN_CONFIRM_TYPES = ["signup", "recovery", "magiclink", "invite"];
+
+function nextFrom(redirectTo: string): string | null {
+  if (!redirectTo) return null;
+  try {
+    return new URL(redirectTo).searchParams.get("next");
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Sestavení ověřovacího odkazu.
  *
- * Míří na Supabase, ne na naši aplikaci — token vyměňuje za session
- * Supabase a teprve pak přesměruje na `redirect_to`.
+ * Typy z `OWN_CONFIRM_TYPES` míří na naši `/auth/confirm`, která token
+ * ověří sama. Ostatní míří na Supabase — ten token vyměňuje za session
+ * a teprve pak přesměruje na `redirect_to`.
  */
 function verificationUrl(
   tokenHash: string,
   actionType: string,
   redirectTo: string,
 ): string {
+  if (OWN_CONFIRM_TYPES.includes(actionType)) {
+    const url = new URL(`${SITE.url}/auth/confirm`);
+    url.searchParams.set("token_hash", tokenHash);
+    url.searchParams.set("type", actionType);
+    const next = nextFrom(redirectTo);
+    if (next) url.searchParams.set("next", next);
+    return url.toString();
+  }
+
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const url = new URL(`${base}/auth/v1/verify`);
   url.searchParams.set("token", tokenHash);
