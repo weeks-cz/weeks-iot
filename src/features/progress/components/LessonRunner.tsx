@@ -168,7 +168,7 @@ export function LessonRunner({
         </Card>
 
         {isAuthenticated && needsChildProfile && (
-          <Alert tone="warning" title="Postup se zatím neukládá">
+          <Alert tone="warning" title="Postup se zatím neukládá" className="mb-6">
             Nevybrali jste, kdo se učí. Vyberte profil dítěte, ať se lekce zapíše k němu.{" "}
             <Link href="/ucim-se" className="font-semibold underline underline-offset-4">
               Vybrat profil

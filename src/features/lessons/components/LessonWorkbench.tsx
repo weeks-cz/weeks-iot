@@ -128,6 +128,10 @@ export function LessonWorkbench({
 
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
+  const previewColumn = useRef<HTMLDivElement>(null);
+  /* Počítadlo spuštění. Výsledek se dá spustit dvakrát se stejnou chybou —
+     posun k hlášce má proběhnout i podruhé, ne jen při změně výsledku. */
+  const [runCount, setRunCount] = useState(0);
   const restored = useRef(false);
   const firstStep = useRef(true);
 
@@ -238,6 +242,23 @@ export function LessonWorkbench({
     return () => cancelAnimationFrame(id);
   }, [passed]);
 
+  /* Totéž pro neúspěch. Chyba v kódu, zkrat nebo nesplněná kontrola se
+     vypíšou pod náhledem obvodu — na notebooku pod okrajem — a dítě
+     koukalo na obvod, který nic nedělá, a netušilo proč. Roluje se jen
+     tehdy, když hláška opravdu není vidět, a jen o kus (`nearest`). */
+  useEffect(() => {
+    if (runCount === 0 || passed) return;
+    const id = requestAnimationFrame(() => {
+      const first = previewColumn.current?.querySelector<HTMLElement>(".run-feedback");
+      if (!first) return;
+      const rect = first.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > window.innerHeight) {
+        first.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [runCount, passed]);
+
   const wiring = useMemo(() => checkWiring(circuit, lesson.wiring), [circuit, lesson.wiring]);
 
   /* Zapojení rozložené na kroky. Odškrtává se samo podle obvodu, takže
@@ -340,6 +361,7 @@ export function LessonWorkbench({
       const result = runLessonChecks(lesson, circuit, source, pressed, sensors);
       setRun(result);
       setRunning(false);
+      setRunCount((n) => n + 1);
 
       if (result.passed && !solved) {
         setSolved(true);
@@ -785,7 +807,7 @@ export function LessonWorkbench({
               )}
             </div>
 
-            <div className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
+            <div ref={previewColumn} className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
               {/* Tady se obvod už jen ukazuje. Kdo potřebuje zapojení
                   změnit, vrátí se o krok zpátky — jinak by se dalo
                   nedopatřením přetáhnout drátek při sledování běhu. */}
@@ -818,6 +840,7 @@ export function LessonWorkbench({
               {run?.error && (
                 <Alert
                   tone="danger"
+                  className="run-feedback"
                   title={
                     mode === "blocks"
                       ? "Program z bloků se nepodařilo spustit"
@@ -857,7 +880,7 @@ export function LessonWorkbench({
               )}
 
               {run?.shortCircuit && (
-                <Alert tone="danger" title="Zkrat — program se nespustil">
+                <Alert tone="danger" title="Zkrat — program se nespustil" className="run-feedback">
                   {run.shortCircuit}
                 </Alert>
               )}
@@ -865,7 +888,7 @@ export function LessonWorkbench({
               {/* Program zapsal na pin, který není výstup. Skutečná deska by
                   tam nic nezapnula — dítě to má vědět, ne hádat. */}
               {run && run.diagnostics.length > 0 && (
-                <Alert tone="warning" title="Program dělá něco jiného, než čekáš">
+                <Alert tone="warning" title="Program dělá něco jiného, než čekáš" className="run-feedback">
                   <ul className="flex flex-col gap-1.5">
                     {run.diagnostics.map((d) => (
                       <li key={d.pin}>{mode === "blocks" ? d.blockMessage : d.message}</li>
@@ -879,7 +902,7 @@ export function LessonWorkbench({
                   digitalWrite(led, HIGH)" ve chvíli, kdy tu větu mělo
                   zakomentovanou na obrazovce před sebou. */}
               {run?.silent && (
-                <Alert tone="warning" title="Program zatím nic nedělá">
+                <Alert tone="warning" title="Program zatím nic nedělá" className="run-feedback">
                   {mode === "blocks"
                     ? "Přetáhni bloky zleva do „na začátku jednou“ a „pak pořád dokola“ — co leží jinde, nic nedělá."
                     : run.silent.message}
@@ -887,7 +910,7 @@ export function LessonWorkbench({
               )}
 
               {run && !run.error && !run.shortCircuit && (
-                <Card className="p-4">
+                <Card className={firstUnmet ? "run-feedback p-4" : "p-4"}>
                   <MonoLabel className="mb-3">Kontrola</MonoLabel>
 
                   <ul className="flex flex-col gap-2">
