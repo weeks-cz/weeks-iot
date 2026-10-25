@@ -109,6 +109,12 @@ export interface FramePlayer {
   frame: SimulationFrame | null;
   /** Běží animace? U ustáleného programu je false — není co animovat. */
   playing: boolean;
+  /**
+   * Běží program? Na rozdíl od `playing` i u ustáleného programu — ten se
+   * neanimuje, ale pořád „běží". Podle toho hraje bzučák: program bez
+   * delaye (tlačítko → tón) se nikdy neanimoval, a tak nebyl ani slyšet.
+   */
+  active: boolean;
   stop: () => void;
 }
 
@@ -123,13 +129,14 @@ export const NO_FRAMES: SimulationFrame[] = [];
  */
 export function useFramePlayer(frames: SimulationFrame[]): FramePlayer {
   const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [active, setActive] = useState(false);
   const [shown, setShown] = useState(frames);
   const raf = useRef<number | null>(null);
 
   const schedule = useMemo(() => playbackSchedule(frames), [frames]);
   const total = schedule.total;
   const animated = total > 0 && frames.length > 1;
+  const playing = active && animated;
 
   /* Nové snímky = nový běh. Srovnává se to při renderu, ne v efektu: kdyby
      se index přenastavil až po vykreslení, dítě by na jeden snímek
@@ -137,10 +144,10 @@ export function useFramePlayer(frames: SimulationFrame[]): FramePlayer {
   if (shown !== frames) {
     setShown(frames);
     setIndex(animated ? 0 : Math.max(0, frames.length - 1));
-    setPlaying(animated);
+    setActive(frames.length > 0);
   }
 
-  const stop = useCallback(() => setPlaying(false), []);
+  const stop = useCallback(() => setActive(false), []);
 
   useEffect(() => {
     if (!playing || !animated) return;
@@ -173,6 +180,7 @@ export function useFramePlayer(frames: SimulationFrame[]): FramePlayer {
   return {
     frame: frames[Math.min(index, frames.length - 1)] ?? null,
     playing,
+    active,
     stop,
   };
 }

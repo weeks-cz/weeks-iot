@@ -272,7 +272,7 @@ export function LessonWorkbench({
 
   const player = useFramePlayer(run?.preview ?? NO_FRAMES);
   const buzzer = player.frame?.buzzers.find((b) => b.frequency > 0);
-  useBuzzerSound(buzzer?.frequency ?? 0, player.playing);
+  useBuzzerSound(buzzer?.frequency ?? 0, player.active);
 
   const onCircuitChange = useCallback((next: Circuit) => {
     setCircuit(next);
@@ -685,7 +685,9 @@ export function LessonWorkbench({
                   {running ? "Spouštím…" : run?.passed ? "Spustit znovu" : "Spustit"}
                 </Button>
 
-                {player.playing && (
+                {/* Ustálený program se neanimuje, ale může pípat pořád —
+                    i ten se musí dát umlčet. */}
+                {(player.playing || (player.active && buzzer)) && (
                   <Button variant="ghost" onClick={player.stop}>
                     <Square className="h-3.5 w-3.5" aria-hidden="true" />
                     Zastavit

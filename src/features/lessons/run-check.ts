@@ -139,13 +139,18 @@ export function runLessonChecks(
 
   let shortCircuit: string | null = previewRun.shortCircuit ?? null;
 
+  /* Kontroly drženou rukou dítěte NEdostávají. Dřív se jim přimíchala,
+     a v lekci o bzučáku pak bod „s puštěným tlačítkem je ticho" zhasl
+     pokaždé, když dítě tlačítko zmáčklo — kontrola puštěného tlačítka
+     běžela se zmáčknutým. Splněno má záviset na programu, ne na tom, co
+     zrovna dělá prst. */
   for (const check of lesson.checks) {
     if (shortCircuit) break;
     const run = runProgram(source, circuit, {
       iterations: check.iterations,
       pinInputs: toPinInputs(check),
       inputs: {
-        pressed: new Set([...toPressed(check, ctx), ...held]),
+        pressed: toPressed(check, ctx),
         analog: toSensors(check, ctx),
       },
     });

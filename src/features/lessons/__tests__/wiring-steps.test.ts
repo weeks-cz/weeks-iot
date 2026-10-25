@@ -216,6 +216,23 @@ describe("náhled ukazuje, co obvod dělá teď", () => {
     const držené = runLessonChecks(lesson3, circuit, lesson3.solution, new Set([btnId!]));
     expect(držené.preview.some((f) => (f.leds[0]?.brightness ?? 0) > 0)).toBe(true);
   });
+
+  it("držené tlačítko mění náhled, ne kontroly", async () => {
+    /* Dřív se drženým tlačítkem pouštěly i kontroly. V lekci o bzučáku pak
+       bod „s puštěným tlačítkem je ticho" zhasl při každém stisku. */
+    const { runLessonChecks } = await import("../run-check");
+    const { referenceCircuit } = await import("../reference-circuit");
+    const { checkWiring } = await import("@/features/circuit/wiring-check");
+    const { lesson6 } = await import("../content");
+
+    const circuit = referenceCircuit(lesson6.wiring);
+    const btnId = checkWiring(circuit, lesson6.wiring).roles?.tlacitko;
+    expect(btnId).toBeDefined();
+
+    const držené = runLessonChecks(lesson6, circuit, lesson6.solution, new Set([btnId!]));
+    expect(držené.passed).toBe(true);
+    expect(držené.preview.some((f) => f.buzzers.some((b) => b.frequency > 0))).toBe(true);
+  });
 });
 
 describe("chyby zapojení tlačítka", () => {
