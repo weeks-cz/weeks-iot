@@ -15,6 +15,9 @@ const LOGIN_ERRORS: Readonly<Record<string, string>> = {
     "Pokud ne, otevřete odkaz z e-mailu znovu ve stejném prohlížeči, kde jste se registrovali.",
 };
 
+/** Hláška pro `?potvrzeno=1` — posílá ji `/auth/confirm` po potvrzení adresy. */
+export const CONFIRMED_MESSAGE = "E-mail je potvrzený. Přihlaste se prosím heslem, které jste si zvolili.";
+
 export function loginErrorMessage(code: string | undefined): string | undefined {
   if (!code || !Object.hasOwn(LOGIN_ERRORS, code)) return undefined;
   return LOGIN_ERRORS[code];

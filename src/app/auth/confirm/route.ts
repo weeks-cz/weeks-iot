@@ -1,38 +1,39 @@
 import { NextResponse } from "next/server";
-import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeNextPath } from "@/features/auth/safe-path";
-import { afterSignInPath } from "@/features/auth/post-login";
 
 /**
- * Potvrzení e-mailu odkazem z e-mailu (token_hash).
+ * Potvrzení registrace odkazem z e-mailu (token_hash).
  *
  * Na rozdíl od `/auth/callback` nepotřebuje PKCE cookie (code_verifier).
  * Ta vzniká v prohlížeči, ve kterém se rodič registroval; odkaz z e-mailu
  * ale často otevře v jiném prohlížeči nebo v jiném okně. Výměna kódu tam
  * selže, přestože Supabase adresu už potvrdil. Token_hash ověří kdekoli.
  *
+ * Právě proto tady NIKOHO NEPŘIHLAŠUJEME: odkaz není vázaný na prohlížeč,
+ * takže by kdokoli mohl poslat odkaz ke svému účtu cizímu rodiči — ten by
+ * se ocitl přihlášený v cizím účtu a vyplnil do něj údaje o svém dítěti
+ * (login CSRF). Adresu jen potvrdíme, session zahodíme a rodič se přihlásí
+ * heslem. Obnova hesla, magic link a pozvánka přihlašují, a proto zůstávají
+ * na PKCE přes `/auth/callback`.
+ *
  * Odkaz vytváří send-email hook (`src/app/api/auth/email/route.ts`).
  */
 export const dynamic = "force-dynamic";
-
-const OTP_TYPES: readonly EmailOtpType[] = ["signup", "recovery", "magiclink", "invite"];
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
 
   const tokenHash = searchParams.get("token_hash");
-  const rawType = searchParams.get("type");
   const rawNext = searchParams.get("next");
-  const next = isSafeNextPath(rawNext) ? rawNext : "/ucet";
+  const nextParam = isSafeNextPath(rawNext) ? `&next=${encodeURIComponent(rawNext)}` : "";
 
-  const type = OTP_TYPES.find((t) => t === rawType);
-  if (!tokenHash || !type) {
+  if (!tokenHash || searchParams.get("type") !== "signup") {
     return NextResponse.redirect(`${origin}/prihlaseni?chyba=callback`);
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+  const { error } = await supabase.auth.verifyOtp({ type: "signup", token_hash: tokenHash });
 
   if (error) {
     console.warn("[auth/confirm] Ověření odkazu selhalo:", error.message);
@@ -41,29 +42,12 @@ export async function GET(request: Request) {
        proto hláška nezní jako „odkaz je rozbitý". */
     const code = (error as { code?: string }).code;
     const reason = code === "otp_expired" ? "expired" : "potvrzeni";
-    return NextResponse.redirect(`${origin}/prihlaseni?chyba=${reason}`);
+    return NextResponse.redirect(`${origin}/prihlaseni?chyba=${reason}${nextParam}`);
   }
 
-  /* Obnova hesla má vlastní cíl a onboarding se u ní nekontroluje. */
-  if (type === "recovery" || next.startsWith("/obnova-hesla")) {
-    return NextResponse.redirect(`${origin}${next.startsWith("/obnova-hesla") ? next : "/obnova-hesla/nove"}`);
-  }
+  /* verifyOtp session založil — zahodíme ji jen v tomhle prohlížeči,
+     ostatní přihlášení rodiče nechává `scope: "local"` být. */
+  await supabase.auth.signOut({ scope: "local" });
 
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) {
-    return NextResponse.redirect(`${origin}/prihlaseni?chyba=potvrzeni`);
-  }
-
-  const { data: parent } = await supabase
-    .from("parents")
-    .select("onboarding_completed_at")
-    .eq("id", auth.user.id)
-    .maybeSingle();
-
-  return NextResponse.redirect(
-    `${origin}${afterSignInPath({
-      onboardingDone: Boolean(parent?.onboarding_completed_at),
-      next,
-    })}`,
-  );
+  return NextResponse.redirect(`${origin}/prihlaseni?potvrzeno=1${nextParam}`);
 }

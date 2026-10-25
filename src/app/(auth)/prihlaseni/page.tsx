@@ -5,7 +5,7 @@ import { Alert } from "@/components/ui/Surface";
 import { GoogleSignIn } from "@/features/auth/components/GoogleSignIn";
 import { SignInForm } from "@/features/auth/components/SignInForm";
 import { isSafeNextPath } from "@/features/auth/safe-path";
-import { loginErrorMessage } from "@/features/auth/errors";
+import { CONFIRMED_MESSAGE, loginErrorMessage } from "@/features/auth/errors";
 
 export const metadata: Metadata = {
   title: "Přihlášení",
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; chyba?: string }>;
+  searchParams: Promise<{ next?: string; chyba?: string; potvrzeno?: string }>;
 }) {
   const params = await searchParams;
 
@@ -40,6 +40,7 @@ export default async function SignInPage({
     >
       <div className="flex flex-col gap-5">
         {error && <Alert tone="danger">{error}</Alert>}
+        {!error && params.potvrzeno === "1" && <Alert tone="success">{CONFIRMED_MESSAGE}</Alert>}
 
         <GoogleSignIn next={next} clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? null} />
 

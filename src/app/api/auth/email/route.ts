@@ -43,9 +43,11 @@ const payloadSchema = z.object({
 
 /* Typy, které ověřujeme vlastní cestou `/auth/confirm` (verifyOtp přes
    token_hash). Bez PKCE cookie, takže odkaz funguje i v jiném prohlížeči
-   než tom, ve kterém se člověk registroval. Ostatní typy zůstávají na
-   /auth/v1/verify. */
-const OWN_CONFIRM_TYPES = ["signup", "recovery", "magiclink", "invite"];
+   než tom, ve kterém se člověk registroval. Jen registrace: `/auth/confirm`
+   nikoho nepřihlašuje (proč, viz tam). Typy, které přihlásit musí
+   (obnova hesla, magic link, pozvánka), zůstávají na /auth/v1/verify
+   s PKCE vázaným na prohlížeč. */
+const OWN_CONFIRM_TYPES = ["signup"];
 
 function nextFrom(redirectTo: string): string | null {
   if (!redirectTo) return null;
