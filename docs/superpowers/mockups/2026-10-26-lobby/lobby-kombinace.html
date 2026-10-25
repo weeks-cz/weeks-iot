@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lobby učebny — kombinace</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#fafaf7; --paper-soft:#f4f4ee; --ink:#0c0e1a; --ink-500:#4a4f6a; --ink-300:#9da2bc;
+    --p600:#4f46e5; --a300:#67e8f9; --a400:#22d3ee; --a600:#0891b2;
+    --t500:#10b981; --t600:#059669; --c300:#fcd34d; --c400:#fbbf24;
+    --hard:4px 4px 0 0 #0c0e1a; --hard-sm:2px 2px 0 0 #0c0e1a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Instrument Sans",system-ui,sans-serif;background:#e9e9e2;color:var(--ink);padding:32px 24px 80px}
+  .mono{font-family:"IBM Plex Mono",monospace}
+  .intro{max-width:1180px;margin:0 auto 24px}
+  .intro h1{font-family:"Bricolage Grotesque";font-size:30px;font-weight:800;letter-spacing:-.02em}
+  .intro p{color:var(--ink-500);margin-top:6px;max-width:780px;line-height:1.5}
+  .intro ul{margin:10px 0 0 18px;color:var(--ink-500);line-height:1.6;font-size:15px}
+  .frame{max-width:1180px;margin:0 auto;border:2px solid var(--ink);box-shadow:8px 8px 0 0 var(--ink);overflow:hidden;background:var(--paper)}
+  .chrome{height:30px;background:#d9d9d2;border-bottom:2px solid var(--ink);display:flex;align-items:center;gap:6px;padding:0 10px}
+  .chrome i{width:10px;height:10px;border-radius:50%;background:#bbb;display:block}
+  .chrome span{margin-left:12px;font:12px "IBM Plex Mono";color:var(--ink-500)}
+  .label{font:500 11px "IBM Plex Mono";letter-spacing:.16em;text-transform:uppercase;color:var(--ink-500)}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:17px;padding:14px 24px;border:2px solid var(--ink);background:var(--c400);box-shadow:var(--hard);color:var(--ink);text-decoration:none}
+
+  /* hlavička */
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--ink);color:#fff;border-bottom:1px solid rgba(255,255,255,.08);position:relative}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{height:26px}
+  .brand b{font-family:"Bricolage Grotesque";font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .brand small{font:500 11px "IBM Plex Mono";letter-spacing:.2em;text-transform:uppercase;color:var(--a300)}
+  .nav{display:flex;gap:26px;font-weight:500;font-size:15px}
+  .nav a{opacity:.6}
+  .nav a.on{opacity:1;border-bottom:2px solid #fff;padding-bottom:3px}
+  .who{display:flex;align-items:center;gap:10px;font-weight:600;position:relative}
+  .who img{width:34px;height:34px;border-radius:50%;border:2px solid #fff}
+  .menu{position:absolute;right:0;top:46px;width:230px;background:#fff;color:var(--ink);border:2px solid var(--ink);box-shadow:var(--hard);z-index:5;font-weight:500;font-size:14px}
+  .menu div{padding:10px 14px;border-bottom:1px solid rgba(12,14,26,.08);display:flex;gap:10px;align-items:center}
+  .menu div:last-child{border:0}
+  .menu .hd{font:500 11px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;color:var(--ink-500);background:var(--paper-soft)}
+
+  /* hero z C */
+  .hero{position:relative;overflow:hidden;color:#fff;background:linear-gradient(135deg,#1e1b4b 0%,#0c0e1a 55%,#083344 100%)}
+  .hero .ghost-w{position:absolute;left:38%;top:-90px;height:500px;opacity:.10;pointer-events:none}
+  .hero-grid{position:relative;display:grid;grid-template-columns:260px 1fr 340px}
+  .me{padding:34px 26px;border-right:1px solid rgba(255,255,255,.08)}
+  .me img{width:116px;height:116px;border-radius:50%;border:3px solid var(--a300);box-shadow:0 0 0 6px rgba(103,232,249,.14)}
+  .me h3{font-family:"Bricolage Grotesque";font-size:28px;font-weight:800;margin:14px 0 2px}
+  .me .rank{font:500 11px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;color:var(--a300)}
+  .me .mini{display:flex;gap:18px;margin-top:18px}
+  .me .mini b{display:block;font:800 24px "Bricolage Grotesque"}
+  .me .mini span{font-size:12px;color:rgba(255,255,255,.6)}
+  .mission{padding:38px 34px}
+  .mission .label{color:var(--a300)}
+  .mission h4{font-family:"Bricolage Grotesque";font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1.02;margin:10px 0 12px}
+  .mission h4 em{font-style:normal;color:var(--a300)}
+  .mission p{color:rgba(255,255,255,.72);max-width:440px;margin-bottom:24px;font-size:17px}
+  .nowcol{padding:34px 28px 34px 0;display:flex;align-items:center}
+  .now-card{width:100%;background:rgba(15,19,38,.75);border:2px solid var(--a400);box-shadow:6px 6px 0 0 var(--a600);padding:18px}
+  .thumb{height:132px;border:1px solid rgba(255,255,255,.12);margin-bottom:14px;background:
+     radial-gradient(circle at 34% 50%,#ef4444 0 9px,transparent 10px),
+     radial-gradient(circle at 50% 50%,#fbbf24 0 9px,transparent 10px),
+     radial-gradient(circle at 66% 50%,rgba(34,197,94,.35) 0 9px,transparent 10px),
+     repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 16px),
+     repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 16px),#0f1326}
+  .now-card h5{font-family:"Bricolage Grotesque";font-size:22px;font-weight:700;margin-top:4px}
+  .steps{display:flex;gap:5px;margin:12px 0 6px}
+  .steps i{flex:1;height:6px;background:rgba(255,255,255,.15)}
+  .steps i.d{background:var(--a400)}
+  .steps i.h{background:linear-gradient(90deg,var(--a400) 50%,rgba(255,255,255,.15) 50%)}
+
+  /* cesta z A */
+  .path-wrap{padding:30px 28px 30px;border-bottom:1px solid rgba(12,14,26,.1)}
+  .path-head{display:flex;justify-content:space-between;align-items:baseline}
+  .path{position:relative;display:grid;grid-template-columns:repeat(7,1fr);margin-top:18px}
+  .path:before{content:"";position:absolute;left:7%;right:7%;top:27px;height:3px;background:repeating-linear-gradient(90deg,var(--ink-300) 0 8px,transparent 8px 14px)}
+  .path:after{content:"";position:absolute;left:7%;width:43%;top:27px;height:3px;background:var(--t500)}
+  .node{position:relative;text-align:center;z-index:1}
+  .dot{width:56px;height:56px;margin:0 auto 10px;border:2px solid var(--ink);display:grid;place-items:center;font:700 18px "Bricolage Grotesque";background:#fff}
+  .node.done .dot{background:var(--t500);color:#fff}
+  .node.now .dot{background:var(--c400);box-shadow:var(--hard);transform:scale(1.14)}
+  .node .t{font-weight:600;font-size:14px}
+  .node .m{font:12px "IBM Plex Mono";color:var(--ink-500);margin-top:2px}
+  .node.final .dot{background:var(--ink);color:var(--c300);border-color:var(--ink);font-size:20px}
+
+  /* spodek: postaveno + certifikát + tábor z B */
+  .bottom{display:grid;grid-template-columns:1.25fr .8fr 1fr;gap:20px;padding:28px}
+  .made-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+  .made{background:#fff;border:1.5px solid rgba(12,14,26,.16);padding:8px}
+  .made .sh{height:64px;background:#0f1326;margin-bottom:7px;position:relative}
+  .made .sh:after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);background:var(--sh);box-shadow:0 0 16px 4px var(--sh)}
+  .made b{font-size:12px}
+  .made.empty{border-style:dashed;background:transparent;display:grid;place-items:center;color:var(--ink-300);font-size:12px;text-align:center}
+  .cert{margin-top:10px;position:relative;aspect-ratio:1.414/1;background:#fff;border:1.5px solid rgba(12,14,26,.2);padding:14px;overflow:hidden}
+  .cert img{position:absolute;right:-18px;bottom:-22px;height:110px;opacity:.12}
+  .cert .k{font:500 9px "IBM Plex Mono";letter-spacing:.2em;color:var(--p600)}
+  .cert .n{font:800 20px "Bricolage Grotesque";margin-top:8px;color:var(--ink-300)}
+  .cert .c{font-size:12px;color:var(--ink-300);margin-top:2px}
+  .cert .lock{position:absolute;left:14px;bottom:12px;font:500 11px "IBM Plex Mono";color:var(--ink-500);background:var(--paper-soft);border:1px solid rgba(12,14,26,.15);padding:3px 7px}
+  .camp{background:var(--ink);color:#fff;padding:20px 22px;position:relative;overflow:hidden;margin-top:10px;min-height:150px}
+  .camp img{position:absolute;right:-20px;bottom:-34px;height:140px;opacity:.25}
+  .camp .label{color:var(--c300)}
+  .camp h5{font-family:"Bricolage Grotesque";font-size:21px;font-weight:700;margin:6px 0 6px}
+  .camp p{font-size:14px;color:rgba(255,255,255,.72);max-width:250px}
+  .camp a{display:inline-block;margin-top:12px;color:var(--c300);font-weight:600}
+  .note{max-width:1180px;margin:18px auto 0;font-size:14px;color:var(--ink-500)}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Kombinace A + B + C</h1>
+  <p>Co odkud:</p>
+  <ul>
+    <li><b>Celkový vzhled z C:</b> tmavý gradient, velké W v pozadí a avatar s jménem vlevo.</li>
+    <li><b>Z A:</b> věta o tom, co teď čeká, karta rozdělané lekce s kroky a mapa celé cesty kurzem.</li>
+    <li><b>Dole místo tří zástupných bloků:</b> skutečná galerie toho, co postavil, náhled certifikátu (zamčený, dokud kurz nedokončí) a pozvánka na léto ve stylu B.</li>
+    <li>Menu pod avatarem je tu rozbalené, aby bylo vidět, kudy do účtu rodiče.</li>
+  </ul>
+</div>
+
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i><span>ucebna.weeks.cz</span></div>
+  <div class="top">
+    <div class="brand"><img src="weeks-logo.png" alt=""><b>Weeks</b><small>Učebna</small></div>
+    <nav class="nav"><a class="on">Domů</a><a>Kurzy</a><a>Sbírka</a></nav>
+    <div class="who"><img src="fox.png" alt="">Lukáš <span style="font-size:11px;opacity:.6">▾</span>
+      <div class="menu">
+        <div class="hd">Lukáš</div>
+        <div>🦊 Změnit avatar</div>
+        <div>⇄ Přepnout profil</div>
+        <div>👤 Účet rodiče</div>
+        <div style="color:var(--ink-500)">Odhlásit</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <img class="ghost-w" src="weeks-logo.png" alt="">
+    <div class="hero-grid">
+      <div class="me">
+        <img src="fox.png" alt="">
+        <h3>Lukáš</h3>
+        <div class="rank">Začínající konstruktér</div>
+        <div class="mini"><div><b>3</b><span>lekce</span></div><div><b>3</b><span>obvody</span></div><div><b>0</b><span>certifikáty</span></div></div>
+      </div>
+      <div class="mission">
+        <div class="label">Kurz IoT · lekce 4 ze 7</div>
+        <h4>Vítej zpátky.<br>Semafor <em>čeká na dráty.</em></h4>
+        <p>Minule jsi skončil u zapojování. Zbývají dvě LEDky a pak už jen program.</p>
+        <a class="btn">Pokračovat v lekci →</a>
+      </div>
+      <div class="nowcol">
+        <div class="now-card">
+          <div class="thumb"></div>
+          <div class="label" style="color:var(--a300)">Rozdělaná práce</div>
+          <h5>Semafor</h5>
+          <div class="steps"><i class="d"></i><i class="d"></i><i class="h"></i><i></i></div>
+          <div class="mono" style="font-size:11px;color:rgba(255,255,255,.6)">zadání ✓ · součástky ✓ · zapojení … · program</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="path-wrap">
+    <div class="path-head"><div class="label">Tvoje cesta kurzem IoT a elektronika</div><div class="mono" style="font-size:12px;color:var(--ink-500)">3 / 7 hotovo</div></div>
+    <div class="path">
+      <div class="node done"><div class="dot">✓</div><div class="t">Rozsviť LEDku</div><div class="m">hotovo</div></div>
+      <div class="node done"><div class="dot">✓</div><div class="t">Blikání</div><div class="m">hotovo</div></div>
+      <div class="node done"><div class="dot">✓</div><div class="t">Tlačítko</div><div class="m">hotovo</div></div>
+      <div class="node now"><div class="dot">4</div><div class="t">Semafor</div><div class="m">právě tady</div></div>
+      <div class="node"><div class="dot">5</div><div class="t">Plynulý jas</div><div class="m">25 min</div></div>
+      <div class="node"><div class="dot">6</div><div class="t">Zvuk na stisk</div><div class="m">25 min</div></div>
+      <div class="node final"><div class="dot">★</div><div class="t">Noční světlo</div><div class="m">→ certifikát</div></div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div>
+      <div class="label">Co jsi postavil</div>
+      <div class="made-row">
+        <div class="made" style="--sh:#ef4444"><div class="sh"></div><b>Rozsviť LEDku</b></div>
+        <div class="made" style="--sh:#fbbf24"><div class="sh"></div><b>Blikání</b></div>
+        <div class="made" style="--sh:#22d3ee"><div class="sh"></div><b>Tlačítko</b></div>
+        <div class="made empty">tady bude<br>tvůj semafor</div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Certifikát</div>
+      <div class="cert">
+        <img src="weeks-logo.png" alt="">
+        <div class="k">WEEKS UČEBNA · CERTIFIKÁT</div>
+        <div class="n">Lukáš</div>
+        <div class="c">dokončil kurz IoT a elektronika</div>
+        <div class="lock">🔒 po lekci 7</div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Léto 2027</div>
+      <div class="camp">
+        <img src="weeks-logo.png" alt="">
+        <h5>Tohle všechno naživo</h5>
+        <p>Příměstský tábor v Karlových Varech, skutečné Arduino a 3D tisk.</p>
+        <a>Prohlédnout tábor →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="note">Avatar, „Začínající konstruktér“ a čísla v hero jsou zatím jen nápad, do první verze nemusí. Jádro je hero s „Pokračovat“ a mapa cesty.</p>
+
+</body>
+</html>

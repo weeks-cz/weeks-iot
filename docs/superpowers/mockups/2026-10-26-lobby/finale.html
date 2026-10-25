@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Konec kurzu — oslava</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#fafaf7; --paper-soft:#f4f4ee; --ink:#0c0e1a; --ink-500:#4a4f6a; --ink-300:#9da2bc;
+    --p600:#4f46e5; --a300:#67e8f9; --a400:#22d3ee; --a600:#0891b2;
+    --t500:#10b981; --c300:#fcd34d; --c400:#fbbf24; --c600:#d97706;
+    --hard:4px 4px 0 0 #0c0e1a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Instrument Sans",system-ui,sans-serif;background:#e9e9e2;color:var(--ink);padding:32px 24px 80px}
+  .mono{font-family:"IBM Plex Mono",monospace}
+  .intro{max-width:1180px;margin:0 auto 22px}
+  .intro h1{font-family:"Bricolage Grotesque";font-size:30px;font-weight:800;letter-spacing:-.02em}
+  .intro p{color:var(--ink-500);margin-top:6px;max-width:800px;line-height:1.5}
+  .frame{max-width:1180px;margin:0 auto 48px;border:2px solid var(--ink);box-shadow:8px 8px 0 0 var(--ink);overflow:hidden;background:var(--paper);position:relative}
+  .chrome{height:30px;background:#d9d9d2;border-bottom:2px solid var(--ink);display:flex;align-items:center;gap:6px;padding:0 10px}
+  .chrome i{width:10px;height:10px;border-radius:50%;background:#bbb;display:block}
+  .chrome span{margin-left:12px;font:12px "IBM Plex Mono";color:var(--ink-500)}
+  .label{font:500 11px "IBM Plex Mono";letter-spacing:.16em;text-transform:uppercase;color:var(--ink-500)}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:17px;padding:14px 24px;border:2px solid var(--ink);background:var(--c400);box-shadow:var(--hard);color:var(--ink);text-decoration:none;cursor:pointer}
+  .btn.light{background:#fff;font-size:16px}
+  .btn.out{background:transparent;color:#fff;border-color:rgba(255,255,255,.5);box-shadow:none;font-weight:600;font-size:16px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--ink);color:#fff;border-bottom:1px solid rgba(255,255,255,.08);position:relative;z-index:3}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{height:26px}
+  .brand b{font-family:"Bricolage Grotesque";font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .brand small{font:500 11px "IBM Plex Mono";letter-spacing:.2em;text-transform:uppercase;color:var(--a300)}
+  .who{display:flex;align-items:center;gap:10px;font-weight:600}
+  .who img{width:34px;height:34px;border-radius:50%;border:2px solid #fff}
+
+  /* ── finále ─────────────────────────────────────────────── */
+  .stage{position:relative;overflow:hidden;color:#fff;background:radial-gradient(ellipse at 70% 40%,rgba(34,211,238,.18),transparent 55%),linear-gradient(135deg,#1e1b4b 0%,#0c0e1a 55%,#083344 100%);padding:52px 48px 56px}
+  .stage .ghost-w{position:absolute;left:-80px;bottom:-140px;height:520px;opacity:.08;pointer-events:none}
+  canvas.confetti{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+  .stage-grid{position:relative;display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center;z-index:1}
+  .done-tag{display:inline-flex;align-items:center;gap:8px;font:600 12px "IBM Plex Mono";letter-spacing:.14em;text-transform:uppercase;color:var(--ink);background:var(--c400);border:2px solid var(--ink);padding:5px 10px}
+  .stage h2{font-family:"Bricolage Grotesque";font-size:60px;font-weight:800;letter-spacing:-.035em;line-height:.98;margin:18px 0 14px}
+  .stage h2 em{font-style:normal;color:var(--a300)}
+  .stage p.sub{font-size:18px;color:rgba(255,255,255,.75);max-width:460px}
+  .stats{display:flex;gap:28px;margin:26px 0 30px}
+  .stats b{display:block;font:800 34px "Bricolage Grotesque"}
+  .stats span{font-size:13px;color:rgba(255,255,255,.6)}
+  .actions{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+
+  /* 3D certifikát */
+  .cert-zone{perspective:1100px;display:flex;justify-content:center}
+  .cert{width:100%;max-width:520px;aspect-ratio:297/210;background:var(--paper);color:var(--ink);position:relative;padding:7% 8%;border:2px solid var(--ink);
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.6),10px 10px 0 0 var(--c600);transform-style:preserve-3d;transition:transform .15s ease-out;transform:rotateX(6deg) rotateY(-12deg);overflow:hidden;cursor:grab;
+    animation:land 1.1s cubic-bezier(.2,1.4,.4,1) both .25s}
+  @keyframes land{from{transform:translateY(60px) rotateX(40deg) rotateY(-30deg) scale(.7);opacity:0}to{transform:rotateX(6deg) rotateY(-12deg);opacity:1}}
+  .cert .w{position:absolute;right:-60px;top:-50px;height:300px;opacity:.13}
+  .cert .sheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 47%,transparent 60%);mix-blend-mode:soft-light;opacity:.0;transition:opacity .2s;pointer-events:none}
+  .cert:hover .sheen{opacity:1}
+  .cert .in{position:relative;height:100%;display:flex;flex-direction:column;transform:translateZ(30px)}
+  .cert .hd{display:flex;align-items:center;gap:8px}
+  .cert .hd img{height:18px}
+  .cert .hd b{font:800 15px "Bricolage Grotesque"}
+  .cert .hd small{font:500 8px "IBM Plex Mono";letter-spacing:.22em;color:var(--p600)}
+  .cert .mid{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .cert .k{font:700 13px "Bricolage Grotesque";color:var(--p600);letter-spacing:.02em}
+  .cert .n{font:800 52px "Bricolage Grotesque";letter-spacing:-.03em;line-height:1}
+  .cert .f{font-size:12px;color:var(--ink-500);margin-top:8px}
+  .cert .c{font:800 22px "Bricolage Grotesque"}
+  .cert .ft{display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid var(--ink);padding-top:6px;font-size:10px}
+  .seal{position:absolute;right:8%;bottom:18%;width:78px;height:78px;border-radius:50%;background:var(--c400);border:2px solid var(--ink);display:grid;place-items:center;text-align:center;font:700 9px "IBM Plex Mono";letter-spacing:.1em;transform:translateZ(50px) rotate(-12deg);box-shadow:3px 3px 0 0 var(--ink)}
+  .hint{text-align:center;font:12px "IBM Plex Mono";color:rgba(255,255,255,.45);margin-top:16px}
+
+  .after{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:28px}
+  .card{border:2px solid var(--ink);background:#fff;padding:22px;min-height:170px;position:relative;overflow:hidden}
+  .card h4{font-family:"Bricolage Grotesque";font-size:24px;font-weight:800;margin:8px 0 6px}
+  .card p{color:var(--ink-500);max-width:420px}
+  .card.camp{background:var(--ink);color:#fff}
+  .card.camp p{color:rgba(255,255,255,.72)}
+  .card.camp .label{color:var(--c300)}
+  .card.camp img{position:absolute;right:-24px;bottom:-40px;height:170px;opacity:.25}
+  .card a.link{display:inline-block;margin-top:14px;font-weight:700;color:var(--p600)}
+  .card.camp a.link{color:var(--c300)}
+  .built{display:flex;gap:8px;margin-top:14px}
+  .built i{width:38px;height:38px;background:#0f1326;position:relative;display:block}
+  .built i:after{content:"";position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);background:var(--s);box-shadow:0 0 10px 3px var(--s)}
+
+  /* ── menší oslava po běžné lekci ───────────────────────── */
+  .small{display:grid;grid-template-columns:1.1fr .9fr;gap:0}
+  .small .l{padding:40px 40px;background:linear-gradient(135deg,#1e1b4b 0%,#0c0e1a 60%,#083344 100%);color:#fff;position:relative;overflow:hidden}
+  .small .l .ghost-w{position:absolute;right:-60px;bottom:-90px;height:300px;opacity:.1}
+  .small h3{font-family:"Bricolage Grotesque";font-size:42px;font-weight:800;letter-spacing:-.03em;line-height:1;margin:14px 0 10px}
+  .small h3 em{font-style:normal;color:var(--a300)}
+  .small .r{padding:32px 32px;display:flex;flex-direction:column;gap:14px;justify-content:center}
+  .mini-path{display:flex;align-items:center;gap:6px;margin-top:22px}
+  .mini-path i{width:30px;height:30px;border:2px solid #fff;display:grid;place-items:center;font:700 12px "Bricolage Grotesque";font-style:normal}
+  .mini-path i.d{background:var(--t500);border-color:var(--t500)}
+  .mini-path i.n{background:var(--c400);color:var(--ink);border-color:var(--c400)}
+  .mini-path s{flex:0 0 14px;height:2px;background:rgba(255,255,255,.3)}
+  .next{border:2px solid var(--ink);padding:16px;background:#fff}
+  .next h5{font-family:"Bricolage Grotesque";font-size:20px;font-weight:800;margin:4px 0 2px}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Konec kurzu — oslava</h1>
+  <p>Po 7. lekci místo dnešní zelené kartičky „Lekce je hotová“: celá obrazovka v barvách lobby, konfety a certifikát se jménem, který přiletí a při najetí myší se naklání ve 3D. Zkus po něm přejet myší. Konfety spustíš znovu tlačítkem dole.</p>
+</div>
+
+<div class="frame" id="f1">
+  <div class="chrome"><i></i><i></i><i></i><span>ucebna.weeks.cz/kurz/iot/hotovo</span></div>
+  <div class="top">
+    <div class="brand"><img src="weeks-logo.png" alt=""><b>Weeks</b><small>Učebna</small></div>
+    <div class="who"><img src="fox.png" alt="">Lukáš ▾</div>
+  </div>
+  <div class="stage">
+    <canvas class="confetti" id="cf"></canvas>
+    <img class="ghost-w" src="weeks-logo.png" alt="">
+    <div class="stage-grid">
+      <div>
+        <span class="done-tag">★ Kurz dokončen</span>
+        <h2>Lukáši,<br>jsi <em>konstruktér.</em></h2>
+        <p class="sub">Prošel jsi celý kurz IoT a elektronika — od první LEDky až po noční světlo, které se samo rozsvítí ve tmě.</p>
+        <div class="stats">
+          <div><b>7</b><span>lekcí</span></div>
+          <div><b>7</b><span>postavených obvodů</span></div>
+          <div><b>2 h 50 min</b><span>u stolu</span></div>
+        </div>
+        <div class="actions">
+          <a class="btn">Stáhnout certifikát ↓</a>
+          <a class="btn out">Zpět do lobby</a>
+        </div>
+      </div>
+      <div>
+        <div class="cert-zone">
+          <div class="cert" id="cert">
+            <img class="w" src="weeks-logo.png" alt="">
+            <div class="sheen" id="sheen"></div>
+            <div class="in">
+              <div class="hd"><img src="weeks-logo.png" alt=""><b>Weeks</b><small>UČEBNA</small></div>
+              <div class="mid">
+                <div class="k">Certifikát</div>
+                <div class="n">Lukáš</div>
+                <div class="f">za dokončení kurzu</div>
+                <div class="c">IoT a elektronika</div>
+              </div>
+              <div class="ft"><span>Dokončeno 26. 10. 2026 · projekt Noční světlo</span><b>Weeks s.r.o.</b></div>
+            </div>
+            <div class="seal">7 / 7<br>LEKCÍ</div>
+          </div>
+        </div>
+        <p class="hint">↖ přejeď myší po certifikátu</p>
+      </div>
+    </div>
+  </div>
+  <div class="after">
+    <div class="card">
+      <div class="label">Co dál</div>
+      <h4>Další kurz chystáme</h4>
+      <p>Až bude hotový, ukáže se tady i v lobby. Mezitím si můžeš kteroukoli lekci zopakovat a vylepšit.</p>
+      <div class="built"><i style="--s:#ef4444"></i><i style="--s:#fbbf24"></i><i style="--s:#22d3ee"></i><i style="--s:#22c55e"></i><i style="--s:#a78bfa"></i><i style="--s:#f472b6"></i><i style="--s:#fde047"></i></div>
+      <a class="link">Prohlédnout svou sbírku →</a>
+    </div>
+    <div class="card camp">
+      <img src="weeks-logo.png" alt="">
+      <div class="label">Léto 2027</div>
+      <h4>Teď to postav doopravdy</h4>
+      <p>Na příměstském táboře v Karlových Varech budeš pájet, programovat skutečné Arduino a tisknout na 3D tiskárně.</p>
+      <a class="link">Prohlédnout tábor →</a>
+    </div>
+  </div>
+</div>
+
+<div class="intro">
+  <h1>A po každé běžné lekci</h1>
+  <p>Menší verze téhož: konfety, kde na cestě dítě je, a jasně „Další lekce“ nebo „Do lobby“. Žádný certifikát, ten je odměna za celý kurz.</p>
+</div>
+
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i><span>ucebna.weeks.cz/kurz/iot/semafor</span></div>
+  <div class="small">
+    <div class="l">
+      <img class="ghost-w" src="weeks-logo.png" alt="">
+      <span class="done-tag">✓ Lekce 4 hotová</span>
+      <h3>Semafor <em>jede.</em></h3>
+      <p style="color:rgba(255,255,255,.72);max-width:380px">Tři LEDky na jedné zemi, ve správném pořadí. Přidáno do tvé sbírky.</p>
+      <div class="mini-path"><i class="d">✓</i><s></s><i class="d">✓</i><s></s><i class="d">✓</i><s></s><i class="d">✓</i><s></s><i class="n">5</i><s></s><i>6</i><s></s><i>★</i></div>
+    </div>
+    <div class="r">
+      <div class="next">
+        <div class="label">Další na řadě · lekce 5</div>
+        <h5>Plynulý jas</h5>
+        <div style="font-size:14px;color:var(--ink-500)">LEDka, která se rozsvěcí pomalu jako ráno. ~25 min</div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn">Další lekce →</a><a class="btn light">Do lobby</a></div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center"><button class="btn" onclick="burst()">Spustit konfety znovu</button></div>
+
+<script>
+  /* 3D náklon certifikátu */
+  const cert = document.getElementById('cert'), sheen = document.getElementById('sheen');
+  cert.addEventListener('animationend', () => { cert.style.animation = 'none'; });
+  cert.addEventListener('mousemove', e => {
+    const r = cert.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+    cert.style.transform = `rotateX(${-y * 22}deg) rotateY(${x * 26}deg) scale(1.03)`;
+    sheen.style.background = `linear-gradient(${115 + x * 40}deg,transparent ${30 + y * 20}%,rgba(255,255,255,.8) ${47 + x * 20}%,transparent ${62 + x * 20}%)`;
+  });
+  cert.addEventListener('mouseleave', () => { cert.style.transform = 'rotateX(6deg) rotateY(-12deg)'; });
+
+  /* konfety v barvách Weeks */
+  const cv = document.getElementById('cf'), ctx = cv.getContext('2d');
+  const colors = ['#fbbf24', '#22d3ee', '#67e8f9', '#4f46e5', '#10b981', '#fafaf7'];
+  let parts = [];
+  function size() { cv.width = cv.offsetWidth; cv.height = cv.offsetHeight; }
+  function burst() {
+    size(); document.getElementById('f1').scrollIntoView({ behavior: 'smooth' });
+    for (let i = 0; i < 180; i++) parts.push({ x: cv.width * (.3 + Math.random() * .4), y: cv.height * .35, vx: (Math.random() - .5) * 16, vy: -Math.random() * 14 - 4, r: Math.random() * 6 + 4, c: colors[i % colors.length], a: Math.random() * 6, va: (Math.random() - .5) * .3, life: 0 });
+  }
+  function tick() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    parts = parts.filter(p => p.y < cv.height + 20 && p.life < 400);
+    for (const p of parts) { p.vy += .32; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.a += p.va; p.life++;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.c; ctx.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); ctx.restore(); }
+    requestAnimationFrame(tick);
+  }
+  tick(); setTimeout(burst, 300);
+</script>
+</body>
+</html>
