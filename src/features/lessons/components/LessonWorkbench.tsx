@@ -21,6 +21,7 @@ import { Celebration } from "./Celebration";
 import { CodeEditor, CodeView } from "./CodeEditor";
 import { PartsIntro } from "./PartsIntro";
 import { CurrentStep, StepList } from "./WiringGuide";
+import { SerialMonitor } from "./SerialMonitor";
 import { useBuzzerSound } from "./useBuzzerSound";
 import { NO_FRAMES, useFramePlayer } from "./useFramePlayer";
 import { applyStep } from "../apply-step";
@@ -32,6 +33,9 @@ import { currentStep, wiringSteps } from "../wiring-steps";
 import type { Lesson } from "../types";
 
 const STEPS = ["Zadání", "Součástky", "Zapojení", "Program"] as const;
+
+/** Stabilní „žádný výpis" — SerialMonitor podle reference pozná nové řádky. */
+const NO_LINES: string[] = [];
 
 /* Indexy kroků. Pojmenované, protože `step === 2` po pár týdnech nikdo
    nepřečte a přidání kroku doprostřed by tiše rozhodilo zbytek. */
@@ -376,6 +380,10 @@ export function LessonWorkbench({
   }
 
   const firstUnmet = run?.outcomes.find((o) => !o.passed);
+
+  /* Monitor jen tam, kde program vypisuje — nebo kde to lekce chce.
+     U LED a tlačítka by to bylo prázdné okno navíc. */
+  const usesSerial = /\bSerial\s*\./.test(source) || /\bSerial\s*\./.test(lesson.solution);
 
   /* Součástky, se kterými se dá při běhu hýbat. Zatím jen tlačítka. */
   const interactive = circuit.comps.filter((c) => c.type === "pushbutton");
@@ -884,6 +892,8 @@ export function LessonWorkbench({
                   })}
                 </div>
               )}
+
+              {usesSerial && <SerialMonitor lines={player.frame?.serial ?? NO_LINES} ran={run !== null} />}
 
               {run?.shortCircuit && (
                 <Alert tone="danger" title="Zkrat — program se nespustil" className="run-feedback">
