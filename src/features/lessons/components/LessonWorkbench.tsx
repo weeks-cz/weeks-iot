@@ -129,9 +129,10 @@ export function LessonWorkbench({
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const previewColumn = useRef<HTMLDivElement>(null);
-  /* Počítadlo spuštění. Výsledek se dá spustit dvakrát se stejnou chybou —
-     posun k hlášce má proběhnout i podruhé, ne jen při změně výsledku. */
-  const [runCount, setRunCount] = useState(0);
+  /* Poslední kliknutí na „Spustit". Nový objekt pokaždé, takže se posun
+     k hlášce stane i při druhém spuštění se stejnou chybou. Stisk tlačítka
+     v obvodu ho nemění — viz efekt níž. */
+  const [lastRun, setLastRun] = useState<{ passed: boolean } | null>(null);
   const restored = useRef(false);
   const firstStep = useRef(true);
 
@@ -232,22 +233,25 @@ export function LessonWorkbench({
 
   /* Úspěch a „Mám hotovo" jsou v pravém sloupci pod náhledem a kontrolou,
      na notebooku pod okrajem. Dítě by vidělo konfety, ale ne tlačítko,
-     které vede dál. */
-  const passed = Boolean(run?.passed);
-  useEffect(() => {
-    if (!passed) return;
-    const id = requestAnimationFrame(() =>
-      successRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
-    );
-    return () => cancelAnimationFrame(id);
-  }, [passed]);
+     které vede dál.
 
-  /* Totéž pro neúspěch. Chyba v kódu, zkrat nebo nesplněná kontrola se
+     Totéž pro neúspěch. Chyba v kódu, zkrat nebo nesplněná kontrola se
      vypíšou pod náhledem obvodu — na notebooku pod okrajem — a dítě
      koukalo na obvod, který nic nedělá, a netušilo proč. Roluje se jen
-     tehdy, když hláška opravdu není vidět, a jen o kus (`nearest`). */
+     tehdy, když hláška opravdu není vidět, a jen o kus (`nearest`).
+
+     Obojí jen po „Spustit" (`lastRun`), ne po stisku tlačítka v obvodu.
+     Stisk program přepočítá a výsledek může přeskočit na splněno — dítě,
+     které si tlačítko zkoušelo mačkat, pak stránka pokaždé odvezla pryč
+     od obvodu, na který se dívalo. */
   useEffect(() => {
-    if (runCount === 0 || passed) return;
+    if (!lastRun) return;
+    if (lastRun.passed) {
+      const id = requestAnimationFrame(() =>
+        successRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      );
+      return () => cancelAnimationFrame(id);
+    }
     const id = requestAnimationFrame(() => {
       const first = previewColumn.current?.querySelector<HTMLElement>(".run-feedback");
       if (!first) return;
@@ -257,7 +261,7 @@ export function LessonWorkbench({
       }
     });
     return () => cancelAnimationFrame(id);
-  }, [runCount, passed]);
+  }, [lastRun]);
 
   const wiring = useMemo(() => checkWiring(circuit, lesson.wiring), [circuit, lesson.wiring]);
 
@@ -361,7 +365,7 @@ export function LessonWorkbench({
       const result = runLessonChecks(lesson, circuit, source, pressed, sensors);
       setRun(result);
       setRunning(false);
-      setRunCount((n) => n + 1);
+      setLastRun({ passed: result.passed });
 
       if (result.passed && !solved) {
         setSolved(true);
