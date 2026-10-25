@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Surface";
@@ -11,7 +11,17 @@ import { signUpAction } from "../actions";
 const EMPTY: ActionState = {};
 
 export function SignUpForm() {
-  const [state, submit, pending] = useActionState(signUpAction, EMPTY);
+  const [state, formAction, pending] = useActionState(signUpAction, EMPTY);
+
+  /* React 19 po každém odeslání formuláře s `action` vynuluje všechna pole,
+     i když server vrátí chybu (requestFormReset). Rodič tak přišel o e-mail
+     i heslo kvůli jedné hlášce. Odesílání proto řešíme sami — pole zůstanou
+     vyplněná. */
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    startTransition(() => formAction(data));
+  }
 
   /* Po odeslání se formulář schová. Kdyby zůstal viditelný pod hláškou
      „poslali jsme e-mail", polovina lidí ho odešle znovu. */
@@ -24,7 +34,7 @@ export function SignUpForm() {
   }
 
   return (
-    <form action={submit} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       {state.error && <Alert tone="danger">{state.error}</Alert>}
 
       <TextField
