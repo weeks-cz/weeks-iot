@@ -31,6 +31,10 @@ export const lesson7: Lesson = {
   order: 7,
   title: "Noční světlo",
   goal: "Postavíš zařízení, které se samo rozsvítí, když se setmí.",
+  celebrate: {
+    title: "hlídá tmu.",
+    line: "Světlo, které se samo rozsvítí, když se setmí, a ve světle zhasne.",
+  },
   minutes: 30,
   legacyTaskId: "beginner-light-sensor",
 

@@ -20,6 +20,10 @@ export const lesson5: Lesson = {
   order: 5,
   title: "Plynulý jas",
   goal: "Zjistíš, že mezi zapnuto a vypnuto je 256 mezistupňů — a jak je projet smyčkou.",
+  celebrate: {
+    title: "funguje.",
+    line: "LEDka se plynule rozsvěcí a zhasíná, ne jen cvak a cvak.",
+  },
   minutes: 25,
   legacyTaskId: "beginner-pwm-led",
 

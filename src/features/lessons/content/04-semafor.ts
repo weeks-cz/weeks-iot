@@ -21,6 +21,10 @@ export const lesson4: Lesson = {
   order: 4,
   title: "Semafor",
   goal: "Postavíš posloupnost, kde na pořadí kroků záleží.",
+  celebrate: {
+    title: "jede.",
+    line: "Tři LEDky na jedné zemi, které střídají barvy ve správném pořadí.",
+  },
   minutes: 30,
   legacyTaskId: "beginner-traffic-light",
   imageKey: "semafor",

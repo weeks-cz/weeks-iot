@@ -21,6 +21,10 @@ export const lesson2: Lesson = {
   order: 2,
   title: "Blikání",
   goal: "Pochopíš, že loop() běží pořád dokola a že delay() je pauza mezi kroky.",
+  celebrate: {
+    title: "funguje.",
+    line: "LEDka bliká sama dokola a ty určuješ, jak rychle.",
+  },
   minutes: 20,
   legacyTaskId: "beginner-led",
 

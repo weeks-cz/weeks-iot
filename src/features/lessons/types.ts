@@ -76,6 +76,19 @@ export interface Lesson {
   /** Odhad v minutách. */
   minutes: number;
 
+  /**
+   * Oslava po dokončení. Nadpis se skládá „{title} {celebrate.title}",
+   * druhá půlka azurově — proto musí navazovat na název lekce.
+   */
+  celebrate: {
+    /** Dovětek za názvem lekce, např. „jede." Končí tečkou nebo vykřičníkem. */
+    title: string;
+    /** Jedna věta, co dítě postavilo. */
+    line: string;
+  };
+  /** Vlastní dovětek do lobby; chybějící klíč bere výchozí z `lobby/copy.ts`. */
+  waiting?: Partial<Record<"next" | "wiring" | "code", string>>;
+
   /** Zadání. Krátké odstavce, žádná zeď textu. */
   brief: string[];
   /** Nová věc, kterou lekce zavádí. Vysvětlená jednou a pořádně. */

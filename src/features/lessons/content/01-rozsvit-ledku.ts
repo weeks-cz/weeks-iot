@@ -21,6 +21,10 @@ export const lesson1: Lesson = {
   order: 1,
   title: "Rozsviť LEDku",
   goal: "Pochopíš, že Arduino je vypínač, který se ovládá slovem v programu.",
+  celebrate: {
+    title: "— hotovo.",
+    line: "Svítí tvoje první LEDka, zapojená přes rezistor, jak se patří.",
+  },
   minutes: 20,
   legacyTaskId: "beginner-led",
   imageKey: "led",

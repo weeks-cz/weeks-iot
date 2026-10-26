@@ -25,6 +25,10 @@ export const lesson3: Lesson = {
   order: 3,
   title: "Tlačítko",
   goal: "Naučíš se, jak se Arduino ptá na okolní svět a rozhoduje se podle odpovědi.",
+  celebrate: {
+    title: "poslouchá.",
+    line: "Arduino se ptá na tlačítko a rozhoduje se podle toho, co odpoví.",
+  },
   minutes: 25,
   legacyTaskId: "beginner-led",
 
