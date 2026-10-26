@@ -24,7 +24,7 @@ export const lesson6: Lesson = {
   goal: "Vyrobíš tón a spojíš vstup s výstupem — zmáčkni a ozve se.",
   celebrate: {
     title: "hraje.",
-    line: "Zmáčkneš tlačítko a bzučák se ozve tónem, který sis určil.",
+    line: "Bzučák, který zahraje tón, když zmáčkneš tlačítko.",
   },
   minutes: 25,
   legacyTaskId: "beginner-buzzer-button",
