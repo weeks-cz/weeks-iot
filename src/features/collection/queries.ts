@@ -1,5 +1,9 @@
 import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
+import type { Circuit } from "@/features/circuit/types";
+import { lessonBySlug } from "@/features/lessons/content";
+import { referenceCircuit } from "@/features/lessons/reference-circuit";
+import type { PathLesson } from "@/features/lobby/model";
 import type { LessonBuild } from "./schema";
 
 export interface SavedBuild {
@@ -70,4 +74,50 @@ export async function childBuilds(
   }
 
   return result;
+}
+
+/** Jedna položka sbírky: hotová lekce a obvod, který se u ní ukáže. */
+export interface CollectionItem {
+  slug: string;
+  title: string;
+  circuit: Circuit;
+  /** Lekce je hotová, ale výtvor uložený nemá — kreslí se vzorové zapojení. */
+  reference: boolean;
+  /** Kdy se výtvor naposledy uložil; u vzoru není co ukázat. */
+  updatedAt: string | null;
+}
+
+/** Vzorové zapojení lekce pro hotovou lekci bez uloženého výtvoru. */
+function lessonReference(slug: string): Circuit | null {
+  const lesson = lessonBySlug(slug);
+  return lesson ? referenceCircuit(lesson.wiring) : null;
+}
+
+/**
+ * Mřížka sbírky: jen hotové publikované lekce v pořadí kurzu (návrh §9.3).
+ *
+ * Lekce bez uloženého výtvoru dostane vzorové zapojení a `reference: true`;
+ * bez výtvoru i bez vzoru se vynechá. Výtvor k lekci, která už není
+ * v cestě (nepublikovaná), se nevrací.
+ */
+export function collectionItems(
+  path: readonly PathLesson[],
+  builds: ReadonlyMap<string, SavedBuild>,
+  reference: (slug: string) => Circuit | null = lessonReference,
+): CollectionItem[] {
+  const items: CollectionItem[] = [];
+  for (const lesson of path) {
+    if (!lesson.done) continue;
+    const own = builds.get(lesson.slug);
+    const circuit = own?.data.circuit ?? reference(lesson.slug);
+    if (!circuit) continue;
+    items.push({
+      slug: lesson.slug,
+      title: lesson.title,
+      circuit,
+      reference: !own,
+      updatedAt: own?.updatedAt ?? null,
+    });
+  }
+  return items;
 }
