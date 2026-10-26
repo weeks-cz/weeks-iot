@@ -6,7 +6,7 @@ import { Alert, Badge, Card, MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/features/account/session";
 import { segmentForRegion } from "@/lib/regions";
-import { campCityForRegion } from "@/lib/camp-offer";
+import { campOfferFor } from "@/features/camp/offer";
 import { Avatar } from "@/features/children/avatars";
 import { ContinueButton } from "@/features/children/components/ContinueButton";
 import { getChildren } from "@/features/children/queries";
@@ -179,7 +179,11 @@ export default async function AccountPage({
 
       <CampCta
         segment={segment}
-        city={campCityForRegion(parent?.region_code)}
+        offer={campOfferFor({
+          regionCode: parent?.region_code ?? null,
+          catchment,
+          anonymous: false,
+        })}
         placement="ucet"
       />
     </div>

@@ -1,9 +1,8 @@
 import type { ComponentProps } from "react";
 import type { AudienceSegment } from "@/lib/regions";
-import { CAMP_CITIES, type CampCity } from "@/lib/camp-offer";
 import { MonoLabel } from "@/components/ui/Surface";
 import { CampCard } from "@/features/camp/components/CampCard";
-import { CampLink } from "./CampLink";
+import type { CampOffer } from "@/features/camp/offer";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 
 /**
@@ -19,18 +18,20 @@ import { CityWaitlistForm } from "./CityWaitlistForm";
  */
 export function CampCta({
   segment,
-  city = null,
+  offer,
   placement,
 }: {
   segment: AudienceSegment;
-  /** Město tábora podle kraje rodiče; null = obecná karta pro oba spády. */
-  city?: CampCity | null;
+  /**
+   * Nabídka z `campOfferFor` (stejná jako v lobby a ve finále). Ve spádu
+   * bez otevřeného tábora `null` — pak se neukáže nic, ani čekačka.
+   */
+  offer: CampOffer;
   /** Kam se propíše do utm_content — bez toho nejde vyhodnotit, co prodává. */
   placement: ComponentProps<typeof CampCard>["placement"];
 }) {
   if (segment === "camp") {
-    const kind = city && !CAMP_CITIES[city].prihlasky ? "soon" : "open";
-    return <CampCard offer={{ kind, city }} placement={placement} size="card" />;
+    return offer ? <CampCard offer={offer} placement={placement} size="card" /> : null;
   }
 
   return (

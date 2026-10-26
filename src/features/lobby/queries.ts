@@ -4,8 +4,8 @@ import type { ChildSummary } from "@/features/children/queries";
 import { getCourseOutline } from "@/features/courses/queries";
 import { childBuilds, type SavedBuild } from "@/features/collection/queries";
 import { earnedCertificates, type EarnedCertificate } from "@/features/certificates/queries";
-import { campOfferFor, type CampOffer } from "@/features/camp/offer";
-import { getCampCatchment } from "@/features/onboarding/queries";
+import type { CampOffer } from "@/features/camp/offer";
+import { parentCampOffer } from "@/features/camp/parent-offer";
 import { coursePath, type PathLesson } from "./model";
 
 /** Lobby čte jediný kurz, dokud je jediný (návrh §5.2). */
@@ -57,7 +57,7 @@ export async function getLobbyData(child: ChildSummary, parentId: string): Promi
       console.error("[lobby] certifikáty se nenačetly", error);
       return [] as EarnedCertificate[];
     }),
-    lobbyCamp(parentId).catch((error: unknown) => {
+    parentCampOffer(parentId).catch((error: unknown) => {
       console.error("[lobby] nabídka tábora se nenačetla", error);
       return null;
     }),
@@ -84,19 +84,4 @@ export async function getLobbyData(child: ChildSummary, parentId: string): Promi
       certificates: certificates.length,
     },
   };
-}
-
-/** Karta tábora podle kraje rodiče (pravidla v `campOfferFor`). */
-async function lobbyCamp(parentId: string): Promise<CampOffer> {
-  const supabase = await createClient();
-  const [{ data: parent, error }, catchment] = await Promise.all([
-    supabase.from("parents").select("region_code").eq("id", parentId).maybeSingle(),
-    getCampCatchment(),
-  ]);
-  if (error) throw error;
-  return campOfferFor({
-    regionCode: parent?.region_code ?? null,
-    catchment,
-    anonymous: false,
-  });
 }
