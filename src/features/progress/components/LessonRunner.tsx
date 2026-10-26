@@ -12,6 +12,8 @@ import { EVENT, track, trackOnce } from "@/features/analytics/track";
 import { LessonWorkbench } from "@/features/lessons/components/LessonWorkbench";
 import { lessonBySlug } from "@/features/lessons/content";
 import { saveLessonProgressAction } from "@/features/progress/actions";
+import { saveLessonBuildAction } from "@/features/collection/actions";
+import type { LessonBuildDraft } from "@/features/collection/schema";
 import type { EditorMode } from "@/features/blocks/mode";
 
 /**
@@ -66,6 +68,9 @@ export function LessonRunner({
   profileId,
 }: Props) {
   const [completed, setCompleted] = useState(false);
+  /* Jestli se výtvor uložil do sbírky. Zatím ho nic nezobrazuje; použije
+     ho oslava po lekci („Přidáno do tvé sbírky"). `null` = ještě neběželo. */
+  const [savedToCollection, setSavedToCollection] = useState<boolean | null>(null);
   const wallRef = useRef<HTMLDivElement>(null);
 
   /* Zaznamenání začátku. Tohle je nález N4 — bez lesson_start neexistuje
@@ -104,7 +109,7 @@ export function LessonRunner({
    * minut. Zeď s registrací přijde teprve tehdy, když samo řekne, že
    * chce dál. Zeď má stát za doručenou hodnotou, ne místo ní.
    */
-  function handleSolved(hintsUsed: number) {
+  function handleSolved(hintsUsed: number, build: LessonBuildDraft) {
     const session = markLessonCompleted(courseSlug, lessonSlug, hintsUsed);
 
     /* Přihlášenému dítěti se postup zapisuje i do účtu. Bez toho zůstal
@@ -119,6 +124,15 @@ export function LessonRunner({
           if (!res.ok) console.warn("[lekce] Postup se do účtu nezapsal");
         });
       }
+    }
+
+    /* Výtvor do sbírky jen u dítěte s aktivním profilem; server si profil
+       odvodí sám. Slugy doplňuje až tady, protože editor lekce kurz nezná. */
+    if (isAuthenticated && !needsChildProfile) {
+      void saveLessonBuildAction({ ...build, courseSlug, lessonSlug }).then((res) => {
+        setSavedToCollection(res.ok);
+        if (!res.ok) console.warn("[lekce] Výtvor se do sbírky neuložil");
+      });
     }
 
     void track(EVENT.LESSON_COMPLETE, {

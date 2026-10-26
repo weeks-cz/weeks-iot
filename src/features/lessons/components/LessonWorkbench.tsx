@@ -30,6 +30,7 @@ import { runLessonChecks, type LessonRunResult } from "../run-check";
 import { lessonSeedCircuit } from "../seed-circuit";
 import { vocabularyFor } from "../vocabulary";
 import { currentStep, wiringSteps } from "../wiring-steps";
+import type { LessonBuildDraft } from "@/features/collection/schema";
 import type { Lesson } from "../types";
 
 const STEPS = ["Zadání", "Součástky", "Zapojení", "Program"] as const;
@@ -50,7 +51,7 @@ interface Props {
    * k postupu, protože „dokončeno na první dobrou" a „dokončeno se všemi
    * nápovědami" jsou o té lekci dvě úplně jiné zprávy.
    */
-  onSolved: (hintsUsed: number) => void;
+  onSolved: (hintsUsed: number, build: LessonBuildDraft) => void;
   /** Zavolá se, až si dítě výsledek prohlédne a chce jít dál. */
   onContinue: () => void;
   /** Nahlásí vyžádanou nápovědu — z toho se pozná, kde lekce drhne. */
@@ -377,7 +378,15 @@ export function LessonWorkbench({
       if (result.passed && !solved) {
         setSolved(true);
         clearDraft(lesson.slug, profileId);
-        onSolved(hints.wiring + hints.code + Number(assisted.wiring) + Number(assisted.code));
+        /* Výtvor je to, co dítě právě odevzdalo: aktuální obvod a program
+           v režimu, ve kterém ho psalo. Bloky jen v režimu bloků — kód
+           z nich se vyrábí, takže v režimu kódu by byly zastaralé. */
+        onSolved(hints.wiring + hints.code + Number(assisted.wiring) + Number(assisted.code), {
+          circuit,
+          code: source,
+          ...(mode === "blocks" ? { blocks } : {}),
+          mode,
+        });
       }
     }, 160);
   }
