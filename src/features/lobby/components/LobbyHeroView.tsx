@@ -29,6 +29,11 @@ export interface LobbyHeroViewProps {
   certificate?: CertificateData | null;
   /** Náhled na kartě lekce místo výchozího motivu (rozdělaný obvod). */
   thumbnail?: ReactNode;
+  /**
+   * Jiný cíl a popisek tlačítka ve stavu `done`. Dítě s účtem jde do sbírky;
+   * anonym ji otevřít nemůže, tak ho tlačítko pošle uložit postup.
+   */
+  doneAction?: { href: string; label: string };
 }
 
 /** Výška náhledu na kartě. Karta má pevnou výšku, aby přepočet na klientovi nehnul stránkou. */
@@ -88,6 +93,7 @@ export function LobbyHeroView({
   stats,
   certificate,
   thumbnail,
+  doneAction,
 }: LobbyHeroViewProps) {
   const hasChild = nick !== undefined;
 
@@ -110,7 +116,14 @@ export function LobbyHeroView({
             : "md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]",
         )}
       >
-        <Mission state={state} course={course} path={path} labels={labels} nick={nick} />
+        <Mission
+          state={state}
+          course={course}
+          path={path}
+          labels={labels}
+          nick={nick}
+          doneAction={doneAction}
+        />
         <LessonCard
           state={state}
           path={path}
@@ -133,7 +146,8 @@ function Mission({
   path,
   labels,
   nick,
-}: Pick<LobbyHeroViewProps, "state" | "course" | "path" | "labels" | "nick">) {
+  doneAction,
+}: Pick<LobbyHeroViewProps, "state" | "course" | "path" | "labels" | "nick" | "doneAction">) {
   const position =
     state.kind === "done"
       ? "hotovo"
@@ -160,11 +174,11 @@ function Mission({
       {/* Na úzkém telefonu (320 px) by se nejdelší popisek zalomil na dva
           řádky a tlačítko by po přepočtu na klientovi povyrostlo. */}
       <ButtonLink
-        href={heroHref(state, course.slug)}
+        href={state.kind === "done" && doneAction ? doneAction.href : heroHref(state, course.slug)}
         size="lg"
         className="max-sm:w-full max-sm:px-4"
       >
-        {BUTTON[state.kind]}
+        {state.kind === "done" && doneAction ? doneAction.label : BUTTON[state.kind]}
       </ButtonLink>
     </div>
   );

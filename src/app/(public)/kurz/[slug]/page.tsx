@@ -3,9 +3,15 @@ import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { MonoLabel } from "@/components/ui/Surface";
 import { SITE } from "@/lib/site";
-import { firstPlayableLesson, getCourseOutline } from "@/features/courses/queries";
+import {
+  firstPlayableLesson,
+  getCourseOutline,
+} from "@/features/courses/queries";
 import { CourseOutlineList } from "@/features/courses/components/CourseOutlineList";
 import { completedLessonSlugs } from "@/features/progress/queries";
+import { AnonLobby } from "@/features/lobby/components/AnonLobby";
+import { campOfferFor } from "@/features/camp/offer";
+import { getViewer } from "@/features/shell/queries";
 import { createClient } from "@/lib/supabase/server";
 
 interface Params {
@@ -30,7 +36,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function CoursePage({ params }: { params: Promise<Params> }) {
+export default async function CoursePage({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
   const { slug } = await params;
 
   /* Celá osnova, včetně nepublikovaných lekcí — je to marketingový obsah.
@@ -53,39 +63,60 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
       )
     : [];
 
+  /* Lobby bez účtu je jen pro anonyma; přihlášený má `/ucim-se`. Anonym
+     nemá kraj, takže dostane obecnou kartu tábora. */
+  const viewer = await getViewer();
+  const anonymous = viewer.kind === "anon";
+  const camp = campOfferFor({
+    regionCode: null,
+    catchment: [],
+    anonymous: true,
+  });
+
   return (
     <main>
-      <section className="blueprint-grid border-b border-ink/15">
-        <div className="section-container py-12 sm:py-16">
-          <div className="max-w-3xl">
-            <MonoLabel className="mb-3">Kurz · {outline.lessons.length} lekcí</MonoLabel>
-            <h1 className="heading-1 mb-4">{outline.title}</h1>
+      <AnonLobby
+        enabled={anonymous}
+        outline={{ slug: outline.slug, lessons: outline.lessons }}
+        course={{ slug: outline.slug, title: outline.title }}
+        camp={camp}
+      >
+        <section className="blueprint-grid border-b border-ink/15">
+          <div className="section-container py-12 sm:py-16">
+            <div className="max-w-3xl">
+              <MonoLabel className="mb-3">
+                Kurz · {outline.lessons.length} lekcí
+              </MonoLabel>
+              <h1 className="heading-1 mb-4">{outline.title}</h1>
 
-            {outline.summary && (
-              <p className="mb-8 max-w-prose text-lg leading-relaxed text-ink-500">
-                {outline.summary}
-              </p>
-            )}
+              {outline.summary && (
+                <p className="mb-8 max-w-prose text-lg leading-relaxed text-ink-500">
+                  {outline.summary}
+                </p>
+              )}
 
-            {first && (
-              <div className="flex flex-wrap items-center gap-4">
-                <ButtonLink href={`/kurz/${slug}/${first.slug}`} size="lg">
-                  Začít první lekcí
-                </ButtonLink>
-                <p className="font-mono text-xs text-ink-500">zdarma · bez registrace</p>
-              </div>
-            )}
+              {first && (
+                <div className="flex flex-wrap items-center gap-4">
+                  <ButtonLink href={`/kurz/${slug}/${first.slug}`} size="lg">
+                    Začít první lekcí
+                  </ButtonLink>
+                  <p className="font-mono text-xs text-ink-500">
+                    zdarma · bez registrace
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </AnonLobby>
 
       <section className="section-container py-12">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <h2 className="heading-3">Co tě čeká</h2>
           {remaining > 0 && (
             <p className="font-mono text-xs text-ink-500">
-              hotovo {outline.publishedCount} z {outline.lessons.length} · zbytek průběžně
-              doplňujeme
+              hotovo {outline.publishedCount} z {outline.lessons.length} ·
+              zbytek průběžně doplňujeme
             </p>
           )}
         </div>
@@ -94,6 +125,7 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
           courseSlug={slug}
           lessons={outline.lessons}
           serverCompleted={serverCompleted}
+          mergeAnon={anonymous}
         />
       </section>
     </main>

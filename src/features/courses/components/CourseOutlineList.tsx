@@ -12,6 +12,11 @@ interface Props {
   lessons: OutlineLesson[];
   /** Co má hotové přihlášený profil. U anonyma prázdné. */
   serverCompleted: string[];
+  /**
+   * Slít s anonymní relací z prohlížeče. Přihlášený s profilem ne: relace
+   * po sourozenci by mu přimíchala cizí hotové lekce.
+   */
+  mergeAnon?: boolean;
 }
 
 /**
@@ -27,10 +32,16 @@ interface Props {
  * Proto se kreslí nejdřív bez postupu (to vidí i vyhledávač) a hned po
  * připojení se doplní z prohlížeče.
  */
-export function CourseOutlineList({ courseSlug, lessons, serverCompleted }: Props) {
+export function CourseOutlineList({
+  courseSlug,
+  lessons,
+  serverCompleted,
+  mergeAnon = true,
+}: Props) {
   const [done, setDone] = useState<Set<string>>(new Set(serverCompleted));
 
   useEffect(() => {
+    if (!mergeAnon) return;
     const session = readAnonSession();
     if (!session) return;
 
@@ -44,7 +55,7 @@ export function CourseOutlineList({ courseSlug, lessons, serverCompleted }: Prop
        žádný localStorage není a naplnit tím počáteční stav by rozešlo
        hydrataci. */
     setDone(new Set([...serverCompleted, ...local]));
-  }, [courseSlug, serverCompleted]);
+  }, [courseSlug, serverCompleted, mergeAnon]);
 
   const published = lessons.filter((l) => l.isPublished);
   const completed = published.filter((l) => done.has(l.slug)).length;
@@ -81,11 +92,18 @@ export function CourseOutlineList({ courseSlug, lessons, serverCompleted }: Prop
           </div>
 
           {next ? (
-            <ButtonLink href={`/kurz/${courseSlug}/${next.slug}`}>
+            /* Anonym s postupem má nad seznamem lobby hero s amber tlačítkem —
+                tohle je pak jen druhá cesta ke stejné lekci. */
+            <ButtonLink
+              href={`/kurz/${courseSlug}/${next.slug}`}
+              variant={mergeAnon ? "outline" : "primary"}
+            >
               Pokračovat lekcí {next.orderIndex}
             </ButtonLink>
           ) : (
-            <p className="font-mono text-xs text-trust-700">celý kurz hotový 🎉</p>
+            <p className="font-mono text-xs text-trust-700">
+              celý kurz hotový 🎉
+            </p>
           )}
         </div>
       )}
@@ -100,10 +118,16 @@ export function CourseOutlineList({ courseSlug, lessons, serverCompleted }: Prop
             <>
               <span
                 className={`flex size-10 shrink-0 items-center justify-center rounded-sm border font-mono text-sm ${
-                  isDone ? "border-trust-600 bg-trust-50 text-trust-700" : "border-ink/20"
+                  isDone
+                    ? "border-trust-600 bg-trust-50 text-trust-700"
+                    : "border-ink/20"
                 }`}
               >
-                {isDone ? <Check className="h-5 w-5" aria-hidden="true" /> : lesson.orderIndex}
+                {isDone ? (
+                  <Check className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  lesson.orderIndex
+                )}
               </span>
 
               <div className="min-w-0 flex-1">
@@ -112,7 +136,9 @@ export function CourseOutlineList({ courseSlug, lessons, serverCompleted }: Prop
                   {isDone && <span className="sr-only"> — hotovo</span>}
                 </h3>
                 {lesson.summary && (
-                  <p className="text-sm leading-relaxed text-ink-500">{lesson.summary}</p>
+                  <p className="text-sm leading-relaxed text-ink-500">
+                    {lesson.summary}
+                  </p>
                 )}
               </div>
 
@@ -129,7 +155,11 @@ export function CourseOutlineList({ courseSlug, lessons, serverCompleted }: Prop
                     : "font-mono text-xs text-ink-300"
                 }
               >
-                {lesson.isPublished ? (isDone ? "Znovu" : "Otevřít") : "připravujeme"}
+                {lesson.isPublished
+                  ? isDone
+                    ? "Znovu"
+                    : "Otevřít"
+                  : "připravujeme"}
               </span>
             </>
           );
