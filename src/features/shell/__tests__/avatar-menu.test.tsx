@@ -37,7 +37,7 @@ describe("AvatarMenu — klávesnice a klik mimo", () => {
       "Odhlásit",
     ]);
     expect(document.activeElement).toBe(items[0]);
-    expect(items[0].getAttribute("aria-current")).toBe("page");
+    expect(items[0]!.getAttribute("aria-current")).toBe("page");
 
     fireEvent.keyDown(document.activeElement!, { key: "Escape" });
     expect(screen.queryByRole("menu")).toBeNull();
@@ -51,7 +51,7 @@ describe("AvatarMenu — klávesnice a klik mimo", () => {
     const items = screen.getAllByRole("menuitem");
     expect(document.activeElement).toBe(items[0]);
 
-    fireEvent.keyDown(items[0], { key: "ArrowUp" });
+    fireEvent.keyDown(items[0]!, { key: "ArrowUp" });
     expect(document.activeElement).toBe(items[items.length - 1]);
     fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
     expect(document.activeElement).toBe(items[0]);
