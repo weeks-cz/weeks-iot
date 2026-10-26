@@ -13,6 +13,7 @@ import { LessonWorkbench } from "@/features/lessons/components/LessonWorkbench";
 import { lessonBySlug } from "@/features/lessons/content";
 import { saveLessonProgressAction } from "@/features/progress/actions";
 import { saveLessonBuildAction } from "@/features/collection/actions";
+import { saveAnonBuild } from "@/features/collection/anon-builds";
 import type { LessonBuildDraft } from "@/features/collection/schema";
 import type { EditorMode } from "@/features/blocks/mode";
 
@@ -135,6 +136,10 @@ export function LessonRunner({
           if (!res.ok) console.warn("[lekce] Výtvor se do sbírky neuložil");
         })
         .catch(() => setSavedToCollection(false));
+    } else {
+      /* Bez účtu (nebo bez profilu dítěte) výtvor zůstane v prohlížeči
+         a převezme se spolu s postupem. */
+      if (saveAnonBuild({ ...build, courseSlug, lessonSlug })) setSavedToCollection(true);
     }
 
     void track(EVENT.LESSON_COMPLETE, {

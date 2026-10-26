@@ -62,3 +62,18 @@ export async function writeLessonBuild(childId: string, build: LessonBuild): Pro
   }
   return true;
 }
+
+/**
+ * Zapíše výtvory převzaté z prohlížeče. Selhání nikdy nevyhazuje —
+ * výtvory jsou méně důležité než postup, který už je zapsaný.
+ */
+export async function writeAnonBuilds(childId: string, builds: LessonBuild[]): Promise<void> {
+  for (const build of builds) {
+    try {
+      const ok = await writeLessonBuild(childId, build);
+      if (!ok) console.warn("[sbírka] Převzatý výtvor se neuložil:", build.lessonSlug);
+    } catch (err) {
+      console.warn("[sbírka] Převzetí výtvoru selhalo:", build.lessonSlug, err);
+    }
+  }
+}

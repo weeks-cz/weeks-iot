@@ -7,6 +7,7 @@ import { Avatar } from "@/features/children/avatars";
 import type { ActionState } from "@/features/actions";
 import { adoptAnonProgressAction } from "../actions";
 import { countAnonLessons } from "../parse";
+import { clearAnonBuilds, useAnonBuildsRaw } from "@/features/collection/anon-builds";
 import { clearAnonSession } from "../storage";
 import { useAnonSession, useAnonSessionRaw } from "../useAnonSession";
 
@@ -35,6 +36,7 @@ export function AdoptProgressPrompt({
 }) {
   const session = useAnonSession();
   const raw = useAnonSessionRaw();
+  const rawBuilds = useAnonBuildsRaw();
   const [dismissed, setDismissed] = useState(false);
   const [state, submit, pending] = useActionState(adoptAnonProgressAction, EMPTY);
   const [childId, setChildId] = useState(activeChildId ?? profiles[0]?.id ?? "");
@@ -42,7 +44,10 @@ export function AdoptProgressPrompt({
   /* Smaže se až po potvrzeném zápisu do účtu, ne dřív — jinak by při chybě
      dítě o postup přišlo. */
   useEffect(() => {
-    if (state.success) clearAnonSession();
+    if (state.success) {
+      clearAnonSession();
+      clearAnonBuilds();
+    }
   }, [state.success]);
 
   if (dismissed || profiles.length === 0 || !session) return null;
@@ -78,6 +83,7 @@ export function AdoptProgressPrompt({
 
       <form action={submit} className="flex flex-col gap-4">
         <input type="hidden" name="anonSession" value={raw} />
+        <input type="hidden" name="anonBuilds" value={rawBuilds} />
 
         {profiles.length > 1 && (
           <fieldset className="flex flex-col gap-2 border-0 p-0">
@@ -118,6 +124,7 @@ export function AdoptProgressPrompt({
             disabled={pending}
             onClick={() => {
               clearAnonSession();
+              clearAnonBuilds();
               setDismissed(true);
             }}
           >

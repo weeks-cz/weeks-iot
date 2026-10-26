@@ -13,6 +13,8 @@ import { consentTextsForAge } from "@/features/consent/texts";
 import { writeLessonProgress } from "@/features/progress/write";
 import { issueEarnedCertificates } from "@/features/certificates/issue";
 import { parseAnonSession } from "@/features/anon-session/parse";
+import { parseAnonBuilds } from "@/features/collection/parse-builds";
+import { writeAnonBuilds } from "@/features/collection/write";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { needsParentalConsent, onboardingSchema } from "./schema";
 
@@ -192,6 +194,8 @@ export async function completeOnboardingAction(
   if (anon) {
     try {
       await writeLessonProgress(childId, anon.lessons);
+      /* Výtvory až po zapsaném postupu; jejich selhání nic neshodí. */
+      await writeAnonBuilds(childId, parseAnonBuilds(formData.get("anonBuilds")));
       /* Kdo prošel celý kurz ještě před registrací, dostane certifikát
          hned s účtem — s datem, kdy kurz opravdu dokončil. */
       after(() => issueEarnedCertificates(childId));

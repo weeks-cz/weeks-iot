@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { clearAnonBuilds } from "@/features/collection/anon-builds";
 import { clearAnonSession } from "../storage";
 
 /**
@@ -13,6 +14,7 @@ import { clearAnonSession } from "../storage";
 export function ClearAnonSession() {
   useEffect(() => {
     clearAnonSession();
+    clearAnonBuilds();
   }, []);
   return null;
 }

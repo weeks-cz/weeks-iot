@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState, useSyncExternalStore } fro
 import { Button } from "@/components/ui/Button";
 import { Checkbox, SelectField, TextField } from "@/components/ui/Field";
 import { Alert, MonoLabel, Stepper } from "@/components/ui/Surface";
+import { useAnonBuildsRaw } from "@/features/collection/anon-builds";
 import { useAnonSessionRaw } from "@/features/anon-session/useAnonSession";
 import { AVATARS, Avatar } from "@/features/children/avatars";
 import { consentTextsForAge } from "@/features/consent/texts";
@@ -78,6 +79,7 @@ function WizardForm({ regions, initial }: { regions: RegionOption[]; initial: On
   const { birthDate } = draft;
 
   const anonSession = useAnonSessionRaw();
+  const anonBuilds = useAnonBuildsRaw();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
 
@@ -111,6 +113,7 @@ function WizardForm({ regions, initial }: { regions: RegionOption[]; initial: On
   return (
     <form action={submit} className="flex flex-col gap-6" noValidate>
       <input type="hidden" name="anonSession" value={anonSession} />
+      <input type="hidden" name="anonBuilds" value={anonBuilds} />
 
       <Stepper steps={STEPS} current={step} />
 

@@ -8,6 +8,8 @@ import { issueEarnedCertificates } from "@/features/certificates/issue";
 import { writeLessonProgress } from "@/features/progress/write";
 import type { ActionState } from "@/features/actions";
 import { parseAnonSession } from "./parse";
+import { parseAnonBuilds } from "@/features/collection/parse-builds";
+import { writeAnonBuilds } from "@/features/collection/write";
 
 /**
  * Převzetí rozdělaného postupu z tohohle počítače do účtu přihlášeného rodiče.
@@ -67,6 +69,10 @@ export async function adoptAnonProgressAction(
         "Postup se nepodařilo převzít. Zkuste to prosím znovu — lekce na tomhle počítači zůstávají.",
     };
   }
+
+  /* Výtvory až po zapsaném postupu; jejich selhání převzetí neshodí. */
+  const builds = parseAnonBuilds(formData.get("anonBuilds"));
+  if (builds.length > 0) await writeAnonBuilds(child.id, builds);
 
   after(() => issueEarnedCertificates(child.id));
   revalidatePath("/ucet");
