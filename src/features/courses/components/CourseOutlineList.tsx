@@ -32,12 +32,7 @@ interface Props {
  * Proto se kreslí nejdřív bez postupu (to vidí i vyhledávač) a hned po
  * připojení se doplní z prohlížeče.
  */
-export function CourseOutlineList({
-  courseSlug,
-  lessons,
-  serverCompleted,
-  mergeAnon = true,
-}: Props) {
+export function CourseOutlineList({ courseSlug, lessons, serverCompleted, mergeAnon = true }: Props) {
   const [done, setDone] = useState<Set<string>>(new Set(serverCompleted));
 
   useEffect(() => {
@@ -93,7 +88,7 @@ export function CourseOutlineList({
 
           {next ? (
             /* Anonym s postupem má nad seznamem lobby hero s amber tlačítkem —
-                tohle je pak jen druhá cesta ke stejné lekci. */
+               tohle je pak jen druhá cesta ke stejné lekci. */
             <ButtonLink
               href={`/kurz/${courseSlug}/${next.slug}`}
               variant={mergeAnon ? "outline" : "primary"}
@@ -101,9 +96,7 @@ export function CourseOutlineList({
               Pokračovat lekcí {next.orderIndex}
             </ButtonLink>
           ) : (
-            <p className="font-mono text-xs text-trust-700">
-              celý kurz hotový 🎉
-            </p>
+            <p className="font-mono text-xs text-trust-700">celý kurz hotový 🎉</p>
           )}
         </div>
       )}
@@ -118,16 +111,10 @@ export function CourseOutlineList({
             <>
               <span
                 className={`flex size-10 shrink-0 items-center justify-center rounded-sm border font-mono text-sm ${
-                  isDone
-                    ? "border-trust-600 bg-trust-50 text-trust-700"
-                    : "border-ink/20"
+                  isDone ? "border-trust-600 bg-trust-50 text-trust-700" : "border-ink/20"
                 }`}
               >
-                {isDone ? (
-                  <Check className="h-5 w-5" aria-hidden="true" />
-                ) : (
-                  lesson.orderIndex
-                )}
+                {isDone ? <Check className="h-5 w-5" aria-hidden="true" /> : lesson.orderIndex}
               </span>
 
               <div className="min-w-0 flex-1">
@@ -136,9 +123,7 @@ export function CourseOutlineList({
                   {isDone && <span className="sr-only"> — hotovo</span>}
                 </h3>
                 {lesson.summary && (
-                  <p className="text-sm leading-relaxed text-ink-500">
-                    {lesson.summary}
-                  </p>
+                  <p className="text-sm leading-relaxed text-ink-500">{lesson.summary}</p>
                 )}
               </div>
 
@@ -155,11 +140,7 @@ export function CourseOutlineList({
                     : "font-mono text-xs text-ink-300"
                 }
               >
-                {lesson.isPublished
-                  ? isDone
-                    ? "Znovu"
-                    : "Otevřít"
-                  : "připravujeme"}
+                {lesson.isPublished ? (isDone ? "Znovu" : "Otevřít") : "připravujeme"}
               </span>
             </>
           );

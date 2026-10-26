@@ -33,7 +33,7 @@ export interface LobbyHeroViewProps {
    * Jiný cíl a popisek tlačítka ve stavu `done`. Dítě s účtem jde do sbírky;
    * anonym ji otevřít nemůže, tak ho tlačítko pošle uložit postup.
    */
-  doneAction?: { href: string; label: string };
+  doneAction?: { href: string; label: string; onClick?: () => void };
 }
 
 /** Výška náhledu na kartě. Karta má pevnou výšku, aby přepočet na klientovi nehnul stránkou. */
@@ -153,6 +153,12 @@ function Mission({
       ? "hotovo"
       : `lekce ${path.findIndex((l) => l.slug === state.lesson.slug) + 1} / ${path.length}`;
 
+  /* Tlačítko se skládá jednou: hotový kurz může mít vlastní cíl. */
+  const action =
+    state.kind === "done" && doneAction
+      ? doneAction
+      : { href: heroHref(state, course.slug), label: BUTTON[state.kind], onClick: undefined };
+
   return (
     <div className="order-1 min-w-0 xl:order-2 xl:px-10 xl:py-12">
       <p className="mb-3 font-mono text-xs uppercase tracking-[0.16em] text-accent-300">
@@ -174,11 +180,12 @@ function Mission({
       {/* Na úzkém telefonu (320 px) by se nejdelší popisek zalomil na dva
           řádky a tlačítko by po přepočtu na klientovi povyrostlo. */}
       <ButtonLink
-        href={state.kind === "done" && doneAction ? doneAction.href : heroHref(state, course.slug)}
+        href={action.href}
         size="lg"
         className="max-sm:w-full max-sm:px-4"
+        onClick={action.onClick}
       >
-        {state.kind === "done" && doneAction ? doneAction.label : BUTTON[state.kind]}
+        {action.label}
       </ButtonLink>
     </div>
   );

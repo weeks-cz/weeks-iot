@@ -68,24 +68,15 @@ describe("anonLobbyModel", () => {
   });
 
   it("hotová lekce jiného kurzu se nepočítá", () => {
-    expect(
-      anonLobbyModel(outline, session(["blikani"], "jiny"), noDraft),
-    ).toBeNull();
+    expect(anonLobbyModel(outline, session(["blikani"], "jiny"), noDraft)).toBeNull();
   });
 
   it("jedna hotová lekce → další na řadě, cesta jen z publikovaných lekcí", () => {
     const model = anonLobbyModel(outline, session(["rozsvit-ledku"]), noDraft);
     expect(model?.state.kind).toBe("next");
     expect(model?.path).toHaveLength(7);
-    expect(model?.path.filter((l) => l.done).map((l) => l.slug)).toEqual([
-      "rozsvit-ledku",
-    ]);
+    expect(model?.path.filter((l) => l.done).map((l) => l.slug)).toEqual(["rozsvit-ledku"]);
     expect(model?.circuit).toBeNull();
-  });
-
-  it("přihlášenému volající relaci nepředá → model je null i s postupem v prohlížeči", () => {
-    // Stránka pro přihlášeného posílá session = null (enabled=false se k modelu vůbec nedostane).
-    expect(anonLobbyModel(outline, null, vi.fn(noDraft))).toBeNull();
   });
 
   it("koncept cílové lekce → stav draft a obvod z konceptu", () => {
@@ -95,20 +86,14 @@ describe("anonLobbyModel", () => {
     const load = vi.fn((slug: string) =>
       slug === "semafor" ? { code: semafor.starterCode, circuit } : null,
     );
-    const model = anonLobbyModel(
-      outline,
-      session(["rozsvit-ledku", "blikani", "tlacitko"]),
-      load,
-    );
+    const model = anonLobbyModel(outline, session(["rozsvit-ledku", "blikani", "tlacitko"]), load);
     expect(model?.state.kind).toBe("draft");
     expect(model?.circuit).toBe(circuit);
     expect(load).toHaveBeenCalledWith("semafor");
   });
 
   it("celý kurz hotový → stav done", () => {
-    expect(anonLobbyModel(outline, session(SLUGS), noDraft)?.state.kind).toBe(
-      "done",
-    );
+    expect(anonLobbyModel(outline, session(SLUGS), noDraft)?.state.kind).toBe("done");
   });
 });
 

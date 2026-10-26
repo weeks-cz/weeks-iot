@@ -3,12 +3,7 @@ import { lessonBySlug } from "@/features/lessons/content";
 import type { LessonDraft } from "@/features/lessons/draft";
 import { draftStep } from "@/features/lessons/draft-step";
 import { heroCopy, type HeroCopy } from "./copy";
-import {
-  coursePath,
-  heroState,
-  type HeroState,
-  type PathLesson,
-} from "./model";
+import { coursePath, heroState, type HeroState, type PathLesson } from "./model";
 import type { AnonSession } from "@/features/anon-session/schema";
 
 export type RefinedHero = {
@@ -49,11 +44,12 @@ export interface AnonLobbyModel {
 
 /**
  * Lobby bez účtu na přehledu kurzu. `null` = anonym nemá hotovou lekci
- * (nebo relaci nemá vůbec, nebo je přihlášený) a stránka zůstane, jaká je.
+ * (nebo relaci nemá vůbec) a stránka zůstane, jaká je.
  *
- * Relaci dostane jen anonym — přihlášenému ji volající nepředá, takže se
- * jeho postup nesplete s tím, co zbylo v prohlížeči po sourozenci.
- * Koncept se čte pod starým klíčem bez profilu (anonym).
+ * Relaci dostane jen anonym — přihlášenému ji volající nepředá (`AnonLobby`
+ * s `enabled={false}` ji vůbec nečte), takže se jeho postup nesplete s tím,
+ * co zbylo v prohlížeči po sourozenci. Koncept se čte pod starým klíčem
+ * bez profilu (anonym).
  */
 export function anonLobbyModel(
   outline: {
@@ -82,12 +78,7 @@ export function anonLobbyModel(
 
   const refined = refineHero(path, load);
   if (refined) {
-    return {
-      path,
-      state: refined.state,
-      labels: refined.labels,
-      circuit: refined.circuit,
-    };
+    return { path, state: refined.state, labels: refined.labels, circuit: refined.circuit };
   }
   const state = heroState(path, () => null);
   const lesson = state.kind === "done" ? null : lessonBySlug(state.lesson.slug);

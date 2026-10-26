@@ -16,10 +16,15 @@ import { HERO_THUMB_HEIGHT, LobbyHeroView } from "./LobbyHeroView";
 
 type Outline = Parameters<typeof anonLobbyModel>[0];
 
-const SAVE_ACTION = {
-  href: "/registrace",
-  label: "Ulož si postup a získej certifikát",
-};
+/** Koncept anonyma: starý klíč v1 bez profilu (`weeks.lesson-draft.v1.<slug>`). */
+export const loadAnonDraft = (slug: string) => loadDraft(slug);
+
+/** Odchod k registraci z lobby; stejná měření u hera i u karty „Ulož si postup“. */
+function trackSignupStart(lessonSlug: string | null): void {
+  void track(EVENT.SIGNUP_START, { source: "kurz-lobby", after_lesson: lessonSlug });
+}
+
+const SAVE_LABEL = "Ulož si postup a získej certifikát";
 
 /**
  * Lobby bez účtu na přehledu kurzu.
@@ -53,9 +58,7 @@ export function AnonLobby({
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- jednorázové
        přečtení localStorage po připojení; na serveru žádný není a počáteční
        stav z něj by rozešel hydrataci. */
-    setModel(
-      anonLobbyModel(outline, readAnonSession(), (slug) => loadDraft(slug)),
-    );
+    setModel(anonLobbyModel(outline, readAnonSession(), loadAnonDraft));
   }, [enabled, outline]);
 
   if (!model) return <>{children}</>;
@@ -77,7 +80,11 @@ export function AnonLobby({
         course={course}
         path={path}
         labels={heroLabels}
-        doneAction={SAVE_ACTION}
+        doneAction={{
+          href: "/registrace",
+          label: SAVE_LABEL,
+          onClick: () => trackSignupStart(null),
+        }}
         thumbnail={
           circuit && state.kind === "draft" ? (
             <CircuitThumb
@@ -96,17 +103,8 @@ export function AnonLobby({
             camp ? "md:grid-cols-2" : "md:grid-cols-1",
           )}
         >
-          <SaveCard
-            lessonSlug={state.kind === "done" ? null : state.lesson.slug}
-          />
-          {camp && (
-            <CampCard
-              offer={camp}
-              placement="lobby"
-              size="tile"
-              className="h-full"
-            />
-          )}
+          <SaveCard lessonSlug={state.kind === "done" ? null : state.lesson.slug} />
+          {camp && <CampCard offer={camp} placement="lobby" size="tile" className="h-full" />}
         </div>
       </section>
     </>
@@ -118,12 +116,10 @@ function SaveCard({ lessonSlug }: { lessonSlug: string | null }) {
   return (
     <section className="flex h-full flex-col rounded-md border border-ink/15 bg-paper-soft p-5">
       <MonoLabel className="mb-3">Tvůj postup</MonoLabel>
-      <h2 className="mb-3 font-display text-lg font-semibold text-ink">
-        Zatím je jen tady
-      </h2>
+      <h2 className="mb-3 font-display text-lg font-semibold text-ink">Zatím je jen tady</h2>
       <p className="mb-4 max-w-prose leading-relaxed text-ink-500">
-        Postup máš uložený jen v tomhle prohlížeči. S účtem ho nepotratíš a po
-        dokončení kurzu dostaneš certifikát.
+        Postup máš uložený jen v tomhle prohlížeči. S účtem ho nepotratíš a po dokončení kurzu
+        dostaneš certifikát.
       </p>
       <div className="mt-auto">
         {/* Amber má hero, tohle je vedlejší akce. */}
@@ -131,10 +127,7 @@ function SaveCard({ lessonSlug }: { lessonSlug: string | null }) {
           href="/registrace"
           variant="outline"
           onClick={() => {
-            void track(EVENT.SIGNUP_START, {
-              source: "kurz-lobby",
-              after_lesson: lessonSlug,
-            });
+            trackSignupStart(lessonSlug);
           }}
         >
           Ulož si postup
