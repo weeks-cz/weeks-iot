@@ -70,6 +70,10 @@ export function heroHref(state: HeroState, courseSlug: string): string {
  * ji vykreslují stejně, a stejně ji použije i lobby bez účtu na přehledu
  * kurzu (bez avataru a čísel).
  *
+ * Tři sloupce (dítě · věta · karta) až od `xl`: při 1024 px byl prostřední
+ * sloupec tak úzký, že se nadpis lámal na čtyři řádky. Do té doby dva
+ * sloupce (věta · karta) a dítě pod nimi.
+ *
  * Jediné amber tlačítko na obrazovce je tady. Oko ho má najít jako první:
  * na telefonu jde věta s tlačítkem nahoru, karta lekce pod ni a dítě až
  * nakonec (návrh §5.1).
@@ -95,15 +99,15 @@ export function LobbyHeroView({
         src="/brand/weeks-w.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute -top-16 left-[30%] h-80 w-auto max-w-none opacity-10 select-none sm:left-[38%] lg:-top-24 lg:h-[31rem]"
+        className="pointer-events-none absolute -top-16 left-[30%] h-80 w-auto max-w-none opacity-10 select-none sm:left-[38%] xl:-top-24 xl:h-[31rem]"
       />
 
       <div
         className={cn(
-          "section-container relative grid gap-8 py-8 sm:py-10 lg:gap-0 lg:py-0",
+          "section-container relative grid gap-8 py-8 sm:py-10 xl:gap-0 xl:py-0",
           hasChild
-            ? "md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[15rem_minmax(0,1fr)_20rem]"
-            : "md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_20rem]",
+            ? "md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[15rem_minmax(0,1fr)_20rem]"
+            : "md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]",
         )}
       >
         <Mission state={state} course={course} path={path} labels={labels} nick={nick} />
@@ -136,21 +140,30 @@ function Mission({
       : `lekce ${path.findIndex((l) => l.slug === state.lesson.slug) + 1} / ${path.length}`;
 
   return (
-    <div className="order-1 min-w-0 lg:order-2 lg:px-10 lg:py-12">
+    <div className="order-1 min-w-0 xl:order-2 xl:px-10 xl:py-12">
       <p className="mb-3 font-mono text-xs uppercase tracking-[0.16em] text-accent-300">
         Kurz {course.title} · {position}
       </p>
-      {/* Pod `lg` určuje výšku hero tenhle sloupec, a texty „další lekce"
-          a „rozdělaná práce" jsou různě dlouhé. Nadpis i věta proto drží
-          místo na tři řádky, ať přepočet na klientovi nehne kartou pod nimi.
-          Na `lg` drží výšku karta s pevnou výškou. */}
-      <h1 className="mb-4 min-h-[3lh] break-words font-display text-[2.375rem] font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl lg:min-h-0 lg:text-[2.875rem]">
-        <Heading state={state} course={course} labels={labels} nick={nick} />
-      </h1>
-      <p className="mb-6 min-h-[3lh] max-w-[28rem] text-base leading-relaxed text-paper/70 sm:text-lg lg:min-h-0">
-        {labels.line}
-      </p>
-      <ButtonLink href={heroHref(state, course.slug)} size="lg">
+      {/* Nadpis a věta mají různě dlouhé texty pro „další lekci" a „rozdělanou
+          práci" (měřeno pro všech 7 lekcí × zapojení/program při 320–1366 px:
+          nadpis až 4 řádky, věta až 3). Blok proto drží místo na nejdelší
+          kombinaci, ať přepočet na klientovi nehne tlačítkem ani kartou.
+          Volné místo zůstane pod větou, ne mezi nadpisem a větou. */}
+      <div className="mb-6 min-h-[14rem] sm:min-h-[15.25rem] xl:min-h-[13.5rem]">
+        <h1 className="mb-4 break-words font-display text-[2.375rem] font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl xl:text-[2.875rem]">
+          <Heading state={state} course={course} labels={labels} nick={nick} />
+        </h1>
+        <p className="max-w-[28rem] text-base leading-relaxed text-paper/70 sm:text-lg">
+          {labels.line}
+        </p>
+      </div>
+      {/* Na úzkém telefonu (320 px) by se nejdelší popisek zalomil na dva
+          řádky a tlačítko by po přepočtu na klientovi povyrostlo. */}
+      <ButtonLink
+        href={heroHref(state, course.slug)}
+        size="lg"
+        className="max-sm:w-full max-sm:px-4"
+      >
         {BUTTON[state.kind]}
       </ButtonLink>
     </div>
@@ -209,7 +222,7 @@ function LessonCard({
   thumbnail,
 }: Pick<LobbyHeroViewProps, "state" | "path" | "course" | "nick" | "certificate" | "thumbnail">) {
   return (
-    <div className="order-2 flex items-center lg:order-3 lg:py-10">
+    <div className="order-2 flex items-center xl:order-3 xl:py-10">
       {/* Pevná výška: přepočet na klientovi mění jen obsah, ne rozměr. */}
       <div className="h-[19.5rem] w-full overflow-hidden border-2 border-accent-400 bg-[rgba(15,19,38,0.75)] p-4 shadow-[6px_6px_0_0_var(--color-accent-600)]">
         {state.kind === "done" ? (
@@ -256,7 +269,9 @@ function LessonCardBody({
 
       {state.kind === "start" ? (
         <p className="mt-3 font-mono text-xs text-paper/60">
-          {lesson.minutes ? `asi ${lesson.minutes} minut` : " "}
+          {lesson.minutes
+            ? `asi ${lesson.minutes} ${plural(lesson.minutes, "minutu", "minuty", "minut")}`
+            : "\u00a0"}
         </p>
       ) : (
         <>
@@ -325,17 +340,17 @@ function ChildColumn({
     : [];
 
   return (
-    <div className="order-3 flex min-w-0 items-center gap-5 border-t border-paper/10 pt-6 md:col-span-2 lg:order-1 lg:col-span-1 lg:flex-col lg:items-start lg:gap-0 lg:border-r lg:border-t-0 lg:py-10 lg:pr-6">
+    <div className="order-3 flex min-w-0 items-center gap-5 border-t border-paper/10 pt-6 md:col-span-2 xl:order-1 xl:col-span-1 xl:flex-col xl:items-start xl:gap-0 xl:border-r xl:border-t-0 xl:py-10 xl:pr-6">
       {/* SVG avatary jsou kreslené pro světlé pozadí (návrh §10). */}
-      <div className="grid size-16 shrink-0 place-items-center rounded-full border-[3px] border-accent-300 bg-paper p-2.5 text-ink shadow-[0_0_0_6px_rgb(103_232_249/0.14)] lg:size-29 lg:p-5">
+      <div className="grid size-16 shrink-0 place-items-center rounded-full border-[3px] border-accent-300 bg-paper p-2.5 text-ink shadow-[0_0_0_6px_rgb(103_232_249/0.14)] xl:size-29 xl:p-5">
         <Avatar id={avatar} className="block size-full" />
       </div>
-      <div className="min-w-0 flex-1 lg:w-full">
-        <p className="truncate font-display text-2xl font-extrabold lg:mt-4 lg:text-[1.75rem]">
+      <div className="min-w-0 flex-1 xl:w-full">
+        <p className="truncate font-display text-2xl font-extrabold xl:mt-4 xl:text-[1.75rem]">
           {nick}
         </p>
         {items.length > 0 && (
-          <dl className="mt-2 flex gap-5 lg:mt-4">
+          <dl className="mt-2 flex gap-5 xl:mt-4">
             {items.map((item) => (
               <div key={item.key} className="flex flex-col-reverse">
                 <dt className="text-xs text-paper/60">{item.label}</dt>

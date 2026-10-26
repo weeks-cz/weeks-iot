@@ -18,6 +18,9 @@ import { LobbyBottom } from "../components/LobbyBottom";
 import { LobbyHero } from "../components/LobbyHero";
 import { LobbyHeroView, type LobbyHeroViewProps } from "../components/LobbyHeroView";
 import { lessonBySlug } from "@/features/lessons/content";
+import { lessonSeedCircuit } from "@/features/lessons/seed-circuit";
+import { referenceCircuit } from "@/features/lessons/reference-circuit";
+import { refineHero } from "../refine";
 
 const SLUGS = [
   ["rozsvit-ledku", "Rozsviť LEDku"],
@@ -154,6 +157,57 @@ describe("LobbyHeroView — čtyři stavy", () => {
     const anon = renderHero({ ...heroProps(nextCase.state, p3), nick: undefined, stats: undefined });
     expect(anon).not.toContain("<dl");
     expect(anon).toContain("Pokračovat v lekci →");
+  });
+});
+
+describe("LobbyHeroView — délka první lekce", () => {
+  it("minuty v českém tvaru", () => {
+    for (const [minutes, text] of [
+      [1, "asi 1 minutu"],
+      [3, "asi 3 minuty"],
+      [20, "asi 20 minut"],
+    ] as const) {
+      const path = coursePath(
+        published.map((l) => ({ ...l, estimatedMinutes: minutes })),
+        new Set(),
+      );
+      expect(renderHero(heroProps(heroState(path, () => null), path))).toContain(text);
+    }
+  });
+});
+
+describe("refineHero — zpřesnění hera podle konceptu", () => {
+  const path = pathWith(3);
+  const semafor = lessonBySlug("semafor")!;
+  const ref = referenceCircuit(semafor.wiring);
+
+  it("koncept v cílové lekci (rozdělané zapojení) → stav draft s obvodem dítěte", () => {
+    const circuit = { comps: ref.comps, wires: ref.wires.slice(0, 2) };
+    const asked: string[] = [];
+    const refined = refineHero(path, (slug) => {
+      asked.push(slug);
+      return slug === "semafor" ? { code: semafor.starterCode, circuit } : null;
+    });
+    expect(asked).toEqual(["semafor"]);
+    expect(refined?.state).toEqual({ kind: "draft", lesson: path[3], step: "wiring" });
+    expect(refined?.labels.waiting).toBe("čeká na dráty.");
+    expect(refined?.circuit).toBe(circuit);
+  });
+
+  it("koncept jen v kroku zadání (výchozí obvod i kód) → beze změny", () => {
+    expect(
+      refineHero(path, () => ({
+        code: semafor.starterCode,
+        circuit: lessonSeedCircuit(semafor),
+      })),
+    ).toBeNull();
+  });
+
+  it("žádný koncept → beze změny; hotový kurz se na koncept neptá", () => {
+    expect(refineHero(path, () => null)).toBeNull();
+    const load = vi.fn(() => null);
+    expect(refineHero(pathWith(7), load)).toBeNull();
+    expect(load).not.toHaveBeenCalled();
   });
 });
 
