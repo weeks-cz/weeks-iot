@@ -18,8 +18,12 @@ type Size = "sm" | "md" | "lg";
 const BASE =
   "inline-flex items-center justify-center gap-2 font-semibold rounded-md " +
   "transition-all duration-200 select-none " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "disabled:opacity-50 disabled:pointer-events-none";
+
+/* Barva fokusu podle pozadí: inkoustový kroužek na tmavé ploše zmizí. */
+const FOCUS = "focus-visible:outline-ink";
+const FOCUS_ON_DARK = "focus-visible:outline-paper";
 
 /* Posun a stín se dávají jen tam, kde nejsou disabled — jinak se prvek
    hýbe, i když nic neudělá. */
@@ -33,6 +37,11 @@ const VARIANTS: Record<Variant, string> = {
   danger: cn("bg-danger-600 hover:bg-danger-500 text-white border border-danger-700", LIFT),
 };
 
+/* Obrysové tlačítko na tmavém pozadí (`onDark`). Ostatní varianty se
+   na tmě nemění — amber a ink mají vlastní rámeček. */
+const OUTLINE_ON_DARK =
+  "border border-paper/50 text-paper hover:border-paper hover:bg-paper hover:text-ink";
+
 const SIZES: Record<Size, string> = {
   /* min-h drží dotykový cíl na 44 px i u malé varianty. Pod tím se na
      telefonu trefuje špatně a je to jeden z nejčastějších důvodů, proč
@@ -42,17 +51,39 @@ const SIZES: Record<Size, string> = {
   lg: "text-lg px-8 py-4 min-h-14",
 };
 
-interface CommonProps {
+export interface ButtonStyle {
   variant?: Variant;
   size?: Size;
   fullWidth?: boolean;
-  loading?: boolean;
-  children: ReactNode;
+  /** Tlačítko stojí na tmavém pozadí: světlý kroužek fokusu, obrys v papíru. */
+  onDark?: boolean;
   className?: string;
 }
 
-function classes({ variant = "primary", size = "md", fullWidth, className }: CommonProps) {
-  return cn(BASE, VARIANTS[variant], SIZES[size], fullWidth && "w-full", className);
+interface CommonProps extends ButtonStyle {
+  loading?: boolean;
+  children: ReactNode;
+}
+
+/**
+ * Třídy tlačítka pro prvek, který nemůže být `Button` ani `ButtonLink` —
+ * např. obyčejné `<a>` na soubor, které `next/link` nesmí přednačítat.
+ */
+export function buttonClasses({
+  variant = "primary",
+  size = "md",
+  fullWidth,
+  onDark = false,
+  className,
+}: ButtonStyle = {}): string {
+  return cn(
+    BASE,
+    onDark ? FOCUS_ON_DARK : FOCUS,
+    onDark && variant === "outline" ? OUTLINE_ON_DARK : VARIANTS[variant],
+    SIZES[size],
+    fullWidth && "w-full",
+    className,
+  );
 }
 
 function Spinner() {
@@ -70,6 +101,7 @@ export function Button({
   variant,
   size,
   fullWidth,
+  onDark,
   loading,
   children,
   className,
@@ -84,7 +116,7 @@ export function Button({
       /* aria-busy říká čtečce, že se pracuje. Bez toho uživatel slyší jen
          to, že tlačítko přestalo reagovat. */
       aria-busy={loading || undefined}
-      className={classes({ variant, size, fullWidth, className, children })}
+      className={buttonClasses({ variant, size, fullWidth, onDark, className })}
       {...rest}
     >
       {loading && <Spinner />}
@@ -99,12 +131,13 @@ export function ButtonLink({
   variant,
   size,
   fullWidth,
+  onDark,
   children,
   className,
   ...rest
 }: ButtonLinkProps) {
   return (
-    <Link className={classes({ variant, size, fullWidth, className, children })} {...rest}>
+    <Link className={buttonClasses({ variant, size, fullWidth, onDark, className })} {...rest}>
       {children}
     </Link>
   );

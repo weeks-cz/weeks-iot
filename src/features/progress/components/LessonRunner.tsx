@@ -161,14 +161,17 @@ export function LessonRunner({
         (l) => l.courseSlug === courseSlug && l.lessonSlug === lessonSlug,
       );
       if (record) {
-        setProgressSaved(
-          saveLessonProgressAction(record)
-            .then((res) => {
-              if (!res.ok) console.warn("[lekce] Postup se do účtu nezapsal");
-              return res.ok;
-            })
-            .catch(() => false),
-        );
+        const saving = saveLessonProgressAction(record)
+          .then((res) => {
+            if (!res.ok) console.warn("[lekce] Postup se do účtu nezapsal");
+            return res.ok;
+          })
+          .catch(() => false);
+        /* Slib jde do finále jen dokud zápis opravdu běží. Doběhne-li dřív,
+           než dítě klikne „Mám hotovo", dostane finále rovnou boolean
+           a „Chystám certifikát…" neproblikne. */
+        setProgressSaved(saving);
+        void saving.then((ok) => setProgressSaved((cur) => (cur === saving ? ok : cur)));
       }
     }
     setBuiltCircuit(build.circuit);

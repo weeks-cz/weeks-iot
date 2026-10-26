@@ -52,8 +52,10 @@ function ThumbDrawing({ circuit, frame, height }: Pick<Props, "circuit" | "frame
   const elementsReady = useWokwiElements();
   if (!elementsReady) return null;
   return (
-    /* Žádný dotek ani kolečko: náhled je obrázek, ne plocha. */
-    <div aria-hidden="true" className="pointer-events-none select-none">
+    /* Žádný dotek ani kolečko: náhled je obrázek, ne plocha. `inert`, protože
+       wokwi prvky jsou samy fokusovatelné — klávesnice by jinak skákala
+       do neviditelných zastávek uvnitř obrázku. */
+    <div aria-hidden="true" inert className="pointer-events-none select-none">
       <CircuitBuilder
         palette={[]}
         initialCircuit={circuit}
@@ -76,14 +78,11 @@ function ThumbDrawing({ circuit, frame, height }: Pick<Props, "circuit" | "frame
  */
 export function CircuitThumb({ circuit, label, height = 160, frame }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  /* Bez IntersectionObserveru (starý prohlížeč) se kreslí rovnou. */
+  const [visible, setVisible] = useState(() => typeof IntersectionObserver === "undefined");
   useEffect(() => {
     const el = boxRef.current;
     if (!el || visible) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {

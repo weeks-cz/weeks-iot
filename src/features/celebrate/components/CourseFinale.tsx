@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import Link from "next/link";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink, buttonClasses } from "@/components/ui/Button";
 import { Alert, MonoLabel } from "@/components/ui/Surface";
 import { EVENT, track } from "@/features/analytics/track";
 import { CampCard } from "@/features/camp/components/CampCard";
@@ -43,28 +43,11 @@ export interface CourseFinaleProps {
 
 const THUMB_HEIGHT = 80;
 
-/* Odkaz na PDF je obyčejné <a>, ne next/link: route vrací soubor a Link by
-   ho v produkci přednačítal (generoval PDF jen proto, že je tlačítko vidět).
-   Třídy odpovídají `Button` variantě primary velikosti lg. */
-const AMBER_LINK =
-  "inline-flex min-h-14 items-center justify-center gap-2 rounded-md border border-ink " +
-  "bg-cta-500 px-8 py-4 text-lg font-semibold text-ink shadow-hard-sm select-none " +
-  "transition-all duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-cta-400 " +
-  "hover:shadow-hard focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper";
-
-/* Obrysové tlačítko na tmavém pozadí. `ButtonLink variant="outline"` je
-   inkoustové na papír a `cn` třídy nepřepisuje, proto vlastní. */
-const DARK_OUTLINE =
-  "inline-flex min-h-14 items-center justify-center gap-2 rounded-md border border-paper/50 " +
-  "px-7 py-4 text-lg font-semibold text-paper transition-colors duration-200 " +
-  "hover:border-paper hover:bg-paper hover:text-ink " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper";
-
 /**
  * Výsledek ukládání postupu jako stav: `null` = ještě běží.
  * Odmítnutý slib je totéž co neuložený postup.
  */
-function useSettled(value: Promise<boolean> | boolean): boolean | null {
+export function useSettled(value: Promise<boolean> | boolean): boolean | null {
   /* Výsledek si pamatuje, ke kterému slibu patří — nový slib (opakované
      vyřešení lekce) je zase „ještě běží", bez nastavování stavu v efektu. */
   const [result, setResult] = useState<{ of: Promise<boolean>; ok: boolean } | null>(null);
@@ -279,7 +262,7 @@ function ChildActions({ pdfHref, saved }: { pdfHref: string | null; saved: boole
           Certifikát najdeš v účtu rodiče, jakmile se postup uloží.
         </p>
         <div>
-          <ButtonLink href="/ucim-se" size="lg" className="max-sm:w-full">
+          <ButtonLink href="/ucim-se" size="lg" onDark className="max-sm:w-full">
             Zpět do lobby
           </ButtonLink>
         </div>
@@ -290,18 +273,26 @@ function ChildActions({ pdfHref, saved }: { pdfHref: string | null; saved: boole
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       {saved === null ? (
-        <Button size="lg" loading className="max-sm:w-full">
+        <Button size="lg" onDark loading className="max-sm:w-full">
           Chystám certifikát…
         </Button>
       ) : (
-        <a href={pdfHref} target="_blank" rel="noopener" className={`${AMBER_LINK} max-sm:w-full`}>
+        /* Obyčejné <a>, ne next/link: route vrací soubor a Link by ho
+           v produkci přednačítal (PDF by se generovalo jen proto, že je
+           tlačítko vidět). */
+        <a
+          href={pdfHref}
+          target="_blank"
+          rel="noopener"
+          className={buttonClasses({ size: "lg", onDark: true, className: "max-sm:w-full" })}
+        >
           Stáhnout certifikát <span aria-hidden="true">↓</span>
           <span className="sr-only">(PDF, otevře se v novém okně)</span>
         </a>
       )}
-      <Link href="/ucim-se" className={DARK_OUTLINE}>
+      <ButtonLink href="/ucim-se" variant="outline" size="lg" onDark>
         Zpět do lobby
-      </Link>
+      </ButtonLink>
     </div>
   );
 }
@@ -313,12 +304,16 @@ function AnonActions({
   courseSlug: string;
   afterLesson: { slug: string; order: number };
 }) {
+  /* Dvě dlouhé popisky se vedle sebe do půlky scény nevejdou; pod sebou
+     a stejně široké, ne zalomené nerovně. */
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="grid gap-3 sm:max-w-[28rem]">
       <ButtonLink
         href="/registrace"
         size="lg"
-        className="max-sm:w-full max-sm:px-4"
+        onDark
+        fullWidth
+        className="max-sm:px-4"
         /* Stejné měření jako dřívější zeď na konci kurzu: kolik dětí po
            celém kurzu opravdu vyrazí k registraci. */
         onClick={() => {
@@ -331,9 +326,9 @@ function AnonActions({
       >
         Ulož si postup a získej certifikát
       </ButtonLink>
-      <Link href={`/kurz/${courseSlug}`} className={DARK_OUTLINE}>
+      <ButtonLink href={`/kurz/${courseSlug}`} variant="outline" size="lg" onDark fullWidth>
         Zpět na přehled kurzu
-      </Link>
+      </ButtonLink>
     </div>
   );
 }
