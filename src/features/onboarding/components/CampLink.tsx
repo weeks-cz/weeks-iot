@@ -18,7 +18,16 @@ import { CAMP_CITIES, campUrl, type CampCity } from "@/lib/camp-offer";
  * nedá přihlásit, slibuje tlačítko jen to, co tam rodič najde: formulář
  * „dejte mi vědět o termínech“.
  */
-export function CampLink({ placement, city = null }: { placement: string; city?: CampCity | null }) {
+export function CampLink({
+  placement,
+  city = null,
+  variant = "button",
+}: {
+  placement: string;
+  city?: CampCity | null;
+  /** `button` = amber tlačítko, `link` = textový odkaz (karta tábora, kde amber akce je jinde). */
+  variant?: "button" | "link";
+}) {
   const href = campUrl(
     city,
     `utm_source=ucebna&utm_medium=app&utm_campaign=leto2027&utm_content=${encodeURIComponent(placement)}`,
@@ -39,11 +48,16 @@ export function CampLink({ placement, city = null }: { placement: string; city?:
           destination: city ? `weeks.cz/tabory?mesto=${city}` : "weeks.cz/tabory",
         });
       }}
-      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md
-                 border border-ink bg-cta-500 px-6 py-3 font-semibold text-ink
-                 shadow-hard-sm transition-all duration-200
-                 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-cta-400 hover:shadow-hard
-                 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper"
+      className={
+        variant === "link"
+          ? `inline-flex min-h-12 items-center gap-2 font-semibold text-cta-300 underline-offset-4
+             hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper`
+          : `inline-flex min-h-12 items-center justify-center gap-2 rounded-md
+             border border-ink bg-cta-500 px-6 py-3 font-semibold text-ink
+             shadow-hard-sm transition-all duration-200
+             hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-cta-400 hover:shadow-hard
+             focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper`
+      }
     >
       {label}
       <span aria-hidden="true">→</span>

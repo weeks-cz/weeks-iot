@@ -9,14 +9,15 @@ const render = (props: Parameters<typeof CampCta>[0]) =>
 describe("CampCta podle kraje", () => {
   it("Karlovarsko: otevřené přihlašování a odkaz na termíny v KV", () => {
     const html = render({ segment: "camp", city: "karlovy-vary", placement: "ucet" });
-    expect(html).toContain("v Karlových Varech — přihlašování na léto 2027 je otevřené");
+    expect(html).toContain("Příměstský tábor v Karlových Varech — skutečné Arduino a 3D tisk.");
     expect(html).toContain("Podívat se na termíny");
+    expect(html).not.toContain("připravujeme");
     expect(html).toContain("/tabory?mesto=karlovy-vary&amp;utm_source=ucebna");
   });
 
   it("Praha a Středočeský: sběr zájmu, žádný slib termínu", () => {
     const html = render({ segment: "camp", city: "praha", placement: "ucet" });
-    expect(html).toContain("v Praze na léto 2027 připravujeme");
+    expect(html).toContain("Příměstský tábor v Praze — skutečné Arduino a 3D tisk, termíny připravujeme.");
     expect(html).toContain("Dát mi vědět o termínech");
     expect(html).toContain("/tabory?mesto=praha&amp;");
   });

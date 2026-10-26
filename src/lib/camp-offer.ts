@@ -21,6 +21,11 @@ const CAMP_CITY_BY_REGION: Partial<Record<RegionCode, CampCity>> = {
   "CZ-ST": "praha",
 };
 
+/**
+ * `prihlasky` přepíná ručně ten, kdo na weeks.cz otevírá nebo zavírá turnus
+ * (weeks-web `src/lib/turnusy.ts`): ve stejné chvíli přepne bit i tady.
+ * Nic ho nehlídá — když se zapomene, karta lže o stavu přihlašování.
+ */
 export const CAMP_CITIES: Record<CampCity, { locative: string; prihlasky: boolean }> = {
   "karlovy-vary": { locative: "v Karlových Varech", prihlasky: true },
   praha: { locative: "v Praze", prihlasky: false },
