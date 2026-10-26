@@ -316,6 +316,12 @@
     background-size: 32px 32px;
   }
 
+  /* ── Pozadí lobby ───────────────────────────────────────────────────
+     Tmavý hero dětského rozcestníku: indigo → ink → cyan. */
+  .bg-lobby {
+    background: linear-gradient(135deg, #1e1b4b 0%, var(--color-ink) 55%, #083344 100%);
+  }
+
   /* ── Nekonečný pás ──────────────────────────────────────────────────
      Stejný jako na weeks.cz. Jen na úvodní stránce — v lekci by se hýbal
      vedle věci, na kterou se má dítě soustředit. Při omezeném pohybu ho
