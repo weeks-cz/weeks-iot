@@ -26,6 +26,7 @@ import { useBuzzerSound } from "./useBuzzerSound";
 import { NO_FRAMES, useFramePlayer } from "./useFramePlayer";
 import { applyStep } from "../apply-step";
 import { clearDraft, loadDraft, saveDraft } from "../draft";
+import { draftStep } from "../draft-step";
 import { runLessonChecks, type LessonRunResult } from "../run-check";
 import { lessonSeedCircuit } from "../seed-circuit";
 import { vocabularyFor } from "../vocabulary";
@@ -161,8 +162,19 @@ export function LessonWorkbench({
     setCircuit(draft.circuit);
     if (draft.blocks) setBlocks(draft.blocks);
     setHasDraft(true);
+
+    /* „Pokračovat, kde jsi skončil" z lobby (`?pokracovat=1`): dítě už samo
+       řeklo, že chce navázat, takže se rovnou otevře krok, ve kterém práci
+       nechalo — nabídka nad zadáním by byla zbytečné kliknutí navíc. Bez
+       parametru zůstává nabídka (viz `hasDraft`). Krok se odhaduje stejně
+       jako v lobby, ať tlačítko vede tam, kam slíbilo. */
+    if (new URLSearchParams(window.location.search).get("pokracovat") === "1") {
+      const resume = draftStep(lesson, draft);
+      if (resume === "wiring") setStep(STEP.WIRING);
+      if (resume === "code") setStep(STEP.CODE);
+    }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [lesson.slug, profileId]);
+  }, [lesson, profileId]);
 
   useEffect(() => {
     /* Netknutá lekce se neukládá — jinak by se konceptem stalo i to, že

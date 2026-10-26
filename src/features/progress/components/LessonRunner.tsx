@@ -16,6 +16,8 @@ import { saveLessonBuildAction } from "@/features/collection/actions";
 import { saveAnonBuild } from "@/features/collection/anon-builds";
 import type { LessonBuildDraft } from "@/features/collection/schema";
 import type { EditorMode } from "@/features/blocks/mode";
+import { coursePath, isCourseDone, type PathLesson } from "@/features/lobby/model";
+import { LessonDone, nextLesson } from "@/features/celebrate/components/LessonDone";
 
 /**
  * Průchod lekcí.
@@ -69,9 +71,12 @@ export function LessonRunner({
   profileId,
 }: Props) {
   const [completed, setCompleted] = useState(false);
-  /* Jestli se výtvor uložil do sbírky. Zatím ho nic nezobrazuje; použije
-     ho oslava po lekci („Přidáno do tvé sbírky"). `null` = ještě neběželo. */
+  /* Jestli se výtvor uložil do sbírky — oslava po lekci podle toho řekne
+     „Přidáno do tvé sbírky". `null` = ukládání ještě nedoběhlo. */
   const [savedToCollection, setSavedToCollection] = useState<boolean | null>(null);
+  /* Hotové lekce kurzu po vyřešení téhle: účet + prohlížeč + tahle lekce.
+     Z nich se rozhoduje finále vs. malá oslava i mapa v oslavě. */
+  const [doneSlugs, setDoneSlugs] = useState<ReadonlySet<string>>(() => new Set(completedSlugs));
   const wallRef = useRef<HTMLDivElement>(null);
 
   /* Zaznamenání začátku. Tohle je nález N4 — bez lesson_start neexistuje
@@ -160,8 +165,9 @@ export function LessonRunner({
       .filter((l) => l.courseSlug === courseSlug && l.completedAt)
       .map((l) => l.lessonSlug);
     const allDone = new Set([...completedSlugs, ...doneInSession, lessonSlug]);
+    setDoneSlugs(allDone);
 
-    if (publishedSlugs.length > 0 && publishedSlugs.every((s) => allDone.has(s))) {
+    if (isCourseDone(publishedSlugs, allDone)) {
       void trackOnce(EVENT.COURSE_COMPLETE, courseSlug, {
         course: courseSlug,
         lessons: publishedSlugs.length,
@@ -180,7 +186,30 @@ export function LessonRunner({
     }
   }
 
+  const lesson = lessonBySlug(lessonSlug);
+
   if (completed) {
+    /* Finále jen když je po téhle lekci hotový CELÝ kurz (stejné pravidlo
+       jako course_complete), ne „nemám kam dál": kdo skočil rovnou na
+       poslední lekci, dostane malou oslavu s tím, kolik mu chybí. */
+    if (!isCourseDone(publishedSlugs, doneSlugs) && lesson) {
+      const path = contentPath(publishedSlugs, doneSlugs);
+      return (
+        <div ref={wallRef} tabIndex={-1} className="outline-none">
+          <LessonDone
+            courseSlug={courseSlug}
+            lesson={lesson}
+            path={path}
+            next={nextLesson(path, lessonSlug)}
+            viewer={!isAuthenticated ? "anon" : needsChildProfile ? "parent-no-profile" : "child"}
+            savedToCollection={savedToCollection === true}
+            zapsatHref={zapsatHref(courseSlug, lessonSlug)}
+          />
+        </div>
+      );
+    }
+
+    /* ── Konec kurzu ── (finále přijde sem; dnešní obrazovka beze změny) */
     return (
       <div ref={wallRef} tabIndex={-1} className="outline-none">
         <Card className="mb-6 border-trust-600 bg-trust-50 p-6">
@@ -195,7 +224,7 @@ export function LessonRunner({
           <Alert tone="warning" title="Postup se zatím neukládá" className="mb-6">
             Nevybrali jste, kdo se učí. Vyberte profil dítěte, ať se lekce zapíše k němu.{" "}
             <Link
-              href={`/ucim-se?zapsat=${encodeURIComponent(`${courseSlug}/${lessonSlug}`)}`}
+              href={zapsatHref(courseSlug, lessonSlug)}
               className="font-semibold underline underline-offset-4"
             >
               Vybrat profil
@@ -289,8 +318,6 @@ export function LessonRunner({
     );
   }
 
-  const lesson = lessonBySlug(lessonSlug);
-
   /* Lekce v databázi, ke které ještě není obsah. Nemělo by nastat — test
      nad migrací to hlídá — ale spadnout kvůli tomu dítěti pod rukama by
      bylo horší než tahle věta. */
@@ -321,6 +348,32 @@ export function LessonRunner({
         });
       }}
     />
+  );
+}
+
+/** Výběr profilu, který po výběru zapíše tuhle lekci k vybranému dítěti. */
+function zapsatHref(courseSlug: string, lessonSlug: string): string {
+  return `/ucim-se?zapsat=${encodeURIComponent(`${courseSlug}/${lessonSlug}`)}`;
+}
+
+/**
+ * Cesta kurzem pro oslavu. Pořadí a publikaci určuje databáze
+ * (`publishedSlugs`), název a délku obsah lekce v kódu — stejný zdroj, ze
+ * kterého lekce běží. Lekce bez obsahu (nemělo by nastat, hlídá to test nad
+ * migrací) dostane místo názvu slug, ať mapa nespadne a počty sedí.
+ */
+function contentPath(publishedSlugs: string[], done: ReadonlySet<string>): PathLesson[] {
+  return coursePath(
+    publishedSlugs.map((slug, i) => {
+      const content = lessonBySlug(slug);
+      return {
+        slug,
+        title: content?.title ?? slug,
+        orderIndex: i + 1,
+        estimatedMinutes: content?.minutes ?? null,
+      };
+    }),
+    done,
   );
 }
 

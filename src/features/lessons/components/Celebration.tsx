@@ -5,6 +5,11 @@ import { useEffect, useRef } from "react";
 interface Props {
   /** Spustí se, jakmile se přepne na true. */
   active: boolean;
+  /**
+   * Barvy konfet. Bez něj barvy lekce; `weeks` jsou barvy značky pro
+   * oslavy (návrh `finale.html`) — amber, azurová, indigo, zelená a papír.
+   */
+  palette?: "weeks";
 }
 
 /**
@@ -34,12 +39,15 @@ interface Piece {
 }
 
 /* Barvy z palety, ne náhodné. Ať to vypadá jako součást aplikace. */
-const COLORS = ["#f59e0b", "#10b981", "#6366f1", "#ef4444", "#06b6d4"];
+const PALETTES = {
+  lesson: ["#f59e0b", "#10b981", "#6366f1", "#ef4444", "#06b6d4"],
+  weeks: ["#fbbf24", "#22d3ee", "#67e8f9", "#4f46e5", "#10b981", "#fafaf7"],
+} as const;
 const COUNT = 90;
 const GRAVITY = 0.22;
 const DURATION_MS = 2600;
 
-export function Celebration({ active }: Props) {
+export function Celebration({ active, palette }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -59,6 +67,8 @@ export function Celebration({ active }: Props) {
     canvas.height = height * dpr;
     ctx.scale(dpr, dpr);
 
+    const colors = PALETTES[palette ?? "lesson"];
+
     /* Vyletí zezdola ze středu — jako když něco vystřelí, ne jako když
        něco padá. Padání ze stropu působí jako chyba. */
     const pieces: Piece[] = Array.from({ length: COUNT }, () => {
@@ -72,7 +82,7 @@ export function Celebration({ active }: Props) {
         vy: Math.sin(angle) * speed,
         rotation: Math.random() * Math.PI,
         spin: (Math.random() - 0.5) * 0.28,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)]!,
+        color: colors[Math.floor(Math.random() * colors.length)]!,
         size: 5 + Math.random() * 6,
       };
     });
@@ -111,7 +121,7 @@ export function Celebration({ active }: Props) {
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [active]);
+  }, [active, palette]);
 
   /* Plátno je v DOM pořád. Prázdné nic nestojí a odpadá tím stav „právě
      je vidět", který by se musel přepínat z efektu. */
