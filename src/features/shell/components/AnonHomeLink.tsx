@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
-import { hasCompletedAnyLesson, readAnonSession } from "@/features/anon-session/storage";
+import { hasCompletedAnyLesson } from "@/features/anon-session/storage";
+import { useAnonSession } from "@/features/anon-session/useAnonSession";
 import { homeHref } from "../home-href";
 
 /**
@@ -11,17 +11,14 @@ import { homeHref } from "../home-href";
  * Postup bez účtu žije jen v localStorage, takže server vykreslí logo na
  * `/` a po připojení se cíl přepne na přehled kurzu, má-li dítě
  * hotovou aspoň jednu lekci. Vyhledávač i první vykreslení vidí `/`.
+ * Relace se odebírá, takže se cíl přepne i hned po dokončení první lekce,
+ * bez znovunačtení stránky.
  */
 export function AnonHomeLink({ initialHref, dark }: { initialHref: string; dark?: boolean }) {
-  const [href, setHref] = useState(initialHref);
-
-  useEffect(() => {
-    if (!hasCompletedAnyLesson(readAnonSession())) return;
-    /* eslint-disable-next-line react-hooks/set-state-in-effect -- jednorázové
-       přečtení localStorage po připojení; na serveru žádný není a počáteční
-       stav z něj by rozešel hydrataci. */
-    setHref(homeHref({ kind: "anon", hasProgress: true }));
-  }, []);
+  const session = useAnonSession();
+  const href = hasCompletedAnyLesson(session)
+    ? homeHref({ kind: "anon", hasProgress: true })
+    : initialHref;
 
   return <Logo href={href} dark={dark} mark />;
 }

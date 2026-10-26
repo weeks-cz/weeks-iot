@@ -56,10 +56,8 @@ test("anonym vyřeší první lekci a lobby ho vrátí k dalšímu kroku", async
   });
   await expect(page.getByRole("link", { name: /Další lekce/ })).toBeVisible();
 
-  // Logo vede na přehled kurzu, kde po připojení naskočí hero „Pokračovat“.
-  // Znovunačtení = dítě se vrací: AnonHomeLink čte postup jen při připojení,
-  // takže logo v téže otevřené stránce zůstává na „/“ (nález pro review).
-  await page.reload();
+  // Logo vede na přehled kurzu, kde po připojení naskočí hero „Pokračovat“ —
+  // hned, bez znovunačtení: AnonHomeLink relaci odebírá.
   await page.getByRole("banner").getByRole("link", { name: "Weeks Učebna — domů" }).click();
   await expect(page).toHaveURL(/\/kurz\/iot\/?$/);
   await expect(page.getByText(/Pokračovat/).first()).toBeVisible({ timeout: 15_000 });

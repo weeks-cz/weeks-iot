@@ -59,6 +59,9 @@ export function readAnonSession(): AnonSession | null {
   }
 }
 
+/** Událost po každém našem zápisu — `storage` se ve vlastním okně nespouští. */
+export const ANON_SESSION_EVENT = "weeks:anon-session";
+
 function write(session: AnonSession): AnonSession {
   try {
     window.localStorage.setItem(ANON_STORAGE_KEY, JSON.stringify(session));
@@ -66,6 +69,7 @@ function write(session: AnonSession): AnonSession {
     /* Plná kvóta nebo zakázaná data webu. Relace přežije aspoň v paměti
        do konce návštěvy — lepší než spadnout uprostřed lekce. */
   }
+  window.dispatchEvent(new Event(ANON_SESSION_EVENT));
   return session;
 }
 
@@ -183,4 +187,5 @@ export function clearAnonSession(): void {
   } catch {
     /* Nedostupné úložiště nemá blokovat dokončenou registraci. */
   }
+  window.dispatchEvent(new Event(ANON_SESSION_EVENT));
 }

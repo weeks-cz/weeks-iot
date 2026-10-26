@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { ANON_STORAGE_KEY, anonSessionSchema, type AnonSession } from "./schema";
+import { ANON_SESSION_EVENT } from "./storage";
 
 /**
  * Čtení anonymní relace v komponentě.
@@ -21,9 +22,17 @@ import { ANON_STORAGE_KEY, anonSessionSchema, type AnonSession } from "./schema"
  * nový a React by se zacyklil. Řetězec je stabilní, dokud se obsah nezmění.
  */
 
-/* Relace se během života stránky mění jen našimi vlastními zápisy, po
-   kterých stejně následuje překreslení. Odběr proto nic neposlouchá. */
-const noopSubscribe = () => () => {};
+/* Relace se mění našimi zápisy (ANON_SESSION_EVENT) a zápisy z jiné
+   záložky (`storage`). Bez odběru by třeba logo v hlavičce nevědělo, že
+   dítě právě dokončilo první lekci, dokud se stránka nenačte znovu. */
+function subscribe(onChange: () => void): () => void {
+  window.addEventListener(ANON_SESSION_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(ANON_SESSION_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
 
 function readRaw(): string {
   try {
@@ -37,7 +46,7 @@ const EMPTY_ON_SERVER = "";
 
 /** Surový obsah relace. Prázdný řetězec na serveru i při nedostupném úložišti. */
 export function useAnonSessionRaw(): string {
-  return useSyncExternalStore(noopSubscribe, readRaw, () => EMPTY_ON_SERVER);
+  return useSyncExternalStore(subscribe, readRaw, () => EMPTY_ON_SERVER);
 }
 
 /** Ověřená relace, nebo null. */
