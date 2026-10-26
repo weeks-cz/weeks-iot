@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ButtonLink } from "@/components/ui/Button";
 import { Card, MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileSwitcher } from "@/features/children/components/ProfileSwitcher";
 import { getActiveChild } from "@/features/children/queries";
 import { ZapsatLekci } from "@/features/progress/components/ZapsatLekci";
 import { parseLessonKey } from "@/features/progress/lesson-key";
+import { CoursePath } from "@/features/lobby/components/CoursePath";
+import { LobbyBottom } from "@/features/lobby/components/LobbyBottom";
+import { LobbyHero } from "@/features/lobby/components/LobbyHero";
+import { getLobbyData } from "@/features/lobby/queries";
 
 export const metadata: Metadata = {
   title: "Učím se",
@@ -43,86 +46,44 @@ export default async function LearnPage({
     );
   }
 
-  const { data: course } = await supabase
-    .from("courses")
-    .select("slug, title, summary")
-    .eq("slug", "iot")
-    .maybeSingle();
+  const data = await getLobbyData(active, auth.user.id);
 
-  const { data: lessons } = await supabase
-    .from("lessons")
-    .select("id, slug, title, summary, order_index, estimated_minutes")
-    .eq("is_published", true)
-    .order("order_index");
+  /* Kurz v databázi chybí nebo nemá publikovanou lekci — lobby nemá co
+     ukázat a „hotovo" by lhalo. */
+  if (data.path.length === 0) {
+    return (
+      <main className="flex-1 bg-paper">
+        <div className="section-container py-10">
+          {zapsat && <ZapsatLekci lessonKey={zapsat} />}
+          <Card className="max-w-2xl p-6">
+            <h1 className="heading-3 mb-2">Lekce právě chystáme</h1>
+            <p className="text-ink-500">Brzy se vrať — první lekce tu bude co nevidět.</p>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
-  const { data: progress } = await supabase
-    .from("progress")
-    .select("lesson_id, status")
-    .eq("child_id", active.id);
-
-  const doneIds = new Set(
-    (progress ?? []).filter((p) => p.status === "completed").map((p) => p.lesson_id),
-  );
-
-  /* Jedna cesta a jedno tlačítko „pokračovat", ne mřížka úkolů. Odemykání
-     za hvězdičky se ruší (nález N8) — je to překážka postavená přímo do
-     metriky, kterou chceme maximalizovat. */
-  const nextLesson = (lessons ?? []).find((l) => !doneIds.has(l.id)) ?? null;
-  const total = lessons?.length ?? 0;
-  const done = doneIds.size;
-
+  /* Jedna cesta a jedno „Pokračovat", ne mřížka úkolů. Nic se nezamyká
+     (nález N8) — mapa cesty pořadí jen doporučuje. */
   return (
     <main className="flex-1 bg-paper">
-      <div className="section-container py-8">
-        <MonoLabel className="mb-2">{course?.title ?? "Kurz"}</MonoLabel>
-        <h1 className="heading-2 mb-2">Ahoj {active.nick}!</h1>
-
-        {zapsat && <ZapsatLekci lessonKey={zapsat} />}
-
-        {total > 0 && (
-          <div className="mb-8 max-w-md">
-            <p className="mb-2 font-mono text-sm text-ink-500">
-              lekce {Math.min(done + 1, total)} ze {total}
-            </p>
-            <div
-              className="h-2 overflow-hidden rounded-full bg-ink/10"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={total}
-              aria-valuenow={done}
-              aria-label={`Dokončeno ${done} z ${total} lekcí`}
-            >
-              <div
-                className="h-full bg-trust-500 transition-all"
-                style={{ width: `${total ? (done / total) * 100 : 0}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {nextLesson ? (
-          <Card interactive className="max-w-2xl p-6">
-            <MonoLabel className="mb-2">Lekce {nextLesson.order_index}</MonoLabel>
-            <h2 className="heading-3 mb-2">{nextLesson.title}</h2>
-            {nextLesson.summary && (
-              <p className="mb-4 leading-relaxed text-ink-500">{nextLesson.summary}</p>
-            )}
-            {nextLesson.estimated_minutes && (
-              <p className="mb-5 font-mono text-xs text-ink-300">
-                asi {nextLesson.estimated_minutes} minut
-              </p>
-            )}
-            <ButtonLink href={`/kurz/${course?.slug ?? "iot"}/${nextLesson.slug}`} size="lg">
-              Pokračovat →
-            </ButtonLink>
-          </Card>
-        ) : (
-          <Card className="max-w-2xl p-6">
-            <h2 className="heading-3 mb-2">Máš hotovo všechno, co je zatím připravené</h2>
-            <p className="text-ink-500">Další lekce přidáváme průběžně. Brzy se vrať.</p>
-          </Card>
-        )}
-      </div>
+      {zapsat && (
+        <div className="section-container pt-6">
+          <ZapsatLekci lessonKey={zapsat} />
+        </div>
+      )}
+      <LobbyHero data={data} childId={active.id} nick={active.nick} avatar={active.avatar} />
+      <CoursePath course={data.course} path={data.path} />
+      <LobbyBottom
+        course={data.course}
+        path={data.path}
+        builds={data.builds}
+        certificate={data.certificate}
+        camp={data.camp}
+        nick={active.nick}
+        childId={active.id}
+      />
     </main>
   );
 }

@@ -14,10 +14,13 @@ export function CampCard({
   offer,
   placement,
   size = "card",
+  className,
 }: {
   offer: NonNullable<CampOffer>;
   placement: "lobby" | "finale" | "finale-anonym" | "ucet";
   size?: "tile" | "card";
+  /** Např. `h-full` v řadě stejně vysokých sekcí lobby. */
+  className?: string;
 }) {
   const where = offer.city ? CAMP_CITIES[offer.city].locative : "v Praze a Karlových Varech";
   const sentence =
@@ -31,6 +34,7 @@ export function CampCard({
       className={cn(
         "relative overflow-hidden rounded-md border border-ink bg-ink text-paper",
         tile ? "p-5" : "p-6 sm:p-8",
+        className,
       )}
     >
       {/* Dekorace v rohu, proto prázdné alt. */}
@@ -44,7 +48,8 @@ export function CampCard({
           tile ? "w-14" : "w-24",
         )}
       />
-      <div className="relative">
+      {/* Sloupec: když je karta vyšší než obsah (řada v lobby), odkaz sedne dolů. */}
+      <div className="relative flex h-full flex-col">
         <MonoLabel className="mb-3 text-cta-300">Léto 2027</MonoLabel>
         <h2
           className={cn("mb-3 text-paper", tile ? "font-display text-lg font-semibold" : "heading-3")}
@@ -52,7 +57,9 @@ export function CampCard({
           Tohle všechno naživo
         </h2>
         <p className="mb-4 max-w-prose leading-relaxed text-paper/70">{sentence}</p>
-        <CampLink placement={placement} city={offer.city} variant="link" />
+        <div className="mt-auto">
+          <CampLink placement={placement} city={offer.city} variant="link" />
+        </div>
       </div>
     </section>
   );

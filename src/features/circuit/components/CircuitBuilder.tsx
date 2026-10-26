@@ -122,7 +122,10 @@ export function CircuitBuilder({
       const next = fitCircuit(
         circuit,
         { width: rect.width, height: rect.height },
-        { minZoom: readOnly ? 0.4 : undefined },
+        /* Holý obrázek (náhled ve sbírce a v lobby, 90–130 px na výšku)
+           se oddálí, kolik je potřeba: kus Arduina bez LED je horší
+           náhled než celý obvod v malém. */
+        { minZoom: bare ? 0.1 : readOnly ? 0.4 : undefined },
       );
       if (!next) return false;
 
@@ -130,7 +133,7 @@ export function CircuitBuilder({
       dispatch({ type: "SET_PAN", pan: next.pan });
       return true;
     },
-    [dispatch, readOnly],
+    [dispatch, readOnly, bare],
   );
 
   /* Výřez se jednou nastaví tak, aby byla vidět celá deska. V editovatelném

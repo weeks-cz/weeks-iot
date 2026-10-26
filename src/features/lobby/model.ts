@@ -8,6 +8,8 @@
  * osmá lekce se v lobby objeví sama.
  */
 
+import type { Circuit } from "@/features/circuit/types";
+
 export type LessonStep = "brief" | "wiring" | "code";
 
 export interface PathLesson {
@@ -76,4 +78,37 @@ export function isCourseDone(
   return (
     publishedSlugs.length > 0 && publishedSlugs.every((s) => completed.has(s))
   );
+}
+
+/** Jeden náhled v dlaždici „Co jsi postavil". */
+export interface BuildTile {
+  slug: string;
+  title: string;
+  circuit: Circuit;
+  /** Lekce je hotová, ale výtvor uložený nemá — kreslí se vzorové zapojení. */
+  reference: boolean;
+}
+
+/**
+ * Náhledy do lobby: posledních `limit` hotových lekcí v pořadí kurzu.
+ *
+ * Počítá se z hotových lekcí, ne z uložených výtvorů (návrh §9.3) — lekce
+ * dokončené před zavedením sbírky výtvor nemají a dostanou vzorové
+ * zapojení. Lekce bez uloženého výtvoru i bez vzoru se vynechá.
+ */
+export function lobbyBuilds(
+  path: PathLesson[],
+  saved: ReadonlyMap<string, { data: { circuit: Circuit } }>,
+  reference: (slug: string) => Circuit | null,
+  limit = 4,
+): BuildTile[] {
+  const tiles: BuildTile[] = [];
+  for (const lesson of path) {
+    if (!lesson.done) continue;
+    const own = saved.get(lesson.slug)?.data.circuit;
+    const circuit = own ?? reference(lesson.slug);
+    if (!circuit) continue;
+    tiles.push({ slug: lesson.slug, title: lesson.title, circuit, reference: !own });
+  }
+  return tiles.slice(-limit);
 }
