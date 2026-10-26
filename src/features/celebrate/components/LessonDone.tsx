@@ -69,7 +69,7 @@ export function LessonDone({
   const missing = path.filter((l) => !l.done).length;
   const remaining =
     nextNumber !== null && nextNumber < number
-      ? `Zbývá ti ${missing} ${plural(missing, "lekce", "lekce", "lekcí")} do certifikátu.`
+      ? `${plural(missing, "Zbývá", "Zbývají", "Zbývá")} ti ${missing} ${plural(missing, "lekce", "lekce", "lekcí")} do certifikátu.`
       : null;
 
   return (
@@ -99,7 +99,8 @@ export function LessonDone({
           </h2>
           <p className="relative max-w-[24rem] leading-relaxed text-paper/70">
             {lesson.celebrate.line}
-            {savedToCollection && " Přidáno do tvé sbírky."}
+            {/* Rodič bez profilu má výtvor jen v prohlížeči — „tvé sbírky“ by mluvilo k dítěti, které tu není. */}
+            {savedToCollection && viewer !== "parent-no-profile" && " Přidáno do tvé sbírky."}
           </p>
           <div className="relative mt-6">
             <MiniPath path={path} nextSlug={next?.slug ?? null} />

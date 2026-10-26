@@ -131,6 +131,17 @@ describe("LessonDone — rodič bez profilu", () => {
     expect(html).toContain('href="/kurz/iot/plynuly-jas"');
     expect(count(html, "bg-cta-500")).toBe(1);
   });
+
+  it("nemluví o sbírce dítěte, i když se výtvor uložil v prohlížeči", () => {
+    const saved = render({
+      lesson: semafor,
+      path: pathDone(firstN(4)),
+      viewer: "parent-no-profile",
+      savedToCollection: true,
+      zapsatHref,
+    });
+    expect(saved).not.toContain("Přidáno do tvé sbírky");
+  });
 });
 
 describe("LessonDone — poslední lekce, ale kurz hotový není", () => {
@@ -138,7 +149,7 @@ describe("LessonDone — poslední lekce, ale kurz hotový není", () => {
   const html = render({ lesson: nocni, path });
 
   it("řekne, kolik lekcí zbývá do certifikátu, a pošle na první nedokončenou", () => {
-    expect(html).toContain("Zbývá ti 2 lekce do certifikátu.");
+    expect(html).toContain("Zbývají ti 2 lekce do certifikátu.");
     expect(html).toContain('href="/kurz/iot/blikani"');
   });
 
@@ -152,7 +163,7 @@ describe("LessonDone — poslední lekce, ale kurz hotový není", () => {
 
   it("u anonyma taky", () => {
     const anon = render({ lesson: nocni, path, viewer: "anon" });
-    expect(anon).toContain("Zbývá ti 2 lekce do certifikátu.");
+    expect(anon).toContain("Zbývají ti 2 lekce do certifikátu.");
     expect(anon).toContain('href="/kurz/iot/blikani"');
   });
 });
