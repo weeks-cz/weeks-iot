@@ -9,6 +9,8 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { EVENT } from "@/features/analytics/events";
 import { fieldErrorsFrom, type ActionState } from "@/features/actions";
 import { ACTIVE_CHILD_COOKIE } from "./constants";
+import { isAvatarId } from "./avatars";
+import { getActiveChild } from "./queries";
 import { childSchema } from "@/features/onboarding/schema";
 import { consentTextFor } from "@/features/consent/texts";
 import { parseLessonKey } from "@/features/progress/lesson-key";
@@ -176,6 +178,32 @@ export async function updateChildAction(
 
   revalidatePath("/ucet");
   return { success: "Uloženo." };
+}
+
+/* ── Změna avataru dítětem ─────────────────────────────────────────────── */
+
+/**
+ * Dítě si mění avatar. Profil se bere jen z `getActiveChild` — z klienta
+ * nechodí žádné `childId`, takže nejde přepsat cizí. Vlastnictví dál hlídá
+ * RLS politika children_update_own.
+ */
+export async function setActiveChildAvatarAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { supabase, userId } = await requireParent();
+
+  const avatar = formData.get("avatar");
+  if (!isAvatarId(avatar)) return { error: "Tenhle avatar neznám. Vyber jiný." };
+
+  const { active } = await getActiveChild(userId);
+  if (!active) return { error: "Nejdřív si vyber profil." };
+
+  const { error } = await supabase.from("children").update({ avatar }).eq("id", active.id);
+  if (error) return { error: "Avatar se nepodařilo uložit. Zkus to znovu." };
+
+  revalidatePath("/ucim-se");
+  redirect("/ucim-se");
 }
 
 /* ── PIN ───────────────────────────────────────────────────────────────── */

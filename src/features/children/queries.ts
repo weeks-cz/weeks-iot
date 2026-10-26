@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { ChildPublic } from "@/lib/supabase/types";
@@ -75,12 +76,15 @@ export async function getChildren(parentId: string): Promise<ChildSummary[]> {
  * Pravidlo výběru je v `pickActiveChild`; tady se k němu jen dotáhnou
  * profily a cookie. `active` je null, když není jasné, kdo se učí —
  * volající pak nabídne výběr profilu, nebo postup nezapíše.
+ *
+ * Cachované na jeden požadavek (`cache`): layout a stránka, které se ptají
+ * na totéž, profily načtou jednou.
  */
-export async function getActiveChild(
+export const getActiveChild = cache(async function getActiveChild(
   parentId: string,
 ): Promise<{ active: ChildSummary | null; children: ChildSummary[] }> {
   const children = await getChildren(parentId);
   const cookieStore = await cookies();
   const active = pickActiveChild(children, cookieStore.get(ACTIVE_CHILD_COOKIE)?.value);
   return { active, children };
-}
+});

@@ -139,6 +139,11 @@ export type AvatarId = (typeof AVATARS)[number]["id"];
 
 const BY_ID = new Map(AVATARS.map((a) => [a.id as string, a]));
 
+/** Je hodnota z formuláře opravdu jedním z nabízených avatarů? */
+export function isAvatarId(value: unknown): value is AvatarId {
+  return typeof value === "string" && BY_ID.has(value);
+}
+
 export function avatarLabel(id: string): string {
   return BY_ID.get(id)?.label ?? "Robot";
 }
