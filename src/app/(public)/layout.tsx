@@ -10,6 +10,9 @@ import { AttributionCapture } from "@/features/analytics/components/AttributionC
  * `AttributionCapture` musí být tady, ne jen na vstupní stránce: reklama
  * míří i rovnou na lekci, a UTM se zachytávají při PRVNÍ návštěvě, ať už
  * přijde kamkoli.
+ *
+ * `PublicHeader` čte session: přihlášený tu vidí svou hlavičku (logo do
+ * učebny, v kurzu a lekci navigaci a menu pod avatarem), ne „Přihlásit“.
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (

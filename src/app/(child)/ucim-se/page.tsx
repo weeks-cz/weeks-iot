@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, MonoLabel } from "@/components/ui/Surface";
-import { Logo } from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileSwitcher } from "@/features/children/components/ProfileSwitcher";
-import { Avatar } from "@/features/children/avatars";
 import { getActiveChild } from "@/features/children/queries";
 import { ZapsatLekci } from "@/features/progress/components/ZapsatLekci";
 import { parseLessonKey } from "@/features/progress/lesson-key";
@@ -36,9 +33,8 @@ export default async function LearnPage({
 
   if (!active) {
     return (
-      <main className="min-h-dvh bg-paper blueprint-grid">
+      <main className="flex-1 bg-paper blueprint-grid">
         <div className="section-container py-10">
-          <Logo className="mb-8" />
           <MonoLabel className="mb-2">Výběr profilu</MonoLabel>
           <h1 className="heading-2 mb-6">Kdo se dneska učí?</h1>
           <ProfileSwitcher profiles={children} zapsat={zapsat} />
@@ -76,23 +72,7 @@ export default async function LearnPage({
   const done = doneIds.size;
 
   return (
-    <main className="min-h-dvh bg-paper">
-      <header className="border-b border-ink/15 bg-white">
-        <div className="section-container flex h-16 items-center justify-between gap-4">
-          <Logo href="/ucim-se" />
-          <div className="flex items-center gap-3">
-            <Avatar id={active.avatar} className="block size-8 text-ink" />
-            <span className="font-semibold text-ink">{active.nick}</span>
-            <Link
-              href="/ucim-se/prepnout"
-              className="rounded-sm text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
-            >
-              Přepnout
-            </Link>
-          </div>
-        </div>
-      </header>
-
+    <main className="flex-1 bg-paper">
       <div className="section-container py-8">
         <MonoLabel className="mb-2">{course?.title ?? "Kurz"}</MonoLabel>
         <h1 className="heading-2 mb-2">Ahoj {active.nick}!</h1>

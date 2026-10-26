@@ -1,26 +1,30 @@
 import Link from "next/link";
-import { HeaderCta } from "./HeaderCta";
 import { Logo } from "./Logo";
 import { CONTROLLER, SITE } from "@/lib/site";
 import { CookieSettingsButton } from "@/features/cookies/CookieSettingsButton";
+import { AppHeader } from "@/features/shell/components/AppHeader";
+import { HeaderByPath } from "@/features/shell/components/HeaderByPath";
+import { getViewer } from "@/features/shell/queries";
 
-export function PublicHeader() {
+/**
+ * Hlavička veřejné zóny.
+ *
+ * Musí znát session: přihlášené dítě v lekci má vidět svou hlavičku
+ * (logo do lobby, navigaci, menu pod avatarem), ne marketingové
+ * „Přihlásit“. Obě varianty jsou `AppHeader`; kterou ukázat, rozhoduje
+ * cesta na klientovi (viz `HeaderByPath`).
+ *
+ * Čtení session dělá stránky veřejné zóny dynamickými. Kurz a lekce
+ * session četly už dřív; úvodní stránka tím přichází o statické
+ * vykreslení s revalidací.
+ */
+export async function PublicHeader() {
+  const viewer = await getViewer();
   return (
-    <header className="sticky top-0 z-40 border-b border-ink/15 bg-paper/95 backdrop-blur">
-      <div className="section-container flex h-16 items-center justify-between gap-4">
-        <Logo />
-
-        <nav aria-label="Hlavní" className="flex items-center gap-2 sm:gap-4">
-          <Link
-            href="/prihlaseni"
-            className="rounded-sm px-2 py-1 text-sm font-semibold text-ink-500 hover:text-ink"
-          >
-            Přihlásit
-          </Link>
-          <HeaderCta />
-        </nav>
-      </div>
-    </header>
+    <HeaderByPath
+      app={<AppHeader viewer={viewer} />}
+      site={<AppHeader viewer={viewer} tone="light" />}
+    />
   );
 }
 

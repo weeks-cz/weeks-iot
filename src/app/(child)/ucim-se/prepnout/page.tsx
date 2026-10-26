@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/ui/Logo";
 import { MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileSwitcher } from "@/features/children/components/ProfileSwitcher";
@@ -42,9 +41,8 @@ export default async function SwitchProfilePage({
   const preselected = children.find((c) => c.id === dite) ?? null;
 
   return (
-    <main className="min-h-dvh bg-paper blueprint-grid">
+    <main className="flex-1 bg-paper blueprint-grid">
       <div className="section-container py-10">
-        <Logo className="mb-8" />
         <MonoLabel className="mb-2">Výběr profilu</MonoLabel>
         <h1 className="heading-2 mb-6">
           {children.length === 1 ? "Pokračovat v učení" : "Kdo se dneska učí?"}

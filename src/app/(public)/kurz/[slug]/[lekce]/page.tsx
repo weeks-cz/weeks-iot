@@ -9,6 +9,7 @@ import { LessonRunner } from "@/features/progress/components/LessonRunner";
 import { completedLessonSlugs } from "@/features/progress/queries";
 import { activeChildEditorMode } from "@/features/children/editor-mode";
 import { getActiveChild } from "@/features/children/queries";
+import { homeHref, toViewer } from "@/features/shell/home-href";
 
 interface Params {
   slug: string;
@@ -102,6 +103,14 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
      Dřív se to tvářilo jako přihlášené dítě a zápis tiše selhával. */
   const needsChildProfile = Boolean(auth.user) && !activeChild;
 
+  /* Přihlášený se vrací domů (lobby nebo výběr profilu), ne na přehled
+     kurzu — ten je pro něj jen mezikrok. Anonym zůstává u kurzu. */
+  const viewer = toViewer(auth.user, activeChild);
+  const back =
+    viewer.kind === "anon"
+      ? { href: `/kurz/${slug}`, label: data.course.title }
+      : { href: homeHref(viewer), label: "Domů" };
+
   return (
     <main className="section-container py-6 sm:py-8">
       {/* Cesta zpět a metadata na jednom řádku. Dřív to byly dva bloky nad
@@ -109,10 +118,10 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
           začínala až za ohybem. */}
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <Link
-          href={`/kurz/${slug}`}
+          href={back.href}
           className="rounded-sm font-mono text-xs uppercase tracking-[0.2em] text-ink-500 hover:text-ink"
         >
-          ← {data.course.title}
+          ← {back.label}
         </Link>
         <MonoLabel>
           Lekce {data.lesson.order_index} z {data.total}

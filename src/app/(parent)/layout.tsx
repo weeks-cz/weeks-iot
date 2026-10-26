@@ -36,14 +36,24 @@ export default async function ParentLayout({ children }: { children: React.React
         <div className="section-container flex h-16 items-center justify-between gap-4">
           <Logo href="/ucet" />
 
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="rounded-sm px-2 py-1 text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Cesta zpátky k dítěti. Dřív z účtu do učebny nevedlo nic
+                kromě adresního řádku. */}
+            <Link
+              href="/ucim-se"
+              className="inline-flex min-h-11 items-center rounded-sm px-2 text-sm font-semibold text-primary-600 hover:text-primary-700"
             >
-              Odhlásit
-            </button>
-          </form>
+              Do učebny →
+            </Link>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="rounded-sm px-2 py-1 text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
+              >
+                Odhlásit
+              </button>
+            </form>
+          </div>
         </div>
 
         <nav aria-label="Rodičovská sekce" className="section-container">
