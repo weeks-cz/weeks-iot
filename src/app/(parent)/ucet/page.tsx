@@ -165,7 +165,12 @@ export default async function AccountPage({
           <ul className="flex flex-col gap-4">
             {certificates.map(({ child, cert }) => (
               <li key={`${child.id}:${cert.courseSlug}`}>
-                <CertificateCard childId={child.id} courseSlug={cert.courseSlug} data={cert.data} />
+                <CertificateCard
+                  childId={child.id}
+                  courseSlug={cert.courseSlug}
+                  data={cert.data}
+                  lessons={cert.lessons}
+                />
               </li>
             ))}
           </ul>

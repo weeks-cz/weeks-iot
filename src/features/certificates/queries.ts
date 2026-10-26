@@ -7,6 +7,8 @@ import { earnedCertificate } from "./eligibility";
 export interface EarnedCertificate {
   courseSlug: string;
   data: CertificateData;
+  /** Počet publikovaných lekcí kurzu — pečeť „7 / 7 lekcí" na líci. */
+  lessons: number;
 }
 
 /**
@@ -79,6 +81,7 @@ export async function earnedCertificates(
         skills: content.skills,
         completedAt: earned.completedAt,
       },
+      lessons: courseLessons.length,
     });
   }
 
