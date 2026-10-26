@@ -162,6 +162,7 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
           publishedSlugs={data.publishedSlugs}
           completedSlugs={completedSlugs}
           childEditorMode={childEditorMode}
+          profileId={activeChild?.id ?? null}
         />
       </div>
     </main>

@@ -61,6 +61,8 @@ interface Props {
    * nevybral a převezme volbu z prohlížeče.
    */
   childEditorMode?: EditorMode | null;
+  /** Profil dítěte, pod kterým se ukládá koncept; anonym `null`. */
+  profileId?: string | null;
 }
 
 /**
@@ -83,6 +85,7 @@ export function LessonWorkbench({
   onContinue,
   onHint,
   childEditorMode,
+  profileId,
 }: Props) {
   const seed = useMemo(() => lessonSeedCircuit(lesson), [lesson]);
 
@@ -146,7 +149,7 @@ export function LessonWorkbench({
      startovní kód, klient uložený a hydratace by se rozešla. Je to jednorázové
      přečtení vnějšího stavu po připojení, ne řetězení stavů. */
   useEffect(() => {
-    const draft = loadDraft(lesson.slug);
+    const draft = loadDraft(lesson.slug, profileId);
     if (!draft) return;
 
     restored.current = true;
@@ -158,7 +161,7 @@ export function LessonWorkbench({
     if (draft.blocks) setBlocks(draft.blocks);
     setHasDraft(true);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [lesson.slug]);
+  }, [lesson.slug, profileId]);
 
   useEffect(() => {
     /* Netknutá lekce se neukládá — jinak by se konceptem stalo i to, že
@@ -166,8 +169,8 @@ export function LessonWorkbench({
     const untouched =
       code === lesson.starterCode && circuit === seed && blocks === lesson.blocks.starter;
     if (!restored.current && untouched) return;
-    saveDraft(lesson.slug, { code, circuit, blocks });
-  }, [lesson.slug, lesson.starterCode, lesson.blocks.starter, code, circuit, blocks, seed]);
+    saveDraft(lesson.slug, { code, circuit, blocks }, profileId);
+  }, [lesson.slug, profileId, lesson.starterCode, lesson.blocks.starter, code, circuit, blocks, seed]);
 
   /* Režim napříč lekcemi: u profilu, jinak v prohlížeči (viz
      `features/blocks/mode.ts`). Prohlížeč se dá číst až po připojení,
@@ -373,7 +376,7 @@ export function LessonWorkbench({
 
       if (result.passed && !solved) {
         setSolved(true);
-        clearDraft(lesson.slug);
+        clearDraft(lesson.slug, profileId);
         onSolved(hints.wiring + hints.code + Number(assisted.wiring) + Number(assisted.code));
       }
     }, 160);

@@ -13,6 +13,15 @@ import type { WorkspaceState } from "@/features/blocks/program";
  */
 
 const KEY_PREFIX = "weeks.lesson-draft.v1.";
+const PROFILE_KEY_PREFIX = "weeks.lesson-draft.v2.";
+
+/**
+ * Klíč konceptu. Anonym drží starý klíč v1; dítě s profilem má vlastní v2,
+ * aby si sourozenci na jednom tabletu nepřepisovali rozdělanou práci.
+ */
+export function draftKey(slug: string, profileId?: string | null): string {
+  return profileId ? `${PROFILE_KEY_PREFIX}${profileId}.${slug}` : KEY_PREFIX + slug;
+}
 
 export interface LessonDraft {
   code: string;
@@ -21,11 +30,24 @@ export interface LessonDraft {
   blocks?: WorkspaceState;
 }
 
-export function loadDraft(slug: string): LessonDraft | null {
+export function loadDraft(slug: string, profileId?: string | null): LessonDraft | null {
   if (typeof window === "undefined") return null;
 
   try {
-    const raw = window.localStorage.getItem(KEY_PREFIX + slug);
+    const key = draftKey(slug, profileId);
+    let raw = window.localStorage.getItem(key);
+
+    /* Koncept z doby před profily patří prvnímu profilu, který lekci otevře:
+       přesune se pod něj a v1 zmizí, takže druhé dítě ho už nenajde. */
+    if (!raw && profileId) {
+      const legacyKey = draftKey(slug);
+      const legacy = window.localStorage.getItem(legacyKey);
+      if (legacy) {
+        window.localStorage.setItem(key, legacy);
+        window.localStorage.removeItem(legacyKey);
+        raw = legacy;
+      }
+    }
     if (!raw) return null;
 
     const parsed: unknown = JSON.parse(raw);
@@ -37,20 +59,20 @@ export function loadDraft(slug: string): LessonDraft | null {
   }
 }
 
-export function saveDraft(slug: string, draft: LessonDraft): void {
+export function saveDraft(slug: string, draft: LessonDraft, profileId?: string | null): void {
   if (typeof window === "undefined") return;
 
   try {
-    window.localStorage.setItem(KEY_PREFIX + slug, JSON.stringify(draft));
+    window.localStorage.setItem(draftKey(slug, profileId), JSON.stringify(draft));
   } catch {
     /* Plné úložiště nebo soukromé okno. Neuložit je horší než spadnout? Ne. */
   }
 }
 
-export function clearDraft(slug: string): void {
+export function clearDraft(slug: string, profileId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(KEY_PREFIX + slug);
+    window.localStorage.removeItem(draftKey(slug, profileId));
   } catch {
     /* nic */
   }

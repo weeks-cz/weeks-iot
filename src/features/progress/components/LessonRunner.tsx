@@ -48,6 +48,8 @@ interface Props {
   completedSlugs: string[];
   /** Režim editoru uložený u profilu; u anonyma `undefined`. */
   childEditorMode?: EditorMode | null;
+  /** Profil dítěte, pod kterým se ukládá koncept lekce; anonym `null`. */
+  profileId?: string | null;
 }
 
 export function LessonRunner({
@@ -61,6 +63,7 @@ export function LessonRunner({
   publishedSlugs,
   completedSlugs,
   childEditorMode,
+  profileId,
 }: Props) {
   const [completed, setCompleted] = useState(false);
   const wallRef = useRef<HTMLDivElement>(null);
@@ -285,6 +288,7 @@ export function LessonRunner({
     <LessonWorkbench
       lesson={lesson}
       childEditorMode={childEditorMode}
+      profileId={profileId}
       onSolved={handleSolved}
       onContinue={handleContinue}
       onHint={(kind, index) => {
