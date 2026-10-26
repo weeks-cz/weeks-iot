@@ -10,6 +10,11 @@ import { completedLessonSlugs } from "@/features/progress/queries";
 import { activeChildEditorMode } from "@/features/children/editor-mode";
 import { getActiveChild } from "@/features/children/queries";
 import { homeHref, toViewer } from "@/features/shell/home-href";
+import { campOfferFor, type CampOffer } from "@/features/camp/offer";
+import { CERTIFICATES } from "@/features/certificates/content";
+import type { Circuit } from "@/features/circuit/types";
+import { childBuilds } from "@/features/collection/queries";
+import { getCampCatchment } from "@/features/onboarding/queries";
 
 interface Params {
   slug: string;
@@ -38,12 +43,16 @@ async function loadLesson(courseSlug: string, lessonSlug: string) {
   if (!lesson) return null;
 
   const published = (lessons ?? []).filter((l) => l.is_published);
-  const index = published.findIndex((l) => l.id === lesson.id);
+
+  /* Závěrečný projekt na certifikátu — stejná lekce jako v PDF
+     (`CERTIFICATES`); kurz bez záznamu dostane poslední lekci. */
+  const projectSlug = CERTIFICATES[course.slug]?.projectLessonSlug;
+  const project = published.find((l) => l.slug === projectSlug) ?? published.at(-1);
 
   return {
     course,
     lesson,
-    nextLessonSlug: published[index + 1]?.slug ?? null,
+    projectTitle: project?.title ?? lesson.title,
     total: published.length,
     publishedSlugs: published.map((l) => l.slug),
     publishedIds: published.map((l) => l.id),
@@ -102,6 +111,32 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
   /* Přihlášený rodič bez vybraného profilu: postup by se nikam nezapsal.
      Dřív se to tvářilo jako přihlášené dítě a zápis tiše selhával. */
   const needsChildProfile = Boolean(auth.user) && !activeChild;
+
+  /* Finále kurzu potřebuje tábor a výtvory ze sbírky. Načítají se jen
+     tehdy, když tahle lekce kurz opravdu může dokončit (všechny ostatní
+     jsou v účtu hotové) — jinak by každá lekce platila dotazy navíc.
+     Anonym dostane obecnou nabídku bez dotazu. */
+  const mayFinishCourse = data.publishedSlugs.every(
+    (s) => s === lekce || completedSlugs.includes(s),
+  );
+  const [campOffer, savedCircuits] = !auth.user
+    ? [campOfferFor({ regionCode: null, catchment: [], anonymous: true }), {}]
+    : mayFinishCourse
+      ? await Promise.all([
+          parentCampOffer(auth.user.id).catch((error: unknown) => {
+            console.error("[lekce] nabídka tábora se nenačetla", error);
+            return null;
+          }),
+          activeChild
+            ? childBuilds(activeChild.id, slug)
+                .then(circuitsBySlug)
+                .catch((error: unknown) => {
+                  console.error("[lekce] výtvory se nenačetly", error);
+                  return {};
+                })
+            : {},
+        ])
+      : [null, {}];
 
   /* Přihlášený se vrací domů (lobby nebo výběr profilu), ne na přehled
      kurzu — ten je pro něj jen mezikrok. Anonym zůstává u kurzu. */
@@ -162,18 +197,37 @@ export default async function LessonPage({ params }: { params: Promise<Params> }
       <div className="max-w-6xl">
         <LessonRunner
           courseSlug={slug}
+          courseTitle={data.course.title}
+          projectTitle={data.projectTitle}
           lessonSlug={lekce}
-          lessonTitle={data.lesson.title}
           lessonOrder={data.lesson.order_index}
           isAuthenticated={Boolean(auth.user)}
           needsChildProfile={needsChildProfile}
-          nextLessonSlug={data.nextLessonSlug}
           publishedSlugs={data.publishedSlugs}
           completedSlugs={completedSlugs}
           childEditorMode={childEditorMode}
           profileId={activeChild?.id ?? null}
+          nick={activeChild?.nick ?? null}
+          campOffer={campOffer}
+          savedCircuits={savedCircuits}
         />
       </div>
     </main>
   );
+}
+
+/** Karta tábora podle kraje rodiče (pravidla v `campOfferFor`, jako v lobby). */
+async function parentCampOffer(parentId: string): Promise<CampOffer> {
+  const supabase = await createClient();
+  const [{ data: parent, error }, catchment] = await Promise.all([
+    supabase.from("parents").select("region_code").eq("id", parentId).maybeSingle(),
+    getCampCatchment(),
+  ]);
+  if (error) throw error;
+  return campOfferFor({ regionCode: parent?.region_code ?? null, catchment, anonymous: false });
+}
+
+/** Do klienta jde jen obvod — kód a bloky finále nepotřebuje. */
+function circuitsBySlug(builds: Map<string, { data: { circuit: Circuit } }>): Record<string, Circuit> {
+  return Object.fromEntries([...builds].map(([lessonSlug, b]) => [lessonSlug, b.data.circuit]));
 }

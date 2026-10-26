@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { ButtonLink } from "@/components/ui/Button";
 import { Alert, Card, MonoLabel } from "@/components/ui/Surface";
 import {
   markLessonCompleted,
@@ -16,8 +14,17 @@ import { saveLessonBuildAction } from "@/features/collection/actions";
 import { saveAnonBuild } from "@/features/collection/anon-builds";
 import type { LessonBuildDraft } from "@/features/collection/schema";
 import type { EditorMode } from "@/features/blocks/mode";
-import { coursePath, isCourseDone, type PathLesson } from "@/features/lobby/model";
+import type { CampOffer } from "@/features/camp/offer";
+import type { Circuit } from "@/features/circuit/types";
+import { referenceCircuit } from "@/features/lessons/reference-circuit";
+import {
+  coursePath,
+  isCourseDone,
+  lobbyBuilds,
+  type PathLesson,
+} from "@/features/lobby/model";
 import { LessonDone, nextLesson } from "@/features/celebrate/components/LessonDone";
+import { CourseFinale } from "@/features/celebrate/components/CourseFinale";
 
 /**
  * Průchod lekcí.
@@ -39,14 +46,16 @@ import { LessonDone, nextLesson } from "@/features/celebrate/components/LessonDo
 
 interface Props {
   courseSlug: string;
+  /** Název kurzu z databáze — finále a certifikát. */
+  courseTitle: string;
+  /** Závěrečný projekt kurzu (podle `CERTIFICATES`) — finále a certifikát. */
+  projectTitle: string;
   lessonSlug: string;
-  lessonTitle: string;
   lessonOrder: number;
   /** Přihlášený uživatel zeď nevidí — už ji jednou prošel. */
   isAuthenticated: boolean;
   /** Přihlášený bez vybraného profilu dítěte: postup se zatím nikam nezapíše. */
   needsChildProfile?: boolean;
-  nextLessonSlug: string | null;
   /** Všechny publikované lekce kurzu, v pořadí. Pro course_complete. */
   publishedSlugs: string[];
   /** Co už má dokončené přihlášený uživatel. U anonyma prázdné. */
@@ -55,20 +64,33 @@ interface Props {
   childEditorMode?: EditorMode | null;
   /** Profil dítěte, pod kterým se ukládá koncept lekce; anonym `null`. */
   profileId?: string | null;
+  /** Přezdívka aktivního profilu — nadpis a certifikát ve finále. */
+  nick?: string | null;
+  /** Nabídka tábora pro finále; `null` = karta tábora se neukáže. */
+  campOffer?: CampOffer;
+  /**
+   * Obvody, které má dítě uložené ve sbírce (slug lekce → obvod). Server je
+   * posílá, jen když tahle lekce může dokončit kurz; jinak prázdné a finále
+   * nakreslí vzorová zapojení.
+   */
+  savedCircuits?: Record<string, Circuit>;
 }
 
 export function LessonRunner({
   courseSlug,
+  courseTitle,
+  projectTitle,
   lessonSlug,
-  lessonTitle,
   lessonOrder,
   isAuthenticated,
   needsChildProfile = false,
-  nextLessonSlug,
   publishedSlugs,
   completedSlugs,
   childEditorMode,
   profileId,
+  nick = null,
+  campOffer = null,
+  savedCircuits = {},
 }: Props) {
   const [completed, setCompleted] = useState(false);
   /* Jestli se výtvor uložil do sbírky — oslava po lekci podle toho řekne
@@ -77,6 +99,11 @@ export function LessonRunner({
   /* Hotové lekce kurzu po vyřešení téhle: účet + prohlížeč + tahle lekce.
      Z nich se rozhoduje finále vs. malá oslava i mapa v oslavě. */
   const [doneSlugs, setDoneSlugs] = useState<ReadonlySet<string>>(() => new Set(completedSlugs));
+  /* Zápis postupu do účtu. Finále podle něj odemkne stažení certifikátu —
+     certifikát se počítá z postupu, takže dřív by odkaz vrátil 404. */
+  const [progressSaved, setProgressSaved] = useState<Promise<boolean> | boolean>(false);
+  /* Obvod, který dítě právě postavilo — první náhled v „Co dál" finále. */
+  const [builtCircuit, setBuiltCircuit] = useState<Circuit | null>(null);
   const wallRef = useRef<HTMLDivElement>(null);
 
   /* Zaznamenání začátku. Tohle je nález N4 — bez lesson_start neexistuje
@@ -104,7 +131,15 @@ export function LessonRunner({
   /* Po dokončení se fokus přesune na zeď. Bez toho zůstane u tlačítka,
      které zmizelo, a čtečka ani klávesnice nemají kam navázat. */
   useEffect(() => {
-    if (completed) wallRef.current?.focus();
+    const wall = wallRef.current;
+    if (!completed || !wall) return;
+    /* Samotné focus() neposune stránku, když je obal vidět aspoň kouskem —
+       „Mám hotovo" bývá dole a dítě by místo nadpisu a certifikátu vidělo
+       jen spodní karty. Proto vždy na začátek oslavy (pod hlavičku drží
+       scroll-padding-top). */
+    wall.focus({ preventScroll: true });
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    wall.scrollIntoView({ block: "start", behavior: reduced ? "auto" : "smooth" });
   }, [completed]);
 
   /**
@@ -126,11 +161,17 @@ export function LessonRunner({
         (l) => l.courseSlug === courseSlug && l.lessonSlug === lessonSlug,
       );
       if (record) {
-        void saveLessonProgressAction(record).then((res) => {
-          if (!res.ok) console.warn("[lekce] Postup se do účtu nezapsal");
-        });
+        setProgressSaved(
+          saveLessonProgressAction(record)
+            .then((res) => {
+              if (!res.ok) console.warn("[lekce] Postup se do účtu nezapsal");
+              return res.ok;
+            })
+            .catch(() => false),
+        );
       }
     }
+    setBuiltCircuit(build.circuit);
 
     /* Výtvor do sbírky jen u dítěte s aktivním profilem; server si profil
        odvodí sám. Slugy doplňuje až tady, protože editor lekce kurz nezná. */
@@ -209,111 +250,30 @@ export function LessonRunner({
       );
     }
 
-    /* ── Konec kurzu ── (finále přijde sem; dnešní obrazovka beze změny) */
+    /* ── Konec kurzu ── Finále s certifikátem (přihlášený i anonym). */
+    const saved = new Map(
+      Object.entries(savedCircuits).map(([slug, circuit]) => [slug, { data: { circuit } }]),
+    );
+    if (builtCircuit) saved.set(lessonSlug, { data: { circuit: builtCircuit } });
+
     return (
       <div ref={wallRef} tabIndex={-1} className="outline-none">
-        <Card className="mb-6 border-trust-600 bg-trust-50 p-6">
-          <MonoLabel className="mb-2">Hotovo</MonoLabel>
-          <h2 className="heading-3 mb-2">Lekce &bdquo;{lessonTitle}&ldquo; je hotová</h2>
-          <p className="lesson-body text-ink-700">
-            {nextLessonSlug ? "Máš to! Pojď na další." : "Celý kurz máš za sebou!"}
-          </p>
-        </Card>
-
-        {isAuthenticated && needsChildProfile && (
-          <Alert tone="warning" title="Postup se zatím neukládá" className="mb-6">
-            Nevybrali jste, kdo se učí. Vyberte profil dítěte, ať se lekce zapíše k němu.{" "}
-            <Link
-              href={zapsatHref(courseSlug, lessonSlug)}
-              className="font-semibold underline underline-offset-4"
-            >
-              Vybrat profil
-            </Link>
-          </Alert>
-        )}
-
-        {isAuthenticated ? (
-          <div className="flex flex-col gap-4">
-            {!nextLessonSlug && !needsChildProfile && (
-              <p className="max-w-prose leading-relaxed text-ink-500">
-                Certifikát za celý kurz je připravený v účtu rodiče, v přehledu dítěte.
-              </p>
-            )}
-            <div className="flex flex-wrap gap-3">
-            {nextLessonSlug ? (
-              <ButtonLink href={`/kurz/${courseSlug}/${nextLessonSlug}`} size="lg">
-                Další lekce →
-              </ButtonLink>
-            ) : (
-              <ButtonLink href="/ucim-se" size="lg">
-                Zpět na přehled
-              </ButtonLink>
-            )}
-            </div>
-          </div>
-        ) : !nextLessonSlug ? (
-          <CourseEndWall
-            courseSlug={courseSlug}
-            lessonSlug={lessonSlug}
-            lessonOrder={lessonOrder}
-          />
-        ) : (
-          /* Zeď. Přichází po doručené hodnotě — dítě má hotový výsledek
-             před sebou a teprve teď se ptáme na e-mail rodiče. */
-          <Card className="border-ink p-6 shadow-hard">
-            <MonoLabel className="mb-3">Ulož si to</MonoLabel>
-
-            <h2 className="heading-3 mb-3">Ať ti to nezmizí</h2>
-
-            <p className="mb-5 max-w-prose leading-relaxed text-ink-500">
-              Postup máš zatím jen v tomhle prohlížeči. Když rodič založí účet, přeneseme
-              ho do tvého profilu a budeš moct pokračovat i na jiném zařízení.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <ButtonLink
-                href="/registrace"
-                size="lg"
-                /* Kolik lidí ze zdi opravdu vyrazí k registraci. Rozdíl
-                   proti signup_prompt_view je ta jediná věc, která říká,
-                   jestli je špatně text zdi, nebo až samotný formulář. */
-                onClick={() => {
-                  void track(EVENT.SIGNUP_START, {
-                    after_lesson: lessonSlug,
-                    order: lessonOrder,
-                  });
-                }}
-              >
-                Uložit můj postup
-              </ButtonLink>
-              {/* Zeď nesmí stát mezi dítětem a obsahem — to je pravidlo
-                  projektu, ne kosmetika. Dřív tu byl jen odkaz zpátky do
-                  téže lekce, takže dítě, které si nechtělo zakládat účet,
-                  nemělo jak jít dál a kurz pro něj skončil. */}
-              {nextLessonSlug ? (
-                <ButtonLink
-                  href={`/kurz/${courseSlug}/${nextLessonSlug}`}
-                  variant="outline"
-                  size="lg"
-                >
-                  Další lekce →
-                </ButtonLink>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setCompleted(false)}
-                  className="rounded-sm text-sm text-ink-500 underline underline-offset-4 hover:text-ink"
-                >
-                  Zpátky k lekci
-                </button>
-              )}
-            </div>
-
-            <p className="mt-5 font-mono text-xs text-ink-300">
-              účet zakládá rodič · e-mail dítěte nepotřebujeme · dál se dostaneš i bez něj
-            </p>
-          </Card>
-        )}
+        <CourseFinale
+          mode={isAuthenticated ? "child" : "anon"}
+          nick={isAuthenticated && !needsChildProfile ? nick : null}
+          childId={isAuthenticated && !needsChildProfile ? (profileId ?? null) : null}
+          courseSlug={courseSlug}
+          courseTitle={courseTitle}
+          projectTitle={projectTitle}
+          lessons={publishedSlugs.length}
+          camp={campOffer}
+          progressSaved={progressSaved}
+          afterLesson={{ slug: lessonSlug, order: lessonOrder }}
+          builds={lobbyBuilds(contentPath(publishedSlugs, doneSlugs), saved, referenceFor)}
+          zapsatHref={
+            isAuthenticated && needsChildProfile ? zapsatHref(courseSlug, lessonSlug) : undefined
+          }
+        />
       </div>
     );
   }
@@ -356,6 +316,12 @@ function zapsatHref(courseSlug: string, lessonSlug: string): string {
   return `/ucim-se?zapsat=${encodeURIComponent(`${courseSlug}/${lessonSlug}`)}`;
 }
 
+/** Vzorové zapojení lekce pro hotovou lekci bez uloženého výtvoru. */
+function referenceFor(slug: string): Circuit | null {
+  const lesson = lessonBySlug(slug);
+  return lesson ? referenceCircuit(lesson.wiring) : null;
+}
+
 /**
  * Cesta kurzem pro oslavu. Pořadí a publikaci určuje databáze
  * (`publishedSlugs`), název a délku obsah lekce v kódu — stejný zdroj, ze
@@ -374,66 +340,5 @@ function contentPath(publishedSlugs: string[], done: ReadonlySet<string>): PathL
       };
     }),
     done,
-  );
-}
-
-/**
- * Konec kurzu pro dítě bez účtu. Certifikát už na něj čeká, ale vydá se až
- * přes rodiče — proto je tu zeď s registrací a jemný další krok, ne další lekce.
- * Amber zůstává jen u registrace; odkaz na tábor je záměrně sekundární.
- */
-function CourseEndWall({
-  courseSlug,
-  lessonSlug,
-  lessonOrder,
-}: {
-  courseSlug: string;
-  lessonSlug: string;
-  lessonOrder: number;
-}) {
-  const campHref =
-    "https://weeks.cz/tabory?utm_source=ucebna&utm_medium=app&utm_campaign=leto2027&utm_content=konec-kurzu";
-  return (
-    <Card className="border-ink p-6 shadow-hard">
-      <MonoLabel className="mb-3">Certifikát</MonoLabel>
-      <h2 className="heading-3 mb-3">Kurz máš hotový</h2>
-      <p className="mb-5 max-w-prose leading-relaxed text-ink-500">
-        Certifikát s tvou přezdívkou už na tebe čeká. Rodič ho získá, až založí účet:
-        tvůj postup z tohoto prohlížeče se do něj přenese a certifikát se vystaví s datem
-        dokončení kurzu.
-      </p>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <ButtonLink
-          href="/registrace"
-          size="lg"
-          onClick={() => {
-            void track(EVENT.SIGNUP_START, {
-              after_lesson: lessonSlug,
-              order: lessonOrder,
-              course: courseSlug,
-            });
-          }}
-        >
-          Založit účet a získat certifikát
-        </ButtonLink>
-        <ButtonLink
-          href={campHref}
-          variant="outline"
-          size="lg"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => {
-            void track(EVENT.CAMP_CTA_CLICK, { placement: "konec-kurzu", destination: "weeks.cz/tabory" });
-          }}
-        >
-          Co dál: letní tábory Weeks
-        </ButtonLink>
-      </div>
-
-      <p className="mt-5 font-mono text-xs text-ink-300">
-        účet zakládá rodič · e-mail dítěte nepotřebujeme · lekce zůstávají otevřené
-      </p>
-    </Card>
   );
 }
