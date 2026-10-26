@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { lesson7 } from "@/features/lessons/content";
 import { referenceCircuit } from "@/features/lessons/reference-circuit";
+import { COMPONENT_REGISTRY } from "@/features/circuit/components";
 import { lessonBuildSchema } from "../schema";
 
 const circuit = referenceCircuit(lesson7.wiring);
@@ -60,5 +61,13 @@ describe("lessonBuildSchema", () => {
       },
     };
     expect(lessonBuildSchema.safeParse({ ...valid, mode: "blocks", blocks }).success).toBe(false);
+  });
+
+  it("přijme každý typ součástky z registru", () => {
+    for (const type of Object.keys(COMPONENT_REGISTRY)) {
+      const comps = [{ id: "c", type, x: 0, y: 0, rotation: 0 }];
+      const r = lessonBuildSchema.safeParse({ ...valid, circuit: { comps, wires: [] } });
+      expect(r.success, type).toBe(true);
+    }
   });
 });

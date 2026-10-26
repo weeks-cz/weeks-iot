@@ -17,7 +17,7 @@ import { z } from "zod";
 /* Krátké limity schválně: UTM je marketingový štítek, ne úložiště. Bez
    stropu by šlo relaci nafouknout na megabajty a poslat je na server. */
 const shortText = z.string().trim().max(200);
-const slug = z
+export const slug = z
   .string()
   .trim()
   .min(1)

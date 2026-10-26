@@ -129,10 +129,12 @@ export function LessonRunner({
     /* Výtvor do sbírky jen u dítěte s aktivním profilem; server si profil
        odvodí sám. Slugy doplňuje až tady, protože editor lekce kurz nezná. */
     if (isAuthenticated && !needsChildProfile) {
-      void saveLessonBuildAction({ ...build, courseSlug, lessonSlug }).then((res) => {
-        setSavedToCollection(res.ok);
-        if (!res.ok) console.warn("[lekce] Výtvor se do sbírky neuložil");
-      });
+      void saveLessonBuildAction({ ...build, courseSlug, lessonSlug })
+        .then((res) => {
+          setSavedToCollection(res.ok);
+          if (!res.ok) console.warn("[lekce] Výtvor se do sbírky neuložil");
+        })
+        .catch(() => setSavedToCollection(false));
     }
 
     void track(EVENT.LESSON_COMPLETE, {

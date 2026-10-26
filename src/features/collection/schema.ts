@@ -1,5 +1,7 @@
 import { z } from "zod";
-import type { Circuit } from "@/features/circuit/types";
+import { COMPONENT_REGISTRY } from "@/features/circuit/components";
+import type { Circuit, ComponentType } from "@/features/circuit/types";
+import { slug } from "@/features/anon-session/schema";
 import type { WorkspaceState } from "@/features/blocks/program";
 
 /**
@@ -15,31 +17,13 @@ import type { WorkspaceState } from "@/features/blocks/program";
 /** Strop celého výtvoru po serializaci do JSON, ve znacích. */
 export const MAX_BUILD_BYTES = 100_000;
 
-/** Stejná pravidla jako u slugů v `anonLessonSchema`. */
-const slug = z
-  .string()
-  .trim()
-  .min(1)
-  .max(80)
-  .regex(/^[a-z0-9-]+$/, "Slug smí obsahovat jen malá písmena, číslice a pomlčky");
-
 const id = z.string().min(1).max(80);
 const pinName = z.string().min(1).max(40);
 
-const COMPONENT_TYPES = [
-  "arduino-uno",
-  "breadboard-half",
-  "led-red",
-  "led-yellow",
-  "led-green",
-  "led-blue",
-  "led-rgb",
-  "resistor-220",
-  "pushbutton",
-  "piezo-buzzer",
-  "potentiometer",
-  "photoresistor",
-] as const;
+/* Typy součástek se berou z registru, ne z opsaného seznamu: nová součástka
+   se tak do schématu dostane sama a uložení se jí nezačne tiše odmítat.
+   Registr je `Record<ComponentType, …>`, takže je úplný už při překladu. */
+const COMPONENT_TYPES = Object.keys(COMPONENT_REGISTRY) as [ComponentType, ...ComponentType[]];
 
 const pinRef = z.object({ compId: id, pinName });
 
@@ -65,7 +49,7 @@ const circuitSchema = z.object({
       }),
     )
     .max(300),
-});
+}) satisfies z.ZodType<Circuit>;
 
 /* Stav Blockly je volný formát; hlídá se jen, že jde o pole objektů
    omezené délky. Celkovou velikost drží strop na JSON níž. */

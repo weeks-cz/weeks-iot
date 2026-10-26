@@ -7,6 +7,7 @@ import type { LessonBuild } from "../schema";
 const state = {
   updatedRows: [] as { id: string }[],
   update: vi.fn(),
+  eqCalls: [] as [string, unknown][],
   insert: vi.fn(),
 };
 
@@ -24,8 +25,7 @@ vi.mock("@/lib/supabase/server", () => ({
       return {
         update(values: unknown) {
           state.update(values);
-          const q = chain({ select: async () => ({ data: state.updatedRows, error: null }) });
-          return q;
+          return chain({ select: async () => ({ data: state.updatedRows, error: null }) }, true);
         },
         insert: async (values: unknown) => {
           state.insert(values);
@@ -36,11 +36,13 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-function chain(terminal: Record<string, unknown>) {
+function chain(terminal: Record<string, unknown>, recordEq = false) {
   const q: Record<string, unknown> = { ...terminal };
-  for (const m of ["select", "eq"]) {
-    if (!(m in terminal)) q[m] = () => q;
-  }
+  q.eq = (col: string, val: unknown) => {
+    if (recordEq) state.eqCalls.push([col, val]);
+    return q;
+  };
+  if (!("select" in terminal)) q.select = () => q;
   return q;
 }
 
@@ -54,6 +56,7 @@ const build: LessonBuild = {
 
 beforeEach(() => {
   state.updatedRows = [];
+  state.eqCalls = [];
   state.update.mockClear();
   state.insert.mockClear();
 });
@@ -63,6 +66,16 @@ describe("writeLessonBuild", () => {
     state.updatedRows = [{ id: "p1" }];
     expect(await writeLessonBuild("child-1", build)).toBe(true);
     expect(state.update).toHaveBeenCalledTimes(1);
+    expect(state.update).toHaveBeenCalledWith({
+      title: "Noční světlo",
+      data: { v: 1, circuit: build.circuit, code: build.code, mode: "code" },
+    });
+    /* Servisní klient obchází RLS, takže UPDATE musí být zúžený sám. */
+    expect(state.eqCalls).toEqual([
+      ["child_id", "child-1"],
+      ["lesson_id", "lesson-1"],
+      ["kind", "circuit"],
+    ]);
     expect(state.insert).not.toHaveBeenCalled();
   });
 
