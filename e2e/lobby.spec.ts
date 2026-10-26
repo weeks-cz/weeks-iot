@@ -60,7 +60,12 @@ test("anonym vyřeší první lekci a lobby ho vrátí k dalšímu kroku", async
   // hned, bez znovunačtení: AnonHomeLink relaci odebírá.
   await page.getByRole("banner").getByRole("link", { name: "Weeks Učebna — domů" }).click();
   await expect(page).toHaveURL(/\/kurz\/iot\/?$/);
-  await expect(page.getByText(/Pokračovat/).first()).toBeVisible({ timeout: 15_000 });
+  // Hero AnonLobby, ne osnova pod ním: „Pokračovat lekcí 2“ v osnově se
+  // vykreslí i tehdy, když AnonLobby vůbec nenaskočí.
+  await expect(page.getByRole("heading", { level: 1, name: /Vítej zpátky/ })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole("link", { name: /^Pokračovat v lekci/ })).toBeVisible();
 });
 
 test("/ucim-se bez přihlášení vede na přihlášení s návratem", async ({ page }) => {

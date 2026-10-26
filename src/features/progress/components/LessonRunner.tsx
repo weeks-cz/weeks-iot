@@ -10,6 +10,7 @@ import { EVENT, track, trackOnce } from "@/features/analytics/track";
 import { LessonWorkbench } from "@/features/lessons/components/LessonWorkbench";
 import { lessonBySlug } from "@/features/lessons/content";
 import { saveLessonProgressAction } from "@/features/progress/actions";
+import { celebrationAfter, lessonsDoneAfter } from "@/features/progress/course-done";
 import { saveLessonBuildAction } from "@/features/collection/actions";
 import { saveAnonBuild } from "@/features/collection/anon-builds";
 import type { LessonBuildDraft } from "@/features/collection/schema";
@@ -19,7 +20,6 @@ import type { Circuit } from "@/features/circuit/types";
 import { referenceCircuit } from "@/features/lessons/reference-circuit";
 import {
   coursePath,
-  isCourseDone,
   lobbyBuilds,
   type PathLesson,
 } from "@/features/lobby/model";
@@ -96,7 +96,7 @@ export function LessonRunner({
   /* Jestli se výtvor uložil do sbírky — oslava po lekci podle toho řekne
      „Přidáno do tvé sbírky". `null` = ukládání ještě nedoběhlo. */
   const [savedToCollection, setSavedToCollection] = useState<boolean | null>(null);
-  /* Hotové lekce kurzu po vyřešení téhle: účet + prohlížeč + tahle lekce.
+  /* Hotové lekce kurzu po vyřešení téhle (`lessonsDoneAfter`).
      Z nich se rozhoduje finále vs. malá oslava i mapa v oslavě. */
   const [doneSlugs, setDoneSlugs] = useState<ReadonlySet<string>>(() => new Set(completedSlugs));
   /* Zápis postupu do účtu. Finále podle něj odemkne stažení certifikátu —
@@ -203,15 +203,20 @@ export function LessonRunner({
        jsou hotové i všechny předchozí. Odvozovat ho z „nemám kam dál" by
        bylo špatně: kdo přeskočí na poslední lekci, kurz nedokončil.
 
-       Skládá se ze dvou zdrojů, protože každý zná jen půlku — anonymní
-       relace to, co se stalo v prohlížeči, a server to, co je v účtu. */
-    const doneInSession = session.lessons
-      .filter((l) => l.courseSlug === courseSlug && l.completedAt)
-      .map((l) => l.lessonSlug);
-    const allDone = new Set([...completedSlugs, ...doneInSession, lessonSlug]);
+       Dítě s profilem má postup na serveru; anonymní relace prohlížeče se
+       mu nepřimíchává (může v ní být sourozenec) — viz `lessonsDoneAfter`.
+       Stejná množina rozhoduje oslavu i course_complete. */
+    const allDone = lessonsDoneAfter({
+      completedSlugs,
+      sessionDoneSlugs: session.lessons
+        .filter((l) => l.courseSlug === courseSlug && l.completedAt)
+        .map((l) => l.lessonSlug),
+      lessonSlug,
+      profileBacked: isAuthenticated && !needsChildProfile,
+    });
     setDoneSlugs(allDone);
 
-    if (isCourseDone(publishedSlugs, allDone)) {
+    if (celebrationAfter(publishedSlugs, allDone) === "finale") {
       void trackOnce(EVENT.COURSE_COMPLETE, courseSlug, {
         course: courseSlug,
         lessons: publishedSlugs.length,
@@ -233,10 +238,8 @@ export function LessonRunner({
   const lesson = lessonBySlug(lessonSlug);
 
   if (completed) {
-    /* Finále jen když je po téhle lekci hotový CELÝ kurz (stejné pravidlo
-       jako course_complete), ne „nemám kam dál": kdo skočil rovnou na
-       poslední lekci, dostane malou oslavu s tím, kolik mu chybí. */
-    if (!isCourseDone(publishedSlugs, doneSlugs) && lesson) {
+    /* Finále jen po celém kurzu, jinak malá oslava (`celebrationAfter`). */
+    if (celebrationAfter(publishedSlugs, doneSlugs) === "lesson" && lesson) {
       const path = contentPath(publishedSlugs, doneSlugs);
       return (
         <div ref={wallRef} tabIndex={-1} className="outline-none">

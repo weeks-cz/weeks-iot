@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { useSettled } from "../components/CourseFinale";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { SETTLE_TIMEOUT_MS, useSettled } from "../components/CourseFinale";
 
 /** Slib, který se vyřeší až na pokyn testu. */
 function deferred() {
@@ -47,5 +47,39 @@ describe("useSettled — stav ukládání postupu ve finále", () => {
     expect(result.current).toBeNull();
     await act(async () => second.resolve(false));
     expect(result.current).toBe(false);
+  });
+
+  describe("zápis, který se nevyřeší", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("po ~15 s bez výsledku = neuložený postup, spinner netočí donekonečna", async () => {
+      vi.useFakeTimers();
+      const d = deferred();
+      const { result } = renderHook(() => useSettled(d.promise));
+      expect(result.current).toBeNull();
+
+      await act(async () => vi.advanceTimersByTime(SETTLE_TIMEOUT_MS - 1));
+      expect(result.current).toBeNull();
+
+      await act(async () => vi.advanceTimersByTime(1));
+      expect(result.current).toBe(false);
+
+      /* Pozdní úspěch už nic nepřepne — platí, co doběhlo první. */
+      await act(async () => d.resolve(true));
+      expect(result.current).toBe(false);
+    });
+
+    it("výsledek před limitem platí a limit ho pak nepřepíše", async () => {
+      vi.useFakeTimers();
+      const d = deferred();
+      const { result } = renderHook(() => useSettled(d.promise));
+      await act(async () => d.resolve(true));
+      expect(result.current).toBe(true);
+
+      await act(async () => vi.advanceTimersByTime(SETTLE_TIMEOUT_MS * 2));
+      expect(result.current).toBe(true);
+    });
   });
 });

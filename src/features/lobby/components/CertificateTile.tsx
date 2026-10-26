@@ -4,9 +4,10 @@ import type { EarnedCertificate } from "@/features/certificates/queries";
 import { CertificateFace } from "@/features/certificates/components/CertificateFace";
 import { plural } from "../copy";
 
-const LINK =
-  "mt-4 inline-flex min-h-11 w-fit items-center gap-2 rounded-sm font-semibold text-primary-700 " +
+const LINK_TEXT =
+  "inline-flex min-h-11 w-fit items-center gap-2 rounded-sm font-semibold text-primary-700 " +
   "underline-offset-4 hover:underline";
+const LINK = `mt-4 ${LINK_TEXT}`;
 
 /**
  * Certifikát v lobby — stejný líc jako v účtu a ve finále.
@@ -77,10 +78,15 @@ export function CertificateTile({
           Chybí ti ještě {remaining} {plural(remaining, "lekce", "lekce", "lekcí")}.
         </p>
       ) : (
-        /* Kurz je hotový, ale certifikát se nenačetl — ve sbírce ho najde. */
-        <Link href="/ucim-se/sbirka" className={LINK}>
-          Do sbírky <span aria-hidden="true">→</span>
-        </Link>
+        /* Kurz je hotový, ale certifikát se nenačetl. Dlaždice stojí i ve
+           sbírce, takže odkaz „do sbírky" by vedl na tutéž stránku — účet rodiče
+           certifikáty počítá sám a funguje vždycky. */
+        <div className="mt-4">
+          <p className="text-sm text-ink-500">Certifikát se nenačetl, zkus to za chvíli znovu.</p>
+          <Link href="/ucet" className={LINK_TEXT}>
+            Účet rodiče <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       )}
     </section>
   );

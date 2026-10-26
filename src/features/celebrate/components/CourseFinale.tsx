@@ -43,9 +43,15 @@ export interface CourseFinaleProps {
 
 const THUMB_HEIGHT = 80;
 
+/** Jak dlouho smí „Chystám certifikát…" čekat, než to finále vzdá. */
+export const SETTLE_TIMEOUT_MS = 15_000;
+
 /**
  * Výsledek ukládání postupu jako stav: `null` = ještě běží.
- * Odmítnutý slib je totéž co neuložený postup.
+ * Odmítnutý slib je totéž co neuložený postup — stejně jako slib, který se
+ * do `SETTLE_TIMEOUT_MS` nevyřeší (zaseknutá školní Wi-Fi): spinner nesmí
+ * točit donekonečna, finále radši ukáže větu o účtu rodiče. Co doběhne
+ * první, platí; pozdní výsledek už nic nepřepíná.
  */
 export function useSettled(value: Promise<boolean> | boolean): boolean | null {
   /* Výsledek si pamatuje, ke kterému slibu patří — nový slib (opakované
@@ -54,12 +60,20 @@ export function useSettled(value: Promise<boolean> | boolean): boolean | null {
   useEffect(() => {
     if (typeof value === "boolean") return;
     let live = true;
+    let settled = false;
+    const settle = (ok: boolean) => {
+      if (!live || settled) return;
+      settled = true;
+      setResult({ of: value, ok });
+    };
+    const timer = setTimeout(() => settle(false), SETTLE_TIMEOUT_MS);
     value.then(
-      (ok) => live && setResult({ of: value, ok }),
-      () => live && setResult({ of: value, ok: false }),
+      (ok) => settle(ok),
+      () => settle(false),
     );
     return () => {
       live = false;
+      clearTimeout(timer);
     };
   }, [value]);
   if (typeof value === "boolean") return value;

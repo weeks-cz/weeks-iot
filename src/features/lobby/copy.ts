@@ -31,7 +31,7 @@ export interface HeroCopy {
 }
 
 const STEP_LINE = {
-  wiring: "Minule jsi skončil u zapojování. Obvod tě čeká tak, jak jsi ho nechal.",
+  wiring: "Minule jsme skončili u zapojování. Obvod tě čeká přesně tak, jak zůstal.",
   code: "Obvod máš zapojený, zbývá program.",
 } as const;
 
