@@ -16,7 +16,7 @@ export function HeaderCta() {
   if (inLesson) return null;
 
   return (
-    <ButtonLink href="/kurz/iot" size="sm">
+    <ButtonLink href="/kurz/iot" size="sm" className="whitespace-nowrap">
       Zkusit zdarma
     </ButtonLink>
   );

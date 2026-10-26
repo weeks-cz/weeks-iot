@@ -48,6 +48,9 @@ export function Logo({
       <span
         className={cn(
           "font-mono text-xs uppercase tracking-[0.2em] transition-colors",
+          /* S logem W se na úzkém telefonu popisek nevejde vedle „Přihlásit“
+             a „Zkusit zdarma“; značku nese W a „Weeks“. */
+          mark && "max-[399px]:hidden",
           dark ? "text-accent-300 group-hover:text-accent-200" : "text-primary-600 group-hover:text-primary-700",
         )}
       >
