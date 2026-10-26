@@ -19,17 +19,51 @@ interface Props {
 const NOOP = () => {};
 
 /**
- * Tmavý box stejné velikosti, jako bude mít náhled. Zvlášť, aby šel
- * otestovat bez prohlížeče.
+ * Tmavý box, ve kterém náhled stojí — před vykreslením i po něm je to
+ * tentýž element, takže se stránka při načtení obvodu nepohne.
  */
-export function ThumbPlaceholder({ label, height }: { label: string; height: number }) {
+export function ThumbPlaceholder({
+  label,
+  height,
+  boxRef,
+  children,
+}: {
+  label: string;
+  height: number;
+  boxRef?: React.Ref<HTMLDivElement>;
+  children?: React.ReactNode;
+}) {
   return (
     <div
+      ref={boxRef}
       role="img"
       aria-label={label}
-      className="w-full rounded-lg bg-ink"
+      className="relative w-full overflow-hidden rounded-lg bg-ink"
       style={{ height }}
-    />
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Samotné kreslení. Součástkové prvky se začnou stahovat až tady, tedy
+    teprve když je náhled v zorném poli. */
+function ThumbDrawing({ circuit, frame, height }: Pick<Props, "circuit" | "frame"> & { height: number }) {
+  const elementsReady = useWokwiElements();
+  if (!elementsReady) return null;
+  return (
+    /* Žádný dotek ani kolečko: náhled je obrázek, ne plocha. */
+    <div aria-hidden="true" className="pointer-events-none select-none">
+      <CircuitBuilder
+        palette={[]}
+        initialCircuit={circuit}
+        onChange={NOOP}
+        frame={frame}
+        readOnly
+        bare
+        height={height}
+      />
+    </div>
   );
 }
 
@@ -43,8 +77,6 @@ export function ThumbPlaceholder({ label, height }: { label: string; height: num
 export function CircuitThumb({ circuit, label, height = 160, frame }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  const elementsReady = useWokwiElements();
-
   useEffect(() => {
     const el = boxRef.current;
     if (!el || visible) return;
@@ -65,30 +97,9 @@ export function CircuitThumb({ circuit, label, height = 160, frame }: Props) {
     return () => io.disconnect();
   }, [visible]);
 
-  const show = visible && elementsReady;
-
   return (
-    <div
-      ref={boxRef}
-      role="img"
-      aria-label={label}
-      className="relative w-full overflow-hidden rounded-lg bg-ink"
-      style={{ height }}
-    >
-      {show && (
-        /* Žádný dotek ani kolečko: náhled je obrázek, ne plocha. */
-        <div aria-hidden="true" className="pointer-events-none select-none">
-          <CircuitBuilder
-            palette={[]}
-            initialCircuit={circuit}
-            onChange={NOOP}
-            frame={frame}
-            readOnly
-            bare
-            height={height}
-          />
-        </div>
-      )}
-    </div>
+    <ThumbPlaceholder label={label} height={height} boxRef={boxRef}>
+      {visible && <ThumbDrawing circuit={circuit} frame={frame} height={height} />}
+    </ThumbPlaceholder>
   );
 }
