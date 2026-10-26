@@ -193,9 +193,13 @@ export async function completeOnboardingAction(
   let progressTransferFailed = false;
   if (anon) {
     try {
-      await writeLessonProgress(childId, anon.lessons);
-      /* Výtvory až po zapsaném postupu; jejich selhání nic neshodí. */
-      await writeAnonBuilds(childId, parseAnonBuilds(formData.get("anonBuilds")));
+      const written = await writeLessonProgress(childId, anon.lessons);
+      /* Výtvory až po zapsaném postupu; jejich selhání nic neshodí
+         a registrace na ně nečeká. */
+      if (written) {
+        const builds = parseAnonBuilds(formData.get("anonBuilds"));
+        if (builds.length > 0) after(() => writeAnonBuilds(childId, builds));
+      }
       /* Kdo prošel celý kurz ještě před registrací, dostane certifikát
          hned s účtem — s datem, kdy kurz opravdu dokončil. */
       after(() => issueEarnedCertificates(childId));

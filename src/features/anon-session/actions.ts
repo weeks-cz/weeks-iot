@@ -72,7 +72,7 @@ export async function adoptAnonProgressAction(
 
   /* Výtvory až po zapsaném postupu; jejich selhání převzetí neshodí. */
   const builds = parseAnonBuilds(formData.get("anonBuilds"));
-  if (builds.length > 0) await writeAnonBuilds(child.id, builds);
+  if (builds.length > 0) after(() => writeAnonBuilds(child.id, builds));
 
   after(() => issueEarnedCertificates(child.id));
   revalidatePath("/ucet");

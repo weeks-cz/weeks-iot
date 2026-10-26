@@ -139,7 +139,7 @@ export function LessonRunner({
     } else {
       /* Bez účtu (nebo bez profilu dítěte) výtvor zůstane v prohlížeči
          a převezme se spolu s postupem. */
-      if (saveAnonBuild({ ...build, courseSlug, lessonSlug })) setSavedToCollection(true);
+      setSavedToCollection(saveAnonBuild({ ...build, courseSlug, lessonSlug }));
     }
 
     void track(EVENT.LESSON_COMPLETE, {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { ANON_BUILDS_CLIENT_BUDGET, MAX_ANON_BUILDS } from "./parse-builds";
 import { lessonBuildSchema, type LessonBuild } from "./schema";
 
 /**
@@ -47,7 +48,10 @@ export function saveAnonBuild(build: LessonBuild): boolean {
     const kept = readAnonBuilds().filter(
       (b) => !(b.courseSlug === build.courseSlug && b.lessonSlug === build.lessonSlug),
     );
-    window.localStorage.setItem(ANON_BUILDS_KEY, JSON.stringify([...kept, build]));
+    /* Nejnovější je vždy poslední; nad strop se vyřazují nejstarší, ať
+       formulář nikdy nepošle víc, než server přijme. */
+    const next = [...kept, build].slice(-MAX_ANON_BUILDS);
+    window.localStorage.setItem(ANON_BUILDS_KEY, JSON.stringify(next));
     return true;
   } catch {
     return false;
@@ -63,17 +67,46 @@ export function clearAnonBuilds(): void {
   }
 }
 
+/**
+ * Řetězec pro skryté pole formuláře: nejnovější výtvory, které se vejdou
+ * do rozpočtu znaků. Server action má limit těla 1 MB; kdyby výtvory
+ * přerostly, neprošla by registrace ani převzetí.
+ */
+export function serializeBuildsForForm(
+  builds: LessonBuild[],
+  budget = ANON_BUILDS_CLIENT_BUDGET,
+): string {
+  const picked: string[] = [];
+  let total = 2; // hranaté závorky
+  for (let i = builds.length - 1; i >= 0; i--) {
+    const json = JSON.stringify(builds[i]);
+    if (total + json.length + 1 > budget) continue;
+    picked.unshift(json);
+    total += json.length + 1;
+  }
+  return picked.length === 0 ? "" : `[${picked.join(",")}]`;
+}
+
 const noopSubscribe = () => () => {};
+
+/* Snapshot musí být stabilní řetězec a validace je drahá, proto se výsledek
+   pamatuje podle surového obsahu klíče. */
+let cached: { raw: string; value: string } | null = null;
 
 function readRaw(): string {
   try {
-    return window.localStorage.getItem(ANON_BUILDS_KEY) ?? "";
+    const raw = window.localStorage.getItem(ANON_BUILDS_KEY) ?? "";
+    if (!raw) return "";
+    if (cached?.raw === raw) return cached.value;
+    const value = serializeBuildsForForm(readAnonBuilds());
+    cached = { raw, value };
+    return value;
   } catch {
     return "";
   }
 }
 
-/** Surový obsah klíče pro skryté pole formuláře (prázdný na serveru). */
+/** Obsah pole `anonBuilds` formuláře (prázdný na serveru). */
 export function useAnonBuildsRaw(): string {
   return useSyncExternalStore(noopSubscribe, readRaw, () => "");
 }

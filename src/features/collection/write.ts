@@ -12,9 +12,16 @@ import { toStoredData, type LessonBuild } from "./schema";
  * čtení (`childBuilds`) bere nejnovější.
  *
  * Servisní klient, takže oprávnění k `childId` ověřuje volající.
+ * S `onlyIfMissing` (převzetí z prohlížeče) se existující výtvor nepřepíše:
+ * na serveru může být novější nebo patřit sourozenci. Pak jen INSERT, když
+ * řádek chybí.
  * Vrací, jestli zápis prošel; neexistující lekce je `false`, ne výjimka.
  */
-export async function writeLessonBuild(childId: string, build: LessonBuild): Promise<boolean> {
+export async function writeLessonBuild(
+  childId: string,
+  build: LessonBuild,
+  options: { onlyIfMissing?: boolean } = {},
+): Promise<boolean> {
   const service = createServiceClient();
 
   const { data: course } = await service
@@ -34,19 +41,34 @@ export async function writeLessonBuild(childId: string, build: LessonBuild): Pro
 
   const data = toStoredData(build);
 
-  const { data: updated, error: updateError } = await service
-    .from("projects")
-    .update({ title: lesson.title, data })
-    .eq("child_id", childId)
-    .eq("lesson_id", lesson.id)
-    .eq("kind", "circuit")
-    .select("id");
+  if (options.onlyIfMissing) {
+    const { data: existing, error: existsError } = await service
+      .from("projects")
+      .select("id")
+      .eq("child_id", childId)
+      .eq("lesson_id", lesson.id)
+      .eq("kind", "circuit")
+      .limit(1);
+    if (existsError) {
+      console.error("[sbírka] Kontrola výtvoru selhala:", existsError.message);
+      return false;
+    }
+    if (existing && existing.length > 0) return true;
+  } else {
+    const { data: updated, error: updateError } = await service
+      .from("projects")
+      .update({ title: lesson.title, data })
+      .eq("child_id", childId)
+      .eq("lesson_id", lesson.id)
+      .eq("kind", "circuit")
+      .select("id");
 
-  if (updateError) {
-    console.error("[sbírka] Aktualizace výtvoru selhala:", updateError.message);
-    return false;
+    if (updateError) {
+      console.error("[sbírka] Aktualizace výtvoru selhala:", updateError.message);
+      return false;
+    }
+    if (updated && updated.length > 0) return true;
   }
-  if (updated && updated.length > 0) return true;
 
   const { error: insertError } = await service.from("projects").insert({
     child_id: childId,
@@ -64,13 +86,14 @@ export async function writeLessonBuild(childId: string, build: LessonBuild): Pro
 }
 
 /**
- * Zapíše výtvory převzaté z prohlížeče. Selhání nikdy nevyhazuje —
- * výtvory jsou méně důležité než postup, který už je zapsaný.
+ * Zapíše výtvory převzaté z prohlížeče, ale nikdy nepřepíše existující
+ * (`onlyIfMissing`). Selhání nevyhazuje: výtvory jsou méně důležité než
+ * postup, který už je zapsaný.
  */
 export async function writeAnonBuilds(childId: string, builds: LessonBuild[]): Promise<void> {
   for (const build of builds) {
     try {
-      const ok = await writeLessonBuild(childId, build);
+      const ok = await writeLessonBuild(childId, build, { onlyIfMissing: true });
       if (!ok) console.warn("[sbírka] Převzatý výtvor se neuložil:", build.lessonSlug);
     } catch (err) {
       console.warn("[sbírka] Převzetí výtvoru selhalo:", build.lessonSlug, err);

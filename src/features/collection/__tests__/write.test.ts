@@ -9,6 +9,7 @@ const state = {
   update: vi.fn(),
   eqCalls: [] as [string, unknown][],
   insert: vi.fn(),
+  existing: [] as { id: string }[],
 };
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -23,6 +24,9 @@ vi.mock("@/lib/supabase/server", () => ({
         });
       }
       return {
+        select() {
+          return chain({ limit: async () => ({ data: state.existing, error: null }) });
+        },
         update(values: unknown) {
           state.update(values);
           return chain({ select: async () => ({ data: state.updatedRows, error: null }) }, true);
@@ -57,6 +61,7 @@ const build: LessonBuild = {
 beforeEach(() => {
   state.updatedRows = [];
   state.eqCalls = [];
+  state.existing = [];
   state.update.mockClear();
   state.insert.mockClear();
 });
@@ -88,5 +93,20 @@ describe("writeLessonBuild", () => {
       title: "Noční světlo",
       data: { v: 1, circuit: build.circuit, code: build.code, mode: "code" },
     });
+  });
+});
+
+describe("writeLessonBuild s onlyIfMissing", () => {
+  it("existující výtvor nepřepíše ani nevloží nový", async () => {
+    state.existing = [{ id: "p1" }];
+    expect(await writeLessonBuild("child-1", build, { onlyIfMissing: true })).toBe(true);
+    expect(state.update).not.toHaveBeenCalled();
+    expect(state.insert).not.toHaveBeenCalled();
+  });
+
+  it("bez výtvoru vloží nový a nikdy neaktualizuje", async () => {
+    expect(await writeLessonBuild("child-1", build, { onlyIfMissing: true })).toBe(true);
+    expect(state.update).not.toHaveBeenCalled();
+    expect(state.insert).toHaveBeenCalledTimes(1);
   });
 });
