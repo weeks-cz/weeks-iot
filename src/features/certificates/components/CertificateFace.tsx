@@ -86,7 +86,9 @@ export function CertificateFace({
           <p className="text-[2.5cqw] font-bold tracking-[0.02em] text-primary-600">Certifikát</p>
           <p
             className={cn(
-              "line-clamp-2 break-words font-extrabold leading-none tracking-[-0.03em]",
+              /* line-clamp ořezává (overflow: hidden): řádkování 1.1 a malý
+                 okraj nechají místo háčkům nad Č/Š/Ž i dolním tahům ý/p/g. */
+              "line-clamp-2 break-words py-[0.08em] font-extrabold leading-[1.1] tracking-[-0.03em]",
               name.length > LONG_NAME ? "text-[6.5cqw]" : "text-[10cqw]",
               !data && "text-ink/40",
             )}

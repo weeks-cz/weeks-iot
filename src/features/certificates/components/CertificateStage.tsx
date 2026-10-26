@@ -83,6 +83,10 @@ export function CertificateStage({ face, onLanded }: { face: ReactNode; onLanded
     let raf = 0;
     let last = 0;
     let landed = false;
+    let active = false;
+    /* Mimo obrazovku nebo ve skrytém panelu smyčka stojí — pohupování
+       by jinak běželo donekonečna. */
+    let onScreen = true;
 
     function apply(pose: Pose, sheenOpacity: number) {
       card!.style.transform = poseTransform(pose);
@@ -97,8 +101,10 @@ export function CertificateStage({ face, onLanded }: { face: ReactNode; onLanded
       }
     }
 
-    function setActive(active: boolean) {
-      const value = active ? "transform" : "";
+    function setActive(next: boolean) {
+      if (active === next) return;
+      active = next;
+      const value = next ? "transform" : "";
       card!.style.willChange = value;
       gloss!.style.willChange = value;
       light!.style.willChange = value;
@@ -183,7 +189,7 @@ export function CertificateStage({ face, onLanded }: { face: ReactNode; onLanded
     }
 
     function schedule() {
-      if (raf || reducedQuery.matches) return;
+      if (raf || reducedQuery.matches || !onScreen || document.hidden) return;
       /* `will-change` až po přistání: prohlížeč s ním zamkne rozlišení
          vrstvy na měřítku, ve kterém ho dostal — z příletu (scale 0.7)
          by text zůstal rozmazaný po celou dobu pohupování. */
@@ -225,6 +231,34 @@ export function CertificateStage({ face, onLanded }: { face: ReactNode; onLanded
       if (phase === "live") schedule();
     }
 
+    function pause() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      last = 0;
+      setActive(false);
+      /* Přílet přerušený odjetím z obrazovky se přehraje znovu celý,
+         ne aby certifikát po návratu jen „přistál". */
+      if (phase === "arriving") arrivalStart = 0;
+    }
+
+    function updateVisibility() {
+      if (onScreen && !document.hidden) {
+        /* Náklon v klidu se hned první snímek zastaví sám. */
+        schedule();
+      } else {
+        pause();
+      }
+    }
+
+    const observer =
+      typeof IntersectionObserver === "undefined"
+        ? null
+        : new IntersectionObserver(([entry]) => {
+            onScreen = entry?.isIntersecting ?? true;
+            updateVisibility();
+          });
+    observer?.observe(zone);
+
     function onReducedChange() {
       if (reducedQuery.matches) {
         stopStatic();
@@ -249,8 +283,11 @@ export function CertificateStage({ face, onLanded }: { face: ReactNode; onLanded
     zone.addEventListener("pointerleave", onPointerLeave);
     zone.addEventListener("pointerdown", onPointerDown);
     reducedQuery.addEventListener("change", onReducedChange);
+    document.addEventListener("visibilitychange", updateVisibility);
 
     return () => {
+      observer?.disconnect();
+      document.removeEventListener("visibilitychange", updateVisibility);
       if (raf) cancelAnimationFrame(raf);
       zone.removeEventListener("pointermove", onPointerMove);
       zone.removeEventListener("pointerleave", onPointerLeave);
