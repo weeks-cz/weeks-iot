@@ -12,9 +12,9 @@ describe("campOfferFor", () => {
       city: "karlovy-vary",
     });
   });
-  it("Praha: soon praha", () => {
+  it("Praha: open praha (herní tábor od 10. 11. 2026)", () => {
     expect(campOfferFor({ regionCode: "CZ-PR", catchment, anonymous: false })).toEqual({
-      kind: "soon",
+      kind: "open",
       city: "praha",
     });
   });

@@ -199,7 +199,7 @@ export function campEmail(ctx: SequenceContext): EmailTemplate {
           ...(offer
             ? [
                 offer.prihlasky
-                  ? `Přihlašování na léto 2027 ${offer.locative} je otevřené.`
+                  ? `Přihlašování na léto 2027 ${offer.locative} je otevřené: ${offer.nabidka}.`
                   : `Tábor ${offer.locative} na léto 2027 připravujeme. Nechte nám e-mail a ozveme se, jakmile otevřeme přihlašování.`,
               ]
             : []),

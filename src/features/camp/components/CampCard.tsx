@@ -23,10 +23,11 @@ export function CampCard({
   className?: string;
 }) {
   const where = offer.city ? CAMP_CITIES[offer.city].locative : "v Praze a Karlových Varech";
+  const nabidka = offer.city ? CAMP_CITIES[offer.city].nabidka : "skutečné Arduino a 3D tisk";
   const sentence =
     offer.kind === "soon"
       ? `Příměstský tábor ${where} — skutečné Arduino a 3D tisk, termíny připravujeme.`
-      : `Příměstský tábor ${where} — skutečné Arduino a 3D tisk.`;
+      : `Příměstský tábor ${where} — ${nabidka}.`;
   const tile = size === "tile";
 
   return (

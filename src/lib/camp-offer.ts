@@ -26,9 +26,27 @@ const CAMP_CITY_BY_REGION: Partial<Record<RegionCode, CampCity>> = {
  * (weeks-web `src/lib/turnusy.ts`): ve stejné chvíli přepne bit i tady.
  * Nic ho nehlídá — když se zapomene, karta lže o stavu přihlašování.
  */
-export const CAMP_CITIES: Record<CampCity, { locative: string; prihlasky: boolean }> = {
-  "karlovy-vary": { locative: "v Karlových Varech", prihlasky: true },
-  praha: { locative: "v Praze", prihlasky: false },
+/*
+ * `nabidka` říká, na co se ve městě přihlašuje — dokud byl jediný tábor
+ * chytrých technologií, stála ve větě karty natvrdo „skutečné Arduino
+ * a 3D tisk". Od 10. 11. 2026 je v Praze otevřený jen tábor herního vývoje
+ * (weeks-web `praha-2027-herni-vyvoj`), pražský tábor chytrých technologií
+ * je pořád „chystáme". Až se otevře, upraví se `nabidka` tady.
+ */
+export const CAMP_CITIES: Record<
+  CampCity,
+  { locative: string; prihlasky: boolean; nabidka: string }
+> = {
+  "karlovy-vary": {
+    locative: "v Karlových Varech",
+    prihlasky: true,
+    nabidka: "skutečné Arduino a 3D tisk",
+  },
+  praha: {
+    locative: "v Praze",
+    prihlasky: true,
+    nabidka: "vlastní hra v enginu Godot, tábor s Arduinem a 3D tiskem připravujeme",
+  },
 };
 
 /** Město tábora pro kraj. Kraj ve spádu bez města (rozšířený spád v DB) → null. */

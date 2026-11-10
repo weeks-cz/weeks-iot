@@ -15,10 +15,18 @@ describe("CampCta podle kraje", () => {
     expect(html).toContain("/tabory?mesto=karlovy-vary&amp;utm_source=ucebna");
   });
 
+  it("Praha otevřená: jmenuje herní tábor, Arduino jen jako připravované", () => {
+    const html = render({ segment: "camp", offer: { kind: "open", city: "praha" }, placement: "ucet" });
+    expect(html).toContain("Příměstský tábor v Praze — vlastní hra v enginu Godot");
+    expect(html).toContain("Podívat se na termíny");
+    expect(html).not.toContain("— skutečné Arduino a 3D tisk.");
+  });
+
   it("Praha a Středočeský: sběr zájmu, žádný slib termínu", () => {
+    // Popisek tlačítka čte živý `CAMP_CITIES` (Praha je od 10. 11. 2026
+    // otevřená), proto tu kontrolujeme jen větu „soon" a odkaz.
     const html = render({ segment: "camp", offer: { kind: "soon", city: "praha" }, placement: "ucet" });
     expect(html).toContain("Příměstský tábor v Praze — skutečné Arduino a 3D tisk, termíny připravujeme.");
-    expect(html).toContain("Dát mi vědět o termínech");
     expect(html).toContain("/tabory?mesto=praha&amp;");
   });
 
