@@ -24,7 +24,7 @@ export const metadata: Metadata = {
  */
 export default function PrivacyPage() {
   return (
-    <LegalDoc title="Ochrana osobních údajů" updated="10. 10. 2026">
+    <LegalDoc title="Ochrana osobních údajů" updated="13. 11. 2026">
       <section>
         <h2>Kdo údaje zpracovává</h2>
         <p>
@@ -43,10 +43,19 @@ export default function PrivacyPage() {
         <p>
           Prohlížeč si zároveň pamatuje náhodný identifikátor, který nikoho nepojmenovává.
           S ním nám posílá, že se návštěva uskutečnila, kterou lekci dítě začalo a dokončilo
-          a odkud návštěva přišla (odkazující stránka a označení kampaně v odkazu). Díky tomu
-          víme, které lekce děti dokončují a kde je ztrácíme. Jméno, e-mail ani IP adresu
-          k těmto záznamům neukládáme. Právním základem je náš oprávněný zájem na zlepšování
-          učebny (čl. 6 odst. 1 písm. f) GDPR).
+          a odkud návštěva přišla: odkazující stránku, označení kampaně v odkazu a to, jestli
+          jde o prohlížeč uvnitř aplikace Facebook nebo Instagram. Nic dalšího o vašem
+          prohlížeči ani zařízení si neukládáme.
+        </p>
+        <p>
+          Stejně zaznamenáváme, jak daleko jste se dostali v registraci: že jste ji otevřeli,
+          odeslali formulář nebo zvolili přihlášení přes Google a jestli se to povedlo. Obsah
+          formuláře, tedy e-mail ani heslo, k těmto záznamům nepatří.
+        </p>
+        <p>
+          Díky tomu víme, které lekce děti dokončují, kde je ztrácíme a kde se zasekává
+          registrace. Jméno, e-mail ani IP adresu k těmto záznamům neukládáme. Právním
+          základem je náš oprávněný zájem na zlepšování učebny (čl. 6 odst. 1 písm. f) GDPR).
         </p>
       </section>
 
@@ -90,6 +99,14 @@ export default function PrivacyPage() {
         <p>
           Bez těchto údajů nelze účet provozovat, zpracováváme je proto na základě plnění
           smlouvy (čl. 6 odst. 1 písm. b) GDPR).
+        </p>
+        <p>
+          K účtu si dále zaznamenáváme, jak registrace proběhla: jestli jste ji dokončili
+          e-mailem, nebo přes Google, kdy jste potvrdili adresu (a jestli odkaz z e-mailu
+          otevřel běžný prohlížeč, nebo prohlížeč aplikace Facebook či Instagram) a kterými
+          kroky dokončení registrace jste prošli. Záznamy z doby před registrací, popsané
+          výše, se tím s účtem propojí. Slouží jen k tomu, abychom věděli, kde registrace
+          drhne. Právním základem je náš oprávněný zájem (čl. 6 odst. 1 písm. f) GDPR).
         </p>
       </section>
 
