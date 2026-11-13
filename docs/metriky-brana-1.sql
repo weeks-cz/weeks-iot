@@ -159,9 +159,20 @@ select
   count(distinct anon_id)   filter (where type = 'signup_email_submit')                           as "2 odeslali formular",
   count(distinct anon_id)   filter (where type = 'signup_email_submit' and props->>'result' = 'sent') as "2a e-mail odeslan",
   count(distinct anon_id)   filter (where type = 'signup_email_submit' and props->>'result' = 'invalid') as "2b chyba ve formulari",
-  count(distinct anon_id)   filter (where type = 'auth_google_click')                             as "3 klikli na Google",
-  count(distinct anon_id)   filter (where type = 'auth_google_success')                           as "3a Google prosel",
-  count(distinct anon_id)   filter (where type = 'auth_google_error')                             as "3b Google chyba",
+  -- Google stojí na /registrace i na /prihlaseni. Na přihlášení klikají
+  -- i vracející se rodiče, ale účet jde založit i odtamtud — proto dva
+  -- sloupce, ne filtr.
+  count(distinct anon_id)   filter (where type = 'auth_google_click'   and props->>'page' = 'registrace') as "3 Google klik (registrace)",
+  count(distinct anon_id)   filter (where type = 'auth_google_click'   and props->>'page' = 'prihlaseni') as "3 Google klik (prihlaseni)",
+  count(distinct anon_id)   filter (where type = 'auth_google_success' and props->>'page' = 'registrace') as "3a Google prosel (registrace)",
+  count(distinct anon_id)   filter (where type = 'auth_google_success' and props->>'page' = 'prihlaseni') as "3a Google prosel (prihlaseni)",
+  -- Chyby podle místa. `script` NENÍ selhání registrace: skript Googlu se
+  -- nestáhl při načtení stránky (blokátor, vestavěný prohlížeč), bez kliku,
+  -- a rodič dostal záložní tlačítko. `redirect` se vždy ukazuje na
+  -- /prihlaseni, i když tok začal na registraci.
+  count(distinct anon_id)   filter (where type = 'auth_google_error' and props->>'stage' = 'token')    as "3b Google odmitl token",
+  count(distinct anon_id)   filter (where type = 'auth_google_error' and props->>'stage' = 'redirect') as "3c Google chyba po presmerovani",
+  count(distinct anon_id)   filter (where type = 'auth_google_error' and props->>'stage' = 'script')   as "3d skript Googlu se nenacetl",
   -- Kroky s účtem (parent_id)
   count(distinct parent_id) filter (where type = 'email_confirmed' and props->>'ok' = 'true')     as "4 potvrdili e-mail",
   count(*)                  filter (where type = 'email_confirmed' and props->>'ok' = 'false')    as "4x odkaz neprosel",
@@ -174,10 +185,14 @@ from ev;
 
 
 -- ── 3c. Podle prostředí (běžný prohlížeč / Facebook / Instagram) ──────────
--- Hypotéza: ve vestavěném prohlížeči Facebooku a Instagramu Google nefunguje
--- a lidé tam odpadají. `env` nese jen jednu ze tří hodnot, nikdy user agent.
--- U email_confirmed je to prostředí, kde se odkaz OTEVŘEL — rozdíl proti
--- registraci ukazuje, kolik lidí přechází do jiného prohlížeče.
+-- Hypotéza 1: ve vestavěném prohlížeči Facebooku a Instagramu Google
+-- nefunguje. Čti klik → prošel → odmítl token v řádku daného prostředí.
+-- Hypotéza 2: kdo se registruje ve Facebooku, otevře potvrzovací odkaz
+-- jinde (a ztratí postup z lekce). U email_confirmed je `env` prostředí,
+-- kde se odkaz OTEVŘEL. Konkrétního člověka spárovat nejde (jiný prohlížeč
+-- = jiné anon_id), jen podíly: e-mail_odeslan vs. otevreli_odkaz v řádku
+-- facebook / instagram.
+-- `env` nese jen jednu ze tří hodnot, nikdy user agent.
 -- (Stejné CTE jako v 3b — SQL Editor pouští dotazy zvlášť.)
 
 with param as (
@@ -204,9 +219,11 @@ select
   props->>'env'                                                              as prostredi,
   count(distinct anon_id)   filter (where type = 'visit_first')              as navstevy,
   count(distinct anon_id)   filter (where type = 'signup_view')              as videli_registraci,
-  count(distinct anon_id)   filter (where type = 'auth_google_click')        as klikli_google,
+  count(distinct anon_id)   filter (where type = 'auth_google_click')        as google_klik,
   count(distinct anon_id)   filter (where type = 'auth_google_success')      as google_prosel,
-  count(distinct anon_id)   filter (where type = 'auth_google_error')        as google_chyba,
+  count(distinct anon_id)   filter (where type = 'auth_google_error' and props->>'stage' = 'token')  as google_odmitl_token,
+  count(distinct anon_id)   filter (where type = 'auth_google_error' and props->>'stage' = 'script') as google_skript_nenacten,
+  count(distinct anon_id)   filter (where type = 'signup_email_submit' and props->>'result' = 'sent') as email_odeslan,
   count(distinct parent_id) filter (where type = 'email_confirmed' and props->>'ok' = 'true') as otevreli_odkaz
 from ev
 where props ? 'env'

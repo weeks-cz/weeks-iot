@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useEffect, type FormEvent } from "react";
 import { EVENT, track } from "@/features/analytics/track";
+import { currentEnvironment } from "@/features/analytics/environment";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Surface";
@@ -23,6 +24,9 @@ export function SignUpForm() {
     void track(EVENT.SIGNUP_EMAIL_SUBMIT, {
       result: state.success ? "sent" : state.fieldErrors ? "invalid" : "error",
       invalid: state.fieldErrors ? Object.keys(state.fieldErrors).sort().join(",") : null,
+      /* Prostředí, kde rodič potvrzovací e-mail ODESLAL. Proti prostředí,
+         kde odkaz otevřel (`email_confirmed`), dává podíly po prostředích. */
+      env: currentEnvironment(),
     });
   }, [state]);
 

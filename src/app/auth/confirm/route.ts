@@ -69,9 +69,10 @@ export async function GET(request: Request) {
  * klient, protože bezstavový klient po `signOut` už nemá roli
  * `authenticated` a politika `events_insert_anon` by parent_id odmítla.
  *
- * `env` u potvrzení je prostředí, kde se odkaz OTEVŘEL. Porovnané
- * s prostředím při registraci ukáže, kolik lidí přechází z Facebooku
- * do jiného prohlížeče (a ztrácí přitom postup z lekce).
+ * `env` u potvrzení je prostředí, kde se odkaz OTEVŘEL. Konkrétního
+ * člověka s jeho registrací ve Facebooku spárovat nejde (jiný prohlížeč =
+ * jiné anon_id). Porovnat jde jen podíly: kolik e-mailů se odeslalo
+ * z Facebooku a kolik odkazů se v něm otevřelo.
  *
  * Běží přes `after()`: přesměrování na něj nečeká a chyba ho neshodí.
  */

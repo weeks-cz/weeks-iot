@@ -50,7 +50,11 @@ describe("formulář registrace měří výsledek, ne obsah", () => {
     await submitSignUp();
 
     await waitFor(() =>
-      expect(track).toHaveBeenCalledWith("signup_email_submit", { result: "sent", invalid: null }),
+      expect(track).toHaveBeenCalledWith("signup_email_submit", {
+        result: "sent",
+        invalid: null,
+        env: "browser",
+      }),
     );
     /* Nikde se neposílá zadaná adresa ani heslo. */
     expect(JSON.stringify(track.mock.calls)).not.toContain("rodic@example.cz");
@@ -68,6 +72,7 @@ describe("formulář registrace měří výsledek, ne obsah", () => {
       expect(track).toHaveBeenCalledWith("signup_email_submit", {
         result: "invalid",
         invalid: "email,password",
+        env: "browser",
       }),
     );
   });
@@ -78,7 +83,11 @@ describe("formulář registrace měří výsledek, ne obsah", () => {
     await submitSignUp();
 
     await waitFor(() =>
-      expect(track).toHaveBeenCalledWith("signup_email_submit", { result: "error", invalid: null }),
+      expect(track).toHaveBeenCalledWith("signup_email_submit", {
+        result: "error",
+        invalid: null,
+        env: "browser",
+      }),
     );
   });
 
