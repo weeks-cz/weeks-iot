@@ -34,6 +34,9 @@ export interface GoogleIdApi {
       shape?: "rectangular" | "pill" | "circle" | "square";
       width?: number;
       locale?: string;
+      /** Volá se při kliknutí. Tlačítko je cizí iframe, vlastní posluchač
+       *  na obalu se nespustí — tohle je jediný způsob, jak klik změřit. */
+      click_listener?: () => void;
     },
   ): void;
 }

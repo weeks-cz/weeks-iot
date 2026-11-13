@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
-import { createStatelessClient } from "@/lib/supabase/server";
+import { after, NextResponse } from "next/server";
+import { createServiceClient, createStatelessClient } from "@/lib/supabase/server";
 import { isSafeNextPath } from "@/features/auth/safe-path";
+import { EVENT } from "@/features/analytics/events";
+import { browserEnvironment } from "@/features/analytics/environment";
 
 /**
  * Potvrzení registrace odkazem z e-mailu (token_hash).
@@ -34,7 +36,8 @@ export async function GET(request: Request) {
   }
 
   const supabase = createStatelessClient();
-  const { error } = await supabase.auth.verifyOtp({ type: "signup", token_hash: tokenHash });
+  const { data, error } = await supabase.auth.verifyOtp({ type: "signup", token_hash: tokenHash });
+  const env = browserEnvironment(request.headers.get("user-agent"));
 
   if (error) {
     console.warn("[auth/confirm] Ověření odkazu selhalo:", error.message);
@@ -43,8 +46,11 @@ export async function GET(request: Request) {
        proto hláška nezní jako „odkaz je rozbitý". */
     const code = (error as { code?: string }).code;
     const reason = code === "otp_expired" ? "expired" : "potvrzeni";
+    after(() => recordConfirmation(null, { ok: false, reason, env }));
     return NextResponse.redirect(`${origin}/prihlaseni?chyba=${reason}${nextParam}`);
   }
+
+  after(() => recordConfirmation(data.user?.id ?? null, { ok: true, env }));
 
   /* Session z verifyOtp žije jen v paměti; zrušíme ji i na serveru, ať po
      ní nezůstane platný refresh token. `scope: "local"` nechá ostatní
@@ -52,4 +58,33 @@ export async function GET(request: Request) {
   await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
   return NextResponse.redirect(`${origin}/prihlaseni?potvrzeno=1${nextParam}`);
+}
+
+/**
+ * Měření potvrzení (`email_confirmed`).
+ *
+ * Prohlížeč tu nic nezapíše: odkaz se často otevře jinde, než kde rodič
+ * začal, a anon_id odtamtud nemáme. Řádek proto nese jen parent_id — id
+ * z ověřeného tokenu, ne z adresy, takže ho nikdo nepodvrhne. Servisní
+ * klient, protože bezstavový klient po `signOut` už nemá roli
+ * `authenticated` a politika `events_insert_anon` by parent_id odmítla.
+ *
+ * `env` u potvrzení je prostředí, kde se odkaz OTEVŘEL. Porovnané
+ * s prostředím při registraci ukáže, kolik lidí přechází z Facebooku
+ * do jiného prohlížeče (a ztrácí přitom postup z lekce).
+ *
+ * Běží přes `after()`: přesměrování na něj nečeká a chyba ho neshodí.
+ */
+async function recordConfirmation(
+  parentId: string | null,
+  props: { ok: boolean; reason?: string; env: string },
+): Promise<void> {
+  try {
+    const { error } = await createServiceClient()
+      .from("learning_events")
+      .insert({ type: EVENT.EMAIL_CONFIRMED, parent_id: parentId, props });
+    if (error) console.warn("[auth/confirm] Zápis měření selhal:", error.message);
+  } catch (err) {
+    console.warn("[auth/confirm] Zápis měření selhal:", err);
+  }
 }

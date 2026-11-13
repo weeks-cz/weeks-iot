@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { captureAttribution } from "@/features/anon-session/storage";
 import { EVENT, trackOnce } from "../track";
+import { currentEnvironment } from "../environment";
 
 /**
  * Zachycení zdroje návštěvy.
@@ -27,6 +28,8 @@ export function AttributionCapture() {
       utm_campaign: session.attribution.utmCampaign ?? null,
       utm_content: session.attribution.utmContent ?? null,
       referrer: session.attribution.referrer ?? null,
+      /* Jen ze tří hodnot, nikdy celý user agent. */
+      env: currentEnvironment(),
     });
   }, []);
 

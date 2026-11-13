@@ -1,3 +1,5 @@
+"use client";
+
 import { signInWithGoogleAction } from "../actions";
 
 /**
@@ -5,13 +7,18 @@ import { signInWithGoogleAction } from "../actions";
  *
  * Logo je inline SVG, ne obrázek z CDN — CSP pouští obrázky jen z vlastní
  * domény a z weeks.cz, takže cizí zdroj by se tiše nenačetl.
+ *
+ * `onClick` slouží měření. Akce pak přesměruje na Google celou stránkou;
+ * zápis události obvykle doběhne dřív, než server odpoví, ale zaručené
+ * to není — klik v tomhle záložním toku je spíš spodní odhad.
  */
-export function GoogleButton({ next = "/ucet" }: { next?: string }) {
+export function GoogleButton({ next = "/ucet", onClick }: { next?: string; onClick?: () => void }) {
   return (
     <form action={signInWithGoogleAction}>
       <input type="hidden" name="next" value={next} />
       <button
         type="submit"
+        onClick={onClick}
         className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-md
                    border border-ink/25 bg-white px-6 py-3 font-semibold text-ink
                    transition-colors hover:border-ink hover:bg-paper-soft

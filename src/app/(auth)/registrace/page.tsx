@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AuthShell } from "@/components/ui/AuthShell";
 import { GoogleSignIn } from "@/features/auth/components/GoogleSignIn";
 import { SignUpForm } from "@/features/auth/components/SignUpForm";
+import { SignUpView } from "@/features/auth/components/SignUpView";
 import { AnonProgressNotice } from "@/features/anon-session/components/AnonProgressNotice";
 
 export const metadata: Metadata = {
@@ -25,9 +26,11 @@ export default function SignUpPage() {
       }
     >
       <div className="flex flex-col gap-5">
+        <SignUpView />
         <AnonProgressNotice />
 
         <GoogleSignIn
+          page="registrace"
           next="/registrace/onboarding"
           clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? null}
         />

@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, type FormEvent } from "react";
+import { startTransition, useActionState, useEffect, type FormEvent } from "react";
+import { EVENT, track } from "@/features/analytics/track";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Surface";
@@ -12,6 +13,18 @@ const EMPTY: ActionState = {};
 
 export function SignUpForm() {
   const [state, formAction, pending] = useActionState(signUpAction, EMPTY);
+
+  /* Každá odpověď serveru je nový objekt, takže se změří každé odeslání.
+     Měří se jen výsledek a názvy polí s chybou, nikdy jejich obsah.
+     „sent“ zahrnuje i už registrovanou adresu — server je schválně
+     nerozlišuje (výčet účtů) a měření to nemá prozrazovat. */
+  useEffect(() => {
+    if (state === EMPTY) return;
+    void track(EVENT.SIGNUP_EMAIL_SUBMIT, {
+      result: state.success ? "sent" : state.fieldErrors ? "invalid" : "error",
+      invalid: state.fieldErrors ? Object.keys(state.fieldErrors).sort().join(",") : null,
+    });
+  }, [state]);
 
   /* React 19 po každém odeslání formuláře s `action` vynuluje všechna pole,
      i když server vrátí chybu (requestFormReset). Rodič tak přišel o e-mail

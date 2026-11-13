@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { SignUpMethod } from "@/features/auth/method";
 import { readCookieConsent } from "./store";
 import { ensureFbq, ensureGtag, fbqTrack, initFbq } from "./vendors";
 
@@ -17,7 +18,7 @@ const PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID?.trim() ?? "";
  *
  * Jednou za záložku: obnovení stránky s `?vitejte=1` konverzi neposílá znovu.
  */
-export function RegistrationPixel({ userId }: { userId: string }) {
+export function RegistrationPixel({ userId, method }: { userId: string; method: SignUpMethod }) {
   useEffect(() => {
     const key = `ucebna-reg-tracked:${userId}`;
     try {
@@ -30,14 +31,15 @@ export function RegistrationPixel({ userId }: { userId: string }) {
     const consent = readCookieConsent();
     if (consent?.analytics && GA_ID) {
       ensureGtag(GA_ID);
-      window.gtag?.("event", "sign_up", { method: "email" });
+      /* Do listopadu 2026 tu bylo natvrdo "email" i u registrace Googlem. */
+      window.gtag?.("event", "sign_up", { method });
     }
     if (consent?.marketing && PIXEL_ID) {
       ensureFbq();
       initFbq(PIXEL_ID);
       fbqTrack("CompleteRegistration", { content_name: "ucebna-registrace" }, userId);
     }
-  }, [userId]);
+  }, [userId, method]);
 
   return null;
 }

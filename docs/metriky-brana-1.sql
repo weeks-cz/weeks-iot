@@ -105,6 +105,115 @@ select
 from public.learning_events;
 
 
+-- ── 3b. Registrace krok po kroku (od nasazení měření, listopad 2026) ──────
+-- Mezi signup_start a signup_parent dřív nebylo nic. Teď:
+--   signup_view → signup_email_submit / auth_google_* → email_confirmed
+--   → onboarding_step_view 1–3 → signup_parent
+--
+-- IDENTITA — proč se tu nepoužívá coalesce(anon_id, parent_id) jako v části 2:
+--   * před přihlášením nese řádek jen anon_id (zobrazení, formulář, klik
+--     na Google),
+--   * email_confirmed jen parent_id — zapisuje ho server a odkaz se často
+--     otevře v jiném prohlížeči, než kde rodič začal,
+--   * po přihlášení oboje (auth_google_success, onboarding, signup_parent).
+-- coalesce by jednoho člověka rozdělil na dva. Každý krok se proto počítá
+-- svým klíčem: anonymní kroky přes anon_id, ostatní přes parent_id. Čísla
+-- jsou počty lidí, ale napříč klíči jen přibližně srovnatelná.
+--
+-- TESTY: účty test+…, @weeks.cz a @resend.dev se vyřazují přes parent_id
+-- a přes každé anon_id, které se s takovým účtem někdy objevilo. Anonymní
+-- zkoušku bez registrace odlišit nejde — ta v číslech zůstane.
+--
+-- E-MAILOVÍ ROBOTI: některé schránky (hlavně firemní) odkaz otevřou samy,
+-- dřív než člověk. Pak je email_confirmed ok=true z robota a skutečný klik
+-- rodiče skončí jako ok=false („odkaz už byl použit“). Řádky ok=false proto
+-- nečti jako „rozbitý odkaz“.
+--
+-- Doplň čas nasazení větve feat/mereni-trychtyre. Před ním nové události
+-- neexistují a trychtýř by ukazoval falešný propad.
+
+with param as (
+  select timestamptz '2026-11-14 00:00 Europe/Prague' as od   -- ← čas nasazení
+),
+testovaci as (
+  select id from public.parents
+   where email ilike '%@weeks.cz' or email ilike '%@resend.dev' or email ilike 'test+%'
+),
+testovaci_anon as (
+  select distinct e.anon_id
+    from public.learning_events e
+    join testovaci t on t.id = e.parent_id
+   where e.anon_id is not null
+),
+ev as (
+  select e.*
+    from public.learning_events e, param
+   where e.created_at >= param.od
+     and (e.parent_id is null or e.parent_id not in (select id from testovaci))
+     and (e.anon_id   is null or e.anon_id   not in (select anon_id from testovaci_anon))
+)
+select
+  -- Anonymní kroky (anon_id)
+  count(distinct anon_id)   filter (where type = 'signup_view')                                   as "1 videli registraci",
+  count(distinct anon_id)   filter (where type = 'signup_view' and props->>'had_lesson' = 'true') as "1a z toho po lekci",
+  count(distinct anon_id)   filter (where type = 'signup_email_submit')                           as "2 odeslali formular",
+  count(distinct anon_id)   filter (where type = 'signup_email_submit' and props->>'result' = 'sent') as "2a e-mail odeslan",
+  count(distinct anon_id)   filter (where type = 'signup_email_submit' and props->>'result' = 'invalid') as "2b chyba ve formulari",
+  count(distinct anon_id)   filter (where type = 'auth_google_click')                             as "3 klikli na Google",
+  count(distinct anon_id)   filter (where type = 'auth_google_success')                           as "3a Google prosel",
+  count(distinct anon_id)   filter (where type = 'auth_google_error')                             as "3b Google chyba",
+  -- Kroky s účtem (parent_id)
+  count(distinct parent_id) filter (where type = 'email_confirmed' and props->>'ok' = 'true')     as "4 potvrdili e-mail",
+  count(*)                  filter (where type = 'email_confirmed' and props->>'ok' = 'false')    as "4x odkaz neprosel",
+  count(distinct parent_id) filter (where type = 'onboarding_step_view' and props->>'step' = '1') as "5 onboarding krok 1",
+  count(distinct parent_id) filter (where type = 'onboarding_step_view' and props->>'step' = '2') as "6 onboarding krok 2",
+  count(distinct parent_id) filter (where type = 'onboarding_step_view' and props->>'step' = '3') as "7 onboarding krok 3",
+  count(distinct parent_id) filter (where type = 'signup_parent')                                 as "8 zaregistrovani",
+  count(distinct parent_id) filter (where type = 'signup_parent' and props->>'method' = 'google') as "8a z toho Googlem"
+from ev;
+
+
+-- ── 3c. Podle prostředí (běžný prohlížeč / Facebook / Instagram) ──────────
+-- Hypotéza: ve vestavěném prohlížeči Facebooku a Instagramu Google nefunguje
+-- a lidé tam odpadají. `env` nese jen jednu ze tří hodnot, nikdy user agent.
+-- U email_confirmed je to prostředí, kde se odkaz OTEVŘEL — rozdíl proti
+-- registraci ukazuje, kolik lidí přechází do jiného prohlížeče.
+-- (Stejné CTE jako v 3b — SQL Editor pouští dotazy zvlášť.)
+
+with param as (
+  select timestamptz '2026-11-14 00:00 Europe/Prague' as od   -- ← čas nasazení
+),
+testovaci as (
+  select id from public.parents
+   where email ilike '%@weeks.cz' or email ilike '%@resend.dev' or email ilike 'test+%'
+),
+testovaci_anon as (
+  select distinct e.anon_id
+    from public.learning_events e
+    join testovaci t on t.id = e.parent_id
+   where e.anon_id is not null
+),
+ev as (
+  select e.*
+    from public.learning_events e, param
+   where e.created_at >= param.od
+     and (e.parent_id is null or e.parent_id not in (select id from testovaci))
+     and (e.anon_id   is null or e.anon_id   not in (select anon_id from testovaci_anon))
+)
+select
+  props->>'env'                                                              as prostredi,
+  count(distinct anon_id)   filter (where type = 'visit_first')              as navstevy,
+  count(distinct anon_id)   filter (where type = 'signup_view')              as videli_registraci,
+  count(distinct anon_id)   filter (where type = 'auth_google_click')        as klikli_google,
+  count(distinct anon_id)   filter (where type = 'auth_google_success')      as google_prosel,
+  count(distinct anon_id)   filter (where type = 'auth_google_error')        as google_chyba,
+  count(distinct parent_id) filter (where type = 'email_confirmed' and props->>'ok' = 'true') as otevreli_odkaz
+from ev
+where props ? 'env'
+group by 1
+order by navstevy desc;
+
+
 -- ── 4. Cena za registraci podle zdroje ────────────────────────────────────
 -- Útratu doplň ručně z Google Ads a Meta. Reálné pásmo je podle kap. 3.6
 -- 60–80 Kč, ne 20–40, jak tvrdil plán — stupnice byla špatně nastavená.

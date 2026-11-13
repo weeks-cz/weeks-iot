@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { Alert, Badge, Card, MonoLabel } from "@/components/ui/Surface";
 import { createClient } from "@/lib/supabase/server";
-import { getSession } from "@/features/account/session";
+import { getCurrentUser, getSession } from "@/features/account/session";
+import { signUpMethod } from "@/features/auth/method";
 import { segmentForRegion } from "@/lib/regions";
 import { campOfferFor } from "@/features/camp/offer";
 import { Avatar } from "@/features/children/avatars";
@@ -39,6 +40,9 @@ export default async function AccountPage({
 
   const parent = session.account;
   const supabase = await createClient();
+  /* Pro konverzi `sign_up`. getCurrentUser je z cache požadavku —
+     getSession ho už volal, takže to nestojí další dotaz. */
+  const method = signUpMethod(await getCurrentUser());
 
   /* Zbytek paralelně. Sekvenčně by to byly tři round-tripy za sebou,
      což se u databáze v jiném městě sečte. */
@@ -80,7 +84,9 @@ export default async function AccountPage({
 
   return (
     <div className="flex flex-col gap-8">
-      {params.vitejte === "1" && <RegistrationPixel userId={session.userId} />}
+      {params.vitejte === "1" && (
+        <RegistrationPixel userId={session.userId} method={method} />
+      )}
       {params.vitejte === "1" && params.postup !== "chyba" && <ClearAnonSession />}
       {params.vitejte === "1" && <ClearOnboardingDraft />}
       {params.vitejte && (

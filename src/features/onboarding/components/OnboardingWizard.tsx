@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState, useSyncExternalStore } fro
 import { Button } from "@/components/ui/Button";
 import { Checkbox, SelectField, TextField } from "@/components/ui/Field";
 import { Alert, MonoLabel, Stepper } from "@/components/ui/Surface";
+import { EVENT, trackOnce } from "@/features/analytics/track";
 import { useAnonBuildsRaw } from "@/features/collection/anon-builds";
 import { useAnonSessionRaw } from "@/features/anon-session/useAnonSession";
 import { AVATARS, Avatar } from "@/features/children/avatars";
@@ -82,6 +83,14 @@ function WizardForm({ regions, initial }: { regions: RegionOption[]; initial: On
   const anonBuilds = useAnonBuildsRaw();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
+
+  /* Vstup do kroku. Zvlášť od fokusu, který první vykreslení přeskakuje —
+     tady se měří i krok 1. trackOnce klíčuje podle kroku, takže návrat
+     „Zpět“, skok kvůli chybě ani přestavění formuláře po obnovení konceptu
+     (klíč fresh → restored) nic nezdvojí. */
+  useEffect(() => {
+    void trackOnce(EVENT.ONBOARDING_STEP_VIEW, String(step + 1), { step: step + 1 });
+  }, [step]);
 
   useEffect(() => {
     if (firstRender.current) {

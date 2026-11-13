@@ -9,6 +9,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { buildFbc, sendMetaEvent } from "@/lib/meta-capi";
 import { SITE } from "@/lib/site";
 import { EVENT } from "@/features/analytics/events";
+import { signUpMethod } from "@/features/auth/method";
 import { consentTextsForAge } from "@/features/consent/texts";
 import { writeLessonProgress } from "@/features/progress/write";
 import { issueEarnedCertificates } from "@/features/certificates/issue";
@@ -222,6 +223,8 @@ export async function completeOnboardingAction(
         marketing: input.marketingConsent,
         self_managed: !isMinor,
         had_anon_progress: Boolean(anon?.lessons.length),
+        /* Rozdělí trychtýř v databázi na e-mail a Google. */
+        method: signUpMethod(auth.user),
       },
     },
     {
