@@ -129,11 +129,12 @@ from public.learning_events;
 -- rodiče skončí jako ok=false („odkaz už byl použit“). Řádky ok=false proto
 -- nečti jako „rozbitý odkaz“.
 --
--- Doplň čas nasazení větve feat/mereni-trychtyre. Před ním nové události
--- neexistují a trychtýř by ukazoval falešný propad.
+-- Od nasazení měření (push 13. 11. 2026 13:35, na produkci ověřeno 13:50).
+-- Dřív nové události neexistují a trychtýř by ukazoval falešný propad:
+-- registrace bez změřených kroků mezi nimi.
 
 with param as (
-  select timestamptz '2026-11-14 00:00 Europe/Prague' as od   -- ← čas nasazení
+  select timestamptz '2026-11-13 13:50 Europe/Prague' as od   -- ověřeno živé na produkci
 ),
 testovaci as (
   select id from public.parents
@@ -196,7 +197,7 @@ from ev;
 -- (Stejné CTE jako v 3b — SQL Editor pouští dotazy zvlášť.)
 
 with param as (
-  select timestamptz '2026-11-14 00:00 Europe/Prague' as od   -- ← čas nasazení
+  select timestamptz '2026-11-13 13:50 Europe/Prague' as od   -- ověřeno živé na produkci
 ),
 testovaci as (
   select id from public.parents
