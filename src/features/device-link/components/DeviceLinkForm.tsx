@@ -204,8 +204,8 @@ export function DeviceLinkForm({
               vyplněnou vyřídí server tichým „hotovo“ bez odeslání. */}
           <div aria-hidden="true" className="absolute -left-[9999px] top-0 h-px w-px overflow-hidden">
             <label>
-              Web
-              <input type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
+              Nechte prázdné
+              <input type="text" name="hp_field_x" tabIndex={-1} autoComplete="off" defaultValue="" />
             </label>
           </div>
 

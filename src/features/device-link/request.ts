@@ -200,7 +200,7 @@ export async function handleDeviceLinkRequest(
   const email = input.email;
 
   /* 1. Honeypot: bot dostane stejné „ok" a nic se nestane. */
-  if (input.website) return { ok: true, email };
+  if (input.hp_field_x) return { ok: true, email };
 
   const deps: Deps = {
     service: ctx.deps?.service ?? supabaseStore(),

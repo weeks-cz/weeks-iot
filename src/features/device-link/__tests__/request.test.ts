@@ -71,7 +71,7 @@ function setup(opts: { recent?: { id: string; marketing_consent: boolean } | nul
 describe("handleDeviceLinkRequest", () => {
   it("honeypot: ok, nic se nevolá", async () => {
     const t = setup();
-    const r = await t.run(input({ website: "spam" }));
+    const r = await t.run(input({ hp_field_x: "spam" }));
     expect(r.ok).toBe(true);
     expect(t.send).not.toHaveBeenCalled();
     expect(t.store.insertRequest).not.toHaveBeenCalled();

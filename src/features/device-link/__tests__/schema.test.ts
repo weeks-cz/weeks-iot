@@ -18,12 +18,38 @@ describe("deviceLinkFormSchema", () => {
     }
   });
 
-  it("odmítne UTM delší než 200 znaků", () => {
+  it("UTM delší než 200 znaků zahodí, chybu nehlásí", () => {
     const r = deviceLinkFormSchema.safeParse({
       email: "a@b.cz",
       utmSource: "x".repeat(201),
     });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.utmSource).toBeUndefined();
+  });
+
+  it("UTM jen z písmen bez diakritiky, číslic a . _ -; jinak zahodí bez chyby", () => {
+    const r = deviceLinkFormSchema.safeParse({
+      email: "a@b.cz",
+      utmSource: "ig",
+      utmMedium: "paid_social",
+      utmCampaign: "ucebna-2026.11",
+      utmContent: "<script>",
+      utmTerm: "kampaň s mezerou",
+    });
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+    expect(r.data).toMatchObject({
+      utmSource: "ig",
+      utmMedium: "paid_social",
+      utmCampaign: "ucebna-2026.11",
+    });
+    expect(r.data.utmContent).toBeUndefined();
+    expect(r.data.utmTerm).toBeUndefined();
+    for (const bad of ["a&b", "a=b", "a/b", "a b", "ž", "a\nb"]) {
+      const p = deviceLinkFormSchema.safeParse({ email: "a@b.cz", utmCampaign: bad });
+      expect(p.success).toBe(true);
+      if (p.success) expect(p.data.utmCampaign).toBeUndefined();
+    }
   });
 
   it("souhlas: 'on' je true, jinak false", () => {
@@ -46,7 +72,7 @@ describe("deviceLinkFormSchema", () => {
   });
 
   it("honeypot nikdy nehlásí chybu", () => {
-    const r = deviceLinkFormSchema.parse({ email: "a@b.cz", website: "http://spam" });
-    expect(r.website).toBe("http://spam");
+    const r = deviceLinkFormSchema.parse({ email: "a@b.cz", hp_field_x: "http://spam" });
+    expect(r.hp_field_x).toBe("http://spam");
   });
 });

@@ -83,9 +83,14 @@ describe("DeviceLinkForm", () => {
 
   it("honeypot je skrytý před lidmi i čtečkou", () => {
     const { container } = render(<DeviceLinkForm variant="mobile" />);
-    const honeypot = container.querySelector<HTMLInputElement>('input[name="website"]');
+    const honeypot = container.querySelector<HTMLInputElement>('input[name="hp_field_x"]');
     expect(honeypot).not.toBeNull();
     expect(honeypot!.tabIndex).toBe(-1);
+    expect(honeypot!.getAttribute("autocomplete")).toBe("off");
+    /* Název ani popisek nesmí vypadat jako pole, které vyplní automatické
+       doplňování prohlížeče (web, url, jméno…): rodič by „byl robot“. */
+    expect(container.querySelector('input[name="website"]')).toBeNull();
+    expect(honeypot!.closest("label")?.textContent).not.toMatch(/web|url|www|jméno|telefon/i);
     expect(honeypot!.closest('[aria-hidden="true"]')).not.toBeNull();
     /* Jediné textové pole, které čtečka uvidí, je e-mail. */
     expect(screen.getAllByRole("textbox").map((el) => el.getAttribute("name"))).toEqual(["email"]);

@@ -10,7 +10,7 @@ import { handleDeviceLinkRequest } from "./request";
 const FIELDS = [
   "email",
   "marketingConsent",
-  "website",
+  "hp_field_x",
   "utmSource",
   "utmMedium",
   "utmCampaign",
