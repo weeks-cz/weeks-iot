@@ -78,7 +78,7 @@ describe("handleDeviceLinkRequest", () => {
     expect(t.limit).not.toHaveBeenCalled();
   });
 
-  it("se souhlasem zapíše consent, pošle List-Unsubscribe a Lead", async () => {
+  it("se souhlasem zapíše consent, dá odkaz na odhlášení do těla (bez List-Unsubscribe) a pošle Lead", async () => {
     const t = setup();
     const r = await t.run(input({ marketingConsent: "on" }));
     expect(r).toEqual({ ok: true, email: "jana@seznam.cz" });
@@ -99,7 +99,8 @@ describe("handleDeviceLinkRequest", () => {
     expect(to).toBe("jana@seznam.cz");
     const unsub = template.content.secondaryLink?.url;
     expect(unsub).toContain("/odhlasit?t=");
-    expect(headers["List-Unsubscribe"]).toBe(`<${unsub}>`);
+    /* První e-mail je odpověď na žádost, ne hromadná pošta: bez hlavičky. */
+    expect(headers["List-Unsubscribe"]).toBeUndefined();
     const token = new URL(unsub!).searchParams.get("t")!;
     expect(verifyRequestToken(token, SECRET, "unsub")).toBe(REQ_ID);
     expect(verifyRequestToken(token, SECRET, "open")).toBeNull();

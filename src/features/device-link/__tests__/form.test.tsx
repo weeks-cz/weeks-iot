@@ -170,6 +170,8 @@ describe("DeviceLinkForm", () => {
     expect(status.textContent).toContain("Odkaz je na cestě");
     expect(document.activeElement).toBe(status.parentElement);
     expect(document.activeElement?.getAttribute("tabindex")).toBe("-1");
+    /* Gmail e-mail umí odložit do Promoakcí: rodič má vědět, kde hledat. */
+    expect(document.body.textContent).toContain("i do záložky Promoakce nebo do spamu");
   });
 });
 

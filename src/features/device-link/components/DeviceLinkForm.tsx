@@ -177,6 +177,11 @@ export function DeviceLinkForm({
               {state.success}
             </Alert>
           </div>
+          {/* Gmail umí i odpověď na žádost odložit do Promoakcí (živý test
+              19. 11. 2026); rodič má e-mail najít hned, ne až s dítětem u PC. */}
+          <p className="text-sm leading-relaxed text-ink-500">
+            Nevidíte ho do pár minut? Podívejte se i{NBSP}do záložky Promoakce nebo do{NBSP}spamu.
+          </p>
           <button
             type="button"
             onClick={() => setDismissed(state)}

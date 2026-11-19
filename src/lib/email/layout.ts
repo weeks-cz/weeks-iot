@@ -79,8 +79,10 @@ export function renderEmail(content: EmailContent): string {
     : "";
 
   const secondaryHtml = secondaryLink
-    ? `<p style="margin:12px 0 0;font-size:13px;line-height:1.5;">
-         <a href="${escapeHtml(secondaryLink.url)}" style="color:${INK_500};">${escapeHtml(secondaryLink.label)}</a>
+    ? /* Oddělené čarou a tmavší než poznámka: odhlášení se nesmí ztratit
+         v šedé patičce (živý test 19. 11. 2026 – rodič ho nenašel). */
+      `<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid rgba(12,14,26,0.12);font-size:14px;line-height:1.5;">
+         <a href="${escapeHtml(secondaryLink.url)}" style="color:${INK};font-weight:600;text-decoration:underline;">${escapeHtml(secondaryLink.label)}</a>
        </p>`
     : "";
 

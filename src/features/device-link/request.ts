@@ -265,7 +265,11 @@ export async function handleDeviceLinkRequest(
     if (consented) await deps.service.setMarketingConsent(requestId);
   }
 
-  /* 6. Odeslání. List-Unsubscribe jen se souhlasem (RFC 2369, v lomítkách). */
+  /* 6. Odeslání. Odkaz na odhlášení jen se souhlasem, a jen v těle e-mailu.
+        Hlavičku List-Unsubscribe tenhle e-mail nedostává: je to odpověď na
+        žádost rodiče, ne hromadná pošta, a hlavička je pro Gmail signál
+        pro záložku Promoakce (živý test 19. 11. 2026 tam e-mail poslal).
+        Připomínka (jobs.ts) hlavičku má, ta už je marketingová. */
   /* Dva tokeny podle účelu: odkaz do lekce se může přeposlat, odhlášení ne. */
   const openToken = signRequestId(requestId, secret, "open");
   const unsubscribeUrl = consented
@@ -284,12 +288,7 @@ export async function handleDeviceLinkRequest(
     ),
     unsubscribeUrl,
   });
-  const result = await deps.send(
-    email,
-    template,
-    [],
-    unsubscribeUrl ? { "List-Unsubscribe": `<${unsubscribeUrl}>` } : {},
-  );
+  const result = await deps.send(email, template, [], {});
 
   /* 7. Výsledek odeslání. Rodiči se chyba neukazuje: žádost je uložená
         a neúspěch je vidět v `send_error`. */
