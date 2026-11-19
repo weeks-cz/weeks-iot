@@ -6,7 +6,7 @@ import { DEVICE_LINK_MARKETING_TEXT } from "@/features/consent/texts";
 const SECRET = "test-secret-aaaaaaaaaaaaaaaaaaaaaaaa";
 const REQ_ID = "3f2b8c1e-5d4a-4c6b-9a1e-0123456789ab";
 const NOW = new Date("2026-11-19T10:00:00Z");
-const TOKEN = signRequestId(REQ_ID, SECRET);
+const TOKEN = signRequestId(REQ_ID, SECRET, "unsub");
 const CTX = { ip: "1.2.3.4", userAgent: "UA" };
 
 type Row = {
@@ -17,13 +17,23 @@ type Row = {
 
 const CONSENTED: Row = { marketing_consent: true, unsubscribed_at: null, anonymized_at: null };
 
-function setup(initial: Row | null = CONSENTED, consentFails = false) {
+function setup(
+  initial: Row | null = CONSENTED,
+  consentFails = false,
+  flagFails = false,
+  findFails = false,
+) {
   let row = initial;
   const store = {
-    find: vi.fn(async (..._a: unknown[]) => row),
+    find: vi.fn(async (..._a: unknown[]) => {
+      if (findFails) throw new Error("db");
+      return row;
+    }),
     insertConsent: vi.fn(async (..._a: unknown[]) => !consentFails),
     markUnsubscribed: vi.fn(async (_id: string, at: Date) => {
+      if (flagFails) return false;
       if (row) row = { ...row, marketing_consent: false, unsubscribed_at: at.toISOString() };
+      return true;
     }),
   } satisfies UnsubscribeStore;
   const run = (token = TOKEN) =>
@@ -82,9 +92,27 @@ describe("unsubscribe", () => {
     expect(t.store.find).not.toHaveBeenCalled();
   });
 
+  it("token z odkazu do lekce odhlášení neprovede", async () => {
+    const t = setup();
+    expect(await t.run(signRequestId(REQ_ID, SECRET, "open"))).toBe("invalid");
+    expect(t.store.find).not.toHaveBeenCalled();
+  });
+
   it("příznak se nezmění, když doklad nejde zapsat", async () => {
     const t = setup(CONSENTED, true);
     expect(await t.run()).toBe("error");
     expect(t.store.markUnsubscribed).not.toHaveBeenCalled();
+  });
+
+  it("chyba čtení z databáze: error, ne already", async () => {
+    const t = setup(CONSENTED, false, false, true);
+    expect(await t.run()).toBe("error");
+    expect(t.store.insertConsent).not.toHaveBeenCalled();
+  });
+
+  it("doklad zapsán, ale příznak se nepodařilo shodit: error, ne done", async () => {
+    const t = setup(CONSENTED, false, true);
+    expect(await t.run()).toBe("error");
+    expect(t.store.insertConsent).toHaveBeenCalledTimes(1);
   });
 });

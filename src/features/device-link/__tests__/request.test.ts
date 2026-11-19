@@ -101,7 +101,11 @@ describe("handleDeviceLinkRequest", () => {
     expect(unsub).toContain("/odhlasit?t=");
     expect(headers["List-Unsubscribe"]).toBe(`<${unsub}>`);
     const token = new URL(unsub!).searchParams.get("t")!;
-    expect(verifyRequestToken(token, SECRET)).toBe(REQ_ID);
+    expect(verifyRequestToken(token, SECRET, "unsub")).toBe(REQ_ID);
+    expect(verifyRequestToken(token, SECRET, "open")).toBeNull();
+    const lessonToken = new URL(template.content.button!.url).searchParams.get("odkaz")!;
+    expect(verifyRequestToken(lessonToken, SECRET, "open")).toBe(REQ_ID);
+    expect(verifyRequestToken(lessonToken, SECRET, "unsub")).toBeNull();
     expect(template.content.button?.url).toContain("utm_term=odkaz-na-pc");
     expect(template.content.button?.url).toContain("utm_source=ig");
 

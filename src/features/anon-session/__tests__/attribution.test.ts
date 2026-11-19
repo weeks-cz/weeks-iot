@@ -25,4 +25,13 @@ describe("captureAttribution", () => {
     const s = captureAttribution(new URL("https://ucebna.weeks.cz/kurz/?odkaz=x.y"), "");
     expect(s.attribution.landingPath).toBe("/kurz/");
   });
+
+  it("na /odhlasit se první dotyk nezaznamená", () => {
+    const s = captureAttribution(new URL("https://ucebna.weeks.cz/odhlasit?t=abc.def"), "");
+    expect(s.attribution).toEqual({});
+    expect(JSON.stringify(window.localStorage)).not.toContain("abc.def");
+    /* Další návštěva jinde pak první dotyk zaznamená normálně. */
+    const next = captureAttribution(new URL("https://ucebna.weeks.cz/?utm_source=ig"), "");
+    expect(next.attribution.landingPath).toBe("/?utm_source=ig");
+  });
 });

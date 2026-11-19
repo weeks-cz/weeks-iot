@@ -30,11 +30,12 @@ export type WithdrawalInsert = {
 };
 
 export interface UnsubscribeStore {
+  /** null = řádek neexistuje. Chyba databáze se HAZÍ, nesmí vypadat jako null. */
   find(id: string): Promise<UnsubscribeRow | null>;
   /** true = doklad je v ledgeru. */
   insertConsent(row: WithdrawalInsert): Promise<boolean>;
-  /** `marketing_consent = false`, `unsubscribed_at = at`. */
-  markUnsubscribed(id: string, at: Date): Promise<void>;
+  /** `marketing_consent = false`, `unsubscribed_at = at`. true = příznak je shozený. */
+  markUnsubscribed(id: string, at: Date): Promise<boolean>;
 }
 
 export interface UnsubscribeDeps {
@@ -52,11 +53,12 @@ export function supabaseUnsubscribeStore(): UnsubscribeStore {
   const db = createServiceClient();
   return {
     async find(id) {
-      const { data } = await db
+      const { data, error } = await db
         .from("device_link_requests")
         .select("marketing_consent, unsubscribed_at, anonymized_at")
         .eq("id", id)
         .maybeSingle();
+      if (error) throw new Error(error.message);
       return data ?? null;
     },
     async insertConsent(row) {
@@ -65,11 +67,14 @@ export function supabaseUnsubscribeStore(): UnsubscribeStore {
       return !error;
     },
     async markUnsubscribed(id, at) {
+      /* Podmíněný update: souběžné odhlášení nepřepíše první čas. */
       const { error } = await db
         .from("device_link_requests")
         .update({ marketing_consent: false, unsubscribed_at: at.toISOString() })
-        .eq("id", id);
+        .eq("id", id)
+        .is("unsubscribed_at", null);
       if (error) console.error("[odkaz-na-pc] Zápis odhlášení selhal:", error.message);
+      return !error;
     },
   };
 }
@@ -81,7 +86,7 @@ export async function unsubscribe(
 ): Promise<UnsubscribeResult> {
   let id: string | null;
   try {
-    id = verifyRequestToken(token, (deps.secret ?? requestTokenSecret)());
+    id = verifyRequestToken(token, (deps.secret ?? requestTokenSecret)(), "unsub");
   } catch (err) {
     console.error("[odkaz-na-pc] Chybí secret:", err instanceof Error ? err.message : err);
     return "invalid";
@@ -91,7 +96,14 @@ export async function unsubscribe(
   const service = deps.service ?? supabaseUnsubscribeStore();
   const now = deps.now ?? new Date();
 
-  const row = await service.find(id);
+  let row: UnsubscribeRow | null;
+  try {
+    row = await service.find(id);
+  } catch (err) {
+    /* Chyba databáze není „nenalezeno": nesmíme říct, že je hotovo. */
+    console.error("[odkaz-na-pc] Čtení žádosti selhalo:", err instanceof Error ? err.message : err);
+    return "error";
+  }
   /* Smazaná, anonymizovaná, bez souhlasu nebo už odhlášená žádost: není co
      odvolávat. Uživateli to říkáme stejně jako úspěch (další e-maily
      nechodí), jen se do ledgeru nic nepíše. */
@@ -114,6 +126,8 @@ export async function unsubscribe(
      odhlášeno", které by nebyla pravda. */
   if (!recorded) return "error";
 
-  await service.markUnsubscribed(id, now);
-  return "done";
+  /* Doklad je v ledgeru, ale příznak se nepodařilo shodit: e-maily by dál
+     chodily, tak „hotovo" neříkáme. Opakování je bezpečné (další doklad
+     jen zopakuje odvolání). */
+  return (await service.markUnsubscribed(id, now)) ? "done" : "error";
 }

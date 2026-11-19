@@ -78,6 +78,11 @@ export function ensureAnonSession(): AnonSession {
   return readAnonSession() ?? write(emptySession());
 }
 
+/** Cesty, jejichž adresa nese podepsaný token a do atribuce nepatří. */
+export function isTokenPath(pathname: string): boolean {
+  return pathname.replace(/\/+$/, "") === "/odhlasit";
+}
+
 /**
  * Zachycení UTM při první návštěvě.
  *
@@ -88,6 +93,9 @@ export function ensureAnonSession(): AnonSession {
 export function captureAttribution(url: URL, referrer: string): AnonSession {
   const session = ensureAnonSession();
   if (Object.keys(session.attribution).length > 0) return session;
+  /* Odhlašovací stránka nese v adrese podepsaný token a není první dotyk
+     s kampaní: nezaznamená se nic (landingPath by ho zkopíroval dál). */
+  if (isTokenPath(url.pathname)) return session;
 
   const p = url.searchParams;
   const attribution: Attribution = {};

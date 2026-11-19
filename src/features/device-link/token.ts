@@ -7,25 +7,37 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * ani podvrhnout bez `DEVICE_LINK_SECRET`.
  */
 
-function mac(id: string, secret: string): Buffer {
-  return createHmac("sha256", secret).update(id).digest();
+/**
+ * Token je vázaný na účel: `open` (odkaz do lekce, může se přeposlat dál)
+ * a `unsub` (odhlášení) mají každý jiný podpis. Uniklý odkaz do lekce tak
+ * nejde použít k odhlášení a naopak.
+ */
+export type TokenPurpose = "open" | "unsub";
+
+function mac(id: string, secret: string, purpose: TokenPurpose): Buffer {
+  return createHmac("sha256", secret).update(`${purpose}:${id}`).digest();
 }
 
-export function signRequestId(id: string, secret: string): string {
-  return `${id}.${mac(id, secret).toString("base64url")}`;
+export function signRequestId(
+  id: string,
+  secret: string,
+  purpose: TokenPurpose,
+): string {
+  return `${id}.${mac(id, secret, purpose).toString("base64url")}`;
 }
 
 /** Vrátí id, nebo null při špatném tvaru či podpisu. */
 export function verifyRequestToken(
   token: string,
   secret: string,
+  purpose: TokenPurpose,
 ): string | null {
   const dot = token.lastIndexOf(".");
   if (dot <= 0 || dot === token.length - 1) return null;
 
   const id = token.slice(0, dot);
   const given = Buffer.from(token.slice(dot + 1), "base64url");
-  const expected = mac(id, secret);
+  const expected = mac(id, secret, purpose);
   if (given.length !== expected.length) return null;
 
   return timingSafeEqual(given, expected) ? id : null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Surface";
 import type { ActionState } from "@/features/actions";
@@ -14,6 +14,15 @@ const EMPTY: ActionState = {};
  */
 export function UnsubscribeButton({ token }: { token: string }) {
   const [state, submit, pending] = useActionState(unsubscribeDeviceLink, EMPTY);
+
+  /* Token drží skryté pole formuláře; z adresního řádku (historie, odkazující
+     stránka při kliku ven) ho po vykreslení odstraníme. */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("t")) return;
+    url.searchParams.delete("t");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
 
   if (state.success) {
     return <Alert tone="success">{state.success}</Alert>;

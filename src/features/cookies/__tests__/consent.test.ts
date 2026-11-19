@@ -49,6 +49,11 @@ describe("pixelAllowedFor", () => {
     }
   });
 
+  it("nepouští pixel na odhlášení (token v adrese)", () => {
+    expect(pixelAllowedFor("/odhlasit")).toBe(false);
+    expect(pixelAllowedFor("/odhlasit/")).toBe(false);
+  });
+
   it("nepouští pixel na legacy tábor", () => {
     expect(pixelAllowedFor("/tabor")).toBe(false);
     expect(pixelAllowedFor("/tabor/admin")).toBe(false);

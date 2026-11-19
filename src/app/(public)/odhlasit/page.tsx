@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 function isValidToken(token: string | undefined): token is string {
   if (!token) return false;
   try {
-    return verifyRequestToken(token, requestTokenSecret()) !== null;
+    return verifyRequestToken(token, requestTokenSecret(), "unsub") !== null;
   } catch {
     return false;
   }

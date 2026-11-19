@@ -5,7 +5,7 @@ import { signRequestId } from "../token";
 const SECRET = "test-secret-aaaaaaaaaaaaaaaaaaaaaaaa";
 const REQ_ID = "3f2b8c1e-5d4a-4c6b-9a1e-0123456789ab";
 const NOW = new Date("2026-11-19T10:00:00Z");
-const TOKEN = signRequestId(REQ_ID, SECRET);
+const TOKEN = signRequestId(REQ_ID, SECRET, "open");
 
 function setup(opts: { alreadyOpened?: boolean } = {}) {
   const store = {
@@ -67,6 +67,12 @@ describe("markOpened", () => {
     expect(t.store.setOpened).not.toHaveBeenCalled();
     expect(t.store.setVerified).not.toHaveBeenCalled();
     expect(t.store.insertEvent).not.toHaveBeenCalled();
+  });
+
+  it("token pro odhlášení se jako odkaz neotevře", async () => {
+    const t = setup();
+    expect(await t.run(signRequestId(REQ_ID, SECRET, "unsub"))).toBe("invalid");
+    expect(t.store.setVerified).not.toHaveBeenCalled();
   });
 
   it("chybějící secret: invalid a žádný dotaz (fail-closed)", async () => {

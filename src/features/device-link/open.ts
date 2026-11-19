@@ -77,7 +77,7 @@ export async function markOpened(
   /* Fail-closed: bez secretu nebo s cizím podpisem se nesáhne na databázi. */
   let id: string | null;
   try {
-    id = verifyRequestToken(token, (deps.secret ?? requestTokenSecret)());
+    id = verifyRequestToken(token, (deps.secret ?? requestTokenSecret)(), "open");
   } catch (err) {
     console.error("[odkaz-na-pc] Chybí secret:", err instanceof Error ? err.message : err);
     return "invalid";

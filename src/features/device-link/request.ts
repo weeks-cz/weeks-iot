@@ -266,8 +266,11 @@ export async function handleDeviceLinkRequest(
   }
 
   /* 6. Odeslání. List-Unsubscribe jen se souhlasem (RFC 2369, v lomítkách). */
-  const token = signRequestId(requestId, secret);
-  const unsubscribeUrl = consented ? buildUnsubscribeLink(token) : null;
+  /* Dva tokeny podle účelu: odkaz do lekce se může přeposlat, odhlášení ne. */
+  const openToken = signRequestId(requestId, secret, "open");
+  const unsubscribeUrl = consented
+    ? buildUnsubscribeLink(signRequestId(requestId, secret, "unsub"))
+    : null;
   const template = deviceLinkEmail({
     lessonUrl: buildLessonLink(
       {
@@ -276,7 +279,7 @@ export async function handleDeviceLinkRequest(
         utmCampaign: input.utmCampaign,
         utmContent: input.utmContent,
       },
-      token,
+      openToken,
       "odkaz-na-pc",
     ),
     unsubscribeUrl,

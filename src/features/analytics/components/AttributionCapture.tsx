@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { captureAttribution } from "@/features/anon-session/storage";
+import { captureAttribution, isTokenPath } from "@/features/anon-session/storage";
 import { EVENT, trackOnce } from "../track";
 import { currentEnvironment } from "../environment";
 
@@ -17,6 +17,8 @@ import { currentEnvironment } from "../environment";
  */
 export function AttributionCapture() {
   useEffect(() => {
+    /* Stránka s tokenem v adrese se nezachycuje ani nepočítá jako návštěva. */
+    if (isTokenPath(window.location.pathname)) return;
     const session = captureAttribution(new URL(window.location.href), document.referrer);
 
     /* trackOnce podle anonId: v StrictMode se efekty spouští dvakrát

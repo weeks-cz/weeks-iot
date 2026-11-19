@@ -67,6 +67,8 @@ export function pixelAllowedFor(pathname: string): boolean {
   const path = pathname.replace(/\/+$/, "") || "/";
   if (path === "/tabor" || path.startsWith("/tabor/")) return false;
   if (path === "/ucim-se" || path.startsWith("/ucim-se/")) return false;
+  /* Odhlašovací odkaz nese podepsaný token v adrese. */
+  if (path === "/odhlasit") return false;
   if (/^\/kurz\/[^/]+\/[^/]+$/.test(path)) return false;
   return true;
 }
