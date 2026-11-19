@@ -48,6 +48,8 @@ export type ConsentRow = {
   parent_id: string | null;
   /** Vyplněno jen u souhlasu zákonného zástupce za konkrétní dítě (migrace 014). */
   child_id: string | null;
+  /** Vyplněno u souhlasu daného při žádosti o odkaz na počítač (migrace 015). */
+  device_link_request_id: string | null;
   kind: ConsentKind;
   version: string;
   text_snapshot: string;
@@ -56,6 +58,32 @@ export type ConsentRow = {
   user_agent: string | null;
   created_at: string;
 }
+
+/**
+ * Žádost rodiče o odkaz na počítač (migrace 015). Čistě serverová tabulka –
+ * klientské role k ní nemají grant. `email` je NULL jen po anonymizaci.
+ * `opened_at` = první otevření odkazu na počítači (telefon se nepočítá).
+ */
+export type DeviceLinkRequestRow = {
+  id: string;
+  email: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  referrer: string | null;
+  /** 'facebook' | 'instagram' | 'browser' */
+  env: string | null;
+  marketing_consent: boolean;
+  sent_at: string | null;
+  send_error: string | null;
+  opened_at: string | null;
+  reminder_sent_at: string | null;
+  unsubscribed_at: string | null;
+  anonymized_at: string | null;
+  created_at: string;
+};
 
 /**
  * Řádek tabulky `children` tak, jak vypadá v databázi — včetně PIN sloupců.
@@ -186,6 +214,7 @@ export interface Database {
       regions: Table<RegionRow>;
       parents: Table<ParentRow>;
       consents: Table<ConsentRow>;
+      device_link_requests: Table<DeviceLinkRequestRow>;
       children: Table<
         ChildRow,
         Pick<ChildRow, "parent_id" | "nick" | "birth_date"> & { avatar?: string },
