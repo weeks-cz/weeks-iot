@@ -21,7 +21,18 @@ export default defineConfig({
     trace: "retain-on-failure",
     locale: "cs-CZ",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    /* Telefon s prstem (`pointer: coarse`) – jen pro stránku pro rodiče,
+       která se podle zařízení přeskládá. Ostatní testy počítají s myší.
+       Rozměry a dotyk iPhonu, ale v Chromiu: WebKit na Windows nenačte
+       přes http://localhost styly (CSP `upgrade-insecure-requests`). */
+    {
+      name: "mobile",
+      testMatch: /pro-rodice\.spec\.ts/,
+      use: { ...devices["iPhone 14"], browserName: "chromium" },
+    },
+  ],
   // Vlastní server se spouští jen tehdy, když BASE_URL není nastavené.
   ...(process.env.BASE_URL
     ? {}
