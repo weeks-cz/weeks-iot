@@ -42,10 +42,12 @@ export interface EmailContent {
   button?: EmailButton;
   /** Drobný text pod tlačítkem, typicky platnost odkazu. */
   footnote?: string;
+  /** Druhotný odkaz pod drobným textem, typicky odhlášení. Popisek i URL se escapují. */
+  secondaryLink?: { label: string; url: string };
 }
 
 export function renderEmail(content: EmailContent): string {
-  const { preheader, heading, paragraphs, button, footnote } = content;
+  const { preheader, heading, paragraphs, button, footnote, secondaryLink } = content;
 
   const body = paragraphs
     .map(
@@ -74,6 +76,12 @@ export function renderEmail(content: EmailContent): string {
 
   const footnoteHtml = footnote
     ? `<p style="margin:0;font-size:13px;line-height:1.5;color:${INK_500};">${escapeHtml(footnote)}</p>`
+    : "";
+
+  const secondaryHtml = secondaryLink
+    ? `<p style="margin:12px 0 0;font-size:13px;line-height:1.5;">
+         <a href="${escapeHtml(secondaryLink.url)}" style="color:${INK_500};">${escapeHtml(secondaryLink.label)}</a>
+       </p>`
     : "";
 
   return `<!doctype html>
@@ -108,6 +116,7 @@ export function renderEmail(content: EmailContent): string {
           ${body}
           ${buttonHtml}
           ${footnoteHtml}
+          ${secondaryHtml}
         </td></tr>
 
       </table>
@@ -140,6 +149,9 @@ export function renderEmailText(content: EmailContent): string {
   }
   if (content.footnote) {
     lines.push("", content.footnote);
+  }
+  if (content.secondaryLink) {
+    lines.push("", `${content.secondaryLink.label}: ${content.secondaryLink.url}`);
   }
 
   lines.push(

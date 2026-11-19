@@ -39,6 +39,8 @@ export async function sendTemplate(
   to: string,
   template: EmailTemplate,
   attachments: EmailAttachment[] = [],
+  /* Doplňkové hlavičky, např. List-Unsubscribe. Nepřepíšou X-Entity-Ref-ID. */
+  headers: Record<string, string> = {},
 ): Promise<SendResult> {
   try {
     const { error } = await resend().emails.send({
@@ -51,6 +53,7 @@ export async function sendTemplate(
       text: renderEmailText(template.content),
       ...(attachments.length > 0 ? { attachments } : {}),
       headers: {
+        ...headers,
         /* Transakční e-mail nemá být ve vlákně s předchozím. Bez toho je
            Gmail sbalí a druhý přihlašovací odkaz se schová pod prvním. */
         "X-Entity-Ref-ID": `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,

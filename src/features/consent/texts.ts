@@ -256,6 +256,45 @@ odkazem v patičce každého e-mailu. Provozní e-maily týkající se účtu
 nezávisle na tomto souhlasu, protože bez nich nelze účet provozovat.`,
 };
 
+/**
+ * Souhlas z formuláře „Odkaz na počítač" (/pro-rodice). Záměrně NENÍ v
+ * `CONSENT_TEXTS`: ten seznam určuje, na co se ptá registrace účtu. Tenhle
+ * souhlas dává člověk bez účtu, jen s e-mailem, a ukládá se vlastní cestou.
+ * Věta o předání hashe do Meta tu být musí – serverová konverze Lead odchází
+ * jen s tímto souhlasem.
+ */
+export const DEVICE_LINK_MARKETING_TEXT: ConsentText = {
+  kind: "marketing",
+  version: "marketing-odkaz-v1",
+  required: false,
+  label:
+    "Pošlete mi jednou připomínku, kdyby se dítě k učebně nedostalo, " +
+    "a občas tip z učebny nebo nabídku táborů Weeks.",
+  full: `SOUHLAS SE ZASÍLÁNÍM OBCHODNÍCH SDĚLENÍ
+
+Správce osobních údajů: ${CONTROLLER_LINE}
+
+Souhlasím, aby správce zpracovával mou e-mailovou adresu za účelem zaslání
+jedné připomínky, pokud se dítě k učebně nedostane, a dále za účelem
+zasílání tipů z učebny a nabídek letních táborů Weeks.
+
+Souhlasím také s tím, aby správce po odeslání formuláře předal společnosti
+Meta Platforms Ireland Limited (Facebook) informaci o odeslání ve formě
+otisku e-mailové adresy (hash), IP adresy a údajů o prohlížeči, pro měření
+a cílení reklam. Meta v tomto případě jedná jako samostatný správce údajů.
+
+Právní základ: souhlas podle čl. 6 odst. 1 písm. a) GDPR a § 7 zákona
+č. 480/2004 Sb., o některých službách informační společnosti.
+
+Tento souhlas je zcela dobrovolný. Odkaz na učebnu dostanete i bez něj
+a odmítnutí nemá na nic jiného žádný vliv.
+
+Souhlas platí do odvolání. Odvolat jej můžete kdykoli odkazem
+„Nechci další e-maily“ v každém e-mailu, který na jeho základě pošleme.
+Zprávu s odkazem na učebnu, o který jste požádali, dostanete nezávisle
+na tomto souhlasu.`,
+};
+
 export const CONSENT_TEXTS: readonly ConsentText[] = [
   TERMS_TEXT,
   PARENTAL_TEXT,
