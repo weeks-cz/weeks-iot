@@ -1,6 +1,7 @@
 import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
 import { TARGET_MAX_AGE, TARGET_MIN_AGE } from "@/features/onboarding/schema";
+import { summarizeDeviceLink, type DeviceLinkStats } from "./device-link-stats";
 
 /**
  * Čísla pro bránu 1.
@@ -73,6 +74,7 @@ export interface MetricsSnapshot {
   cityWaitlist: BarItem[];
   campClicks: BarItem[];
   timeline: TimePoint[];
+  deviceLink: DeviceLinkStats;
   generatedAt: string;
 }
 
@@ -92,16 +94,28 @@ export async function getMetrics(range: Range): Promise<MetricsSnapshot> {
 
   let parentsQuery = service
     .from("parents")
-    .select("id, region_code, utm_source, utm_campaign, onboarding_completed_at, created_at");
+    .select(
+      "id, region_code, utm_source, utm_campaign, utm_term, onboarding_completed_at, created_at",
+    );
   if (from) parentsQuery = parentsQuery.gte("created_at", from);
 
-  const [{ data: events }, { data: parents }, { data: regions }, { data: children }, { data: waitlist }] =
-    await Promise.all([
+  let deviceLinkQuery = service.from("device_link_requests").select("opened_at, verified_at");
+  if (from) deviceLinkQuery = deviceLinkQuery.gte("created_at", from);
+
+  const [
+    { data: events },
+    { data: parents },
+    { data: regions },
+    { data: children },
+    { data: waitlist },
+    { data: deviceLinkRows },
+  ] = await Promise.all([
       eventsQuery,
       parentsQuery,
       service.from("regions").select("code, name, is_camp_catchment").order("sort_order"),
       service.from("children").select("parent_id, birth_date").is("archived_at", null),
       service.from("city_waitlist").select("city, created_at"),
+      deviceLinkQuery,
     ]);
 
   const ev = events ?? [];
@@ -200,6 +214,9 @@ export async function getMetrics(range: Range): Promise<MetricsSnapshot> {
   const days = range === "30d" ? 30 : range === "90d" ? 90 : 90;
   const timeline = buildTimeline(days, completed, ev);
 
+  /* ── Odkaz na počítač ───────────────────────────────────────────────── */
+  const deviceLink = summarizeDeviceLink(deviceLinkRows ?? [], par);
+
   return {
     range,
     registered: { value: completed.length, target: { fail: 100, gate: 40 } },
@@ -216,6 +233,7 @@ export async function getMetrics(range: Range): Promise<MetricsSnapshot> {
     cityWaitlist,
     campClicks,
     timeline,
+    deviceLink,
     generatedAt: new Date().toISOString(),
   };
 }

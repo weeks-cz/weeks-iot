@@ -24,7 +24,7 @@ export const metadata: Metadata = {
  */
 export default function PrivacyPage() {
   return (
-    <LegalDoc title="Ochrana osobních údajů" updated="13. 11. 2026">
+    <LegalDoc title="Ochrana osobních údajů" updated="19. 11. 2026">
       <section>
         <h2>Kdo údaje zpracovává</h2>
         <p>
@@ -56,6 +56,51 @@ export default function PrivacyPage() {
           Díky tomu víme, které lekce děti dokončují, kde je ztrácíme a kde se zasekává
           registrace. Jméno, e-mail ani IP adresu k těmto záznamům neukládáme. Právním
           základem je náš oprávněný zájem na zlepšování učebny (čl. 6 odst. 1 písm. f) GDPR).
+        </p>
+      </section>
+
+      {/* Návrh k právníkovi (19. 11. 2026) */}
+      <section>
+        <h2>Odkaz na počítač</h2>
+        <p>
+          Na stránce pro rodiče si můžete nechat poslat e-mailem odkaz na první lekci,
+          abyste ji dítěti otevřeli na počítači. K tomu ukládáme:
+        </p>
+        <ul>
+          <li>vaši e-mailovou adresu,</li>
+          <li>
+            zdroj návštěvy, ze které jste formulář odeslali: označení kampaně v odkazu,
+            odkazující stránku a to, jestli šlo o prohlížeč uvnitř aplikace Facebook nebo
+            Instagram, nebo o běžný prohlížeč,
+          </li>
+          <li>jestli jste dali souhlas s dalšími e-maily,</li>
+          <li>
+            kdy jste odkaz poprvé otevřeli, zvlášť na počítači a zvlášť na libovolném
+            zařízení.
+          </li>
+        </ul>
+        <p>
+          K těmto záznamům neukládáme žádný identifikátor prohlížeče ani postup dítěte
+          v lekcích.
+        </p>
+        <p>
+          Odeslání odkazu, o který jste požádali, je plnění vaší žádosti (čl.&nbsp;6
+          odst.&nbsp;1 písm.&nbsp;b) GDPR) a chodí bez souhlasu. Jedna připomínka, kdyby se
+          dítě k učebně nedostalo, a občasné tipy z učebny a nabídky táborů Weeks chodí
+          jen na základě vašeho samostatného, předem nezaškrtnutého souhlasu (čl.&nbsp;6
+          odst.&nbsp;1 písm.&nbsp;a) GDPR). Pokud ho dáte, předáme Meta Platforms Ireland
+          Limited otisk (hash) e-mailu, IP adresu a údaje o prohlížeči, jak je popsáno
+          v&nbsp;textu souhlasu. Meta v tom případě jedná jako samostatný správce.
+        </p>
+        <p>
+          Adresa, jejíž majitel odkaz neotevřel, dostane nejvýš jednu připomínku. Tipy
+          a nabídky posíláme jen těm, kdo odkaz aspoň jednou otevřeli, protože tím
+          prokázali, že schránka je jejich.
+        </p>
+        <p>
+          Souhlas odvoláte odkazem &bdquo;Nechci další e-maily&ldquo; v každém takovém
+          e-mailu, nebo zprávou na {CONTROLLER.email}. Zpracovatelem pro odesílání e-mailů
+          je Resend.
         </p>
       </section>
 
@@ -171,6 +216,13 @@ export default function PrivacyPage() {
           Po dobu trvání účtu. Po jeho zrušení nebo po odvolání souhlasu údaje dítěte
           smažeme nejpozději do 30 dnů. Výjimkou je záznam o souhlasu popsaný výše — ten
           uchováváme nejdéle 3 roky od smazání účtu.
+        </p>
+        <p>
+          Žádost o odkaz na počítač bez souhlasu s dalšími e-maily, nebo po jeho odvolání,
+          uchováváme 90&nbsp;dnů od vaší žádosti. Pak e-mailovou adresu smažeme
+          a zbytek (zdroj návštěvy, časy otevření) ponecháme jako anonymní statistiku.
+          Pokud souhlas dáte, držíme adresu do jeho odvolání. Záznam o souhlasu zůstává
+          jako doklad, jak je popsáno výše.
         </p>
       </section>
 

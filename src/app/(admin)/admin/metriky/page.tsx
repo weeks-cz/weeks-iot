@@ -116,6 +116,35 @@ export default async function MetricsPage({
         </section>
 
         <section className="mb-8">
+          <h2 className="heading-3 mb-1">Odkaz na počítač</h2>
+          <p className="mb-4 text-sm text-ink-500">
+            Stránka /pro-rodice. Počty žádostí, ne událostí: otevření se počítá jednou na žádost.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile
+              label="Vyžádáno"
+              stat={{ value: m.deviceLink.requested }}
+              hint="Žádosti o odkaz v období."
+            />
+            <StatTile
+              label="Otevřeno na počítači"
+              stat={{ value: m.deviceLink.openedOnComputer }}
+              hint="První otevření odkazu na počítači."
+            />
+            <StatTile
+              label="Ověřeno"
+              stat={{ value: m.deviceLink.verified }}
+              hint="Odkaz otevřen na jakémkoli zařízení, tedy schránka je jeho."
+            />
+            <StatTile
+              label="→ registrace"
+              stat={{ value: m.deviceLink.registrations }}
+              hint="Dokončený onboarding s odkazem nebo připomínkou jako zdrojem."
+            />
+          </div>
+        </section>
+
+        <section className="mb-8">
           <Card className="p-5">
             <h2 className="heading-3 mb-1">Vývoj</h2>
             <p className="mb-4 text-sm text-ink-500">

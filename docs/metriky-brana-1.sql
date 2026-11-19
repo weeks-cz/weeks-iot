@@ -334,3 +334,21 @@ select
   count(*) filter (where not public.has_consent(id, 'parental')) as BEZ_SOUHLASU_POZOR
 from public.parents
 where onboarding_completed_at is not null;
+
+
+-- ── 10. Odkaz na počítač (/pro-rodice) ────────────────────────────────────
+-- Počty se berou ze sloupců device_link_requests, ne z událostí
+-- device_link_open (ta se zapisuje při každém otevření, sloupec jen při
+-- prvním). opened_at = první otevření na počítači, verified_at = na
+-- jakémkoli zařízení. Registrace = dokončený onboarding s utm_term
+-- z odkazu nebo z připomínky.
+
+select
+  (select count(*) from public.device_link_requests)                      as vyzadano,
+  (select count(*) from public.device_link_requests
+    where opened_at is not null)                                          as otevreno_na_pc,
+  (select count(*) from public.device_link_requests
+    where verified_at is not null)                                        as overeno,
+  (select count(*) from public.parents
+    where onboarding_completed_at is not null
+      and utm_term in ('odkaz-na-pc', 'pripominka-na-pc'))                as registrace;
