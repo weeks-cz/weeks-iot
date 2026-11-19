@@ -48,6 +48,7 @@ describe("migrace 015 – device_link_requests", () => {
       "marketing_consent boolean not null default false",
       "sent_at timestamptz",
       "send_error text",
+      "verified_at timestamptz",
       "opened_at timestamptz",
       "reminder_sent_at timestamptz",
       "unsubscribed_at timestamptz",

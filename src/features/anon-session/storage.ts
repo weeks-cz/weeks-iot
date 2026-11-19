@@ -114,7 +114,11 @@ export function captureAttribution(url: URL, referrer: string): AnonSession {
   if (referrer && !referrer.startsWith(url.origin)) {
     attribution.referrer = referrer.slice(0, 500);
   }
-  attribution.landingPath = `${url.pathname}${url.search}`.slice(0, 500);
+  /* `odkaz` je podepsaný token z e-mailu (/pro-rodice). Je to doklad k jedné
+     žádosti, do atribuce nepatří a nesmí z prohlížeče odejít dál. */
+  const landing = new URL(url.href);
+  landing.searchParams.delete("odkaz");
+  attribution.landingPath = `${landing.pathname}${landing.search}`.slice(0, 500);
 
   return write({ ...session, attribution });
 }

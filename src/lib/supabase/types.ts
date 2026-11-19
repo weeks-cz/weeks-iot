@@ -78,6 +78,9 @@ export type DeviceLinkRequestRow = {
   marketing_consent: boolean;
   sent_at: string | null;
   send_error: string | null;
+  /** První otevření odkazu na jakémkoli zařízení. */
+  verified_at: string | null;
+  /** První otevření odkazu na počítači. */
   opened_at: string | null;
   reminder_sent_at: string | null;
   unsubscribed_at: string | null;

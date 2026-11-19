@@ -15,8 +15,10 @@
 --    - email je nullable: po anonymizaci (řádek bez platného souhlasu
 --      starší 90 dní) se smaže a řádek zůstane jako statistika. Check
 --      zajistí, že e-mail chybí jen u anonymizovaného řádku.
+--    - verified_at = první otevření odkazu NA JAKÉMKOLI zařízení: důkaz, že
+--      majitel schránky e-mail dostal. Telefon se sem počítá.
 --    - opened_at = první otevření odkazu NA POČÍTAČI. Otevření na telefonu
---      se zapíše jen jako událost a připomínku nezruší.
+--      se sem nezapisuje a připomínku nezruší.
 --    - marketing_consent = aktuální stav; doklad je v ledgeru consents.
 -- 2. consents.device_link_request_id – souhlas daný při odeslání formuláře
 --    (a jeho odvolání odhlašovacím odkazem) se váže na žádost. Ledger zůstává
@@ -44,6 +46,9 @@ create table public.device_link_requests (
   -- Kdy odešel e-mail s odkazem; NULL = odeslání selhalo (viz send_error).
   sent_at           timestamptz,
   send_error        text,
+  -- První otevření odkazu na jakémkoli zařízení (telefon taky): majitel
+  -- schránky e-mail opravdu dostal.
+  verified_at       timestamptz,
   -- První otevření odkazu na počítači. Telefon se sem nezapisuje.
   opened_at         timestamptz,
   reminder_sent_at  timestamptz,
