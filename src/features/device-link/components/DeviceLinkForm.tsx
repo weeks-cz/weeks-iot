@@ -33,8 +33,11 @@ export type FormVariant = DeviceVariant | "auto";
 
 const EMPTY: ActionState = {};
 
+/* Nezlomitelná mezera vždy přes konstantu, nikdy jako neviditelný znak. */
+const NBSP = "\u00a0";
+
 const HEADING: Record<DeviceVariant, string> = {
-  mobile: "Nejlíp to jde na počítači s myší. Pošleme vám odkaz.",
+  mobile: `Nejlíp to jde na počítači s${NBSP}myší. Pošleme vám odkaz.`,
   desktop: "Poslat odkaz na jiný počítač",
 };
 
@@ -241,7 +244,7 @@ export function DeviceLinkForm({
           </Button>
 
           <p className="text-sm leading-relaxed text-ink-500">
-            E-mail použijeme k{" "}odeslání odkazu. Více v{" "}
+            E-mail použijeme k{NBSP}odeslání odkazu. Více v{NBSP}
             <Link
               href="/ochrana-udaju"
               className="font-semibold text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink"

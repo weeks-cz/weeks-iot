@@ -4,6 +4,8 @@ import { UnsubscribeButton } from "@/features/device-link/components/Unsubscribe
 import { INVALID_LINK_MESSAGE } from "@/features/device-link/messages";
 import { requestTokenSecret, verifyRequestToken } from "@/features/device-link/token";
 
+const NBSP = "\u00a0";
+
 export const metadata: Metadata = {
   title: "Odhlášení z e-mailů",
   robots: { index: false, follow: false },
@@ -34,8 +36,8 @@ export default async function UnsubscribePage({
         {isValidToken(token) ? (
           <>
             <p className="mb-6 text-ink-500">
-              Kliknutím na tlačítko přestaneme na tuto adresu posílat tipy z učebny a nabídky
-              táborů Weeks.
+              Kliknutím na tlačítko přestaneme na tuto adresu posílat tipy z{NBSP}učebny
+              a{NBSP}nabídky táborů Weeks.
             </p>
             <UnsubscribeButton token={token} />
           </>

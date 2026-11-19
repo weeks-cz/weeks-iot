@@ -16,7 +16,7 @@ import { DEVICE_LINK_MARKETING_TEXT } from "@/features/consent/texts";
 import { DeviceLinkForm } from "../components/DeviceLinkForm";
 import { DeviceOrder } from "../components/DeviceOrder";
 
-const MOBILE_HEADING = /^Nejlíp to jde na počítači s myší\. Pošleme vám odkaz\.$/;
+const MOBILE_HEADING = /^Nejlíp to jde na počítači s\u00a0myší\. Pošleme vám odkaz\.$/;
 const DESKTOP_HEADING = "Poslat odkaz na jiný počítač";
 
 /** `fine` = myš (počítač), jinak prst (telefon). */
@@ -56,7 +56,14 @@ describe("DeviceLinkForm", () => {
     const consent = screen.getByRole("checkbox");
     expect(consent).toHaveProperty("checked", false);
     expect(consent.getAttribute("name")).toBe("marketingConsent");
-    expect(screen.getByLabelText(DEVICE_LINK_MARKETING_TEXT.label)).toBe(consent);
+    /* Testing Library v textu stránky slévá bílé znaky (i nezlomitelnou
+       mezeru) do mezery; hledaný text proto stejně. Že nezlomitelné mezery
+       v popisku jsou, hlídá textContent níž. */
+    const label = DEVICE_LINK_MARKETING_TEXT.label.replace(/\s+/g, " ");
+    expect(screen.getByLabelText(label)).toBe(consent);
+    expect(consent.closest("label")?.textContent ?? document.body.textContent).toContain(
+      DEVICE_LINK_MARKETING_TEXT.label,
+    );
     expect(screen.getByText("Zobrazit plné znění")).toBeTruthy();
   });
 
@@ -94,12 +101,21 @@ describe("DeviceLinkForm", () => {
     expect(screen.getByRole("button", { name: "Poslat odkaz na počítač" })).toBeTruthy();
   });
 
+  it("HTML ze serveru drží nezlomitelné mezery (k odeslání, v ochraně, s myší)", () => {
+    const html = renderToString(<DeviceLinkForm variant="auto" />);
+    const text = new DOMParser().parseFromString(html, "text/html").body.textContent ?? "";
+    expect(text).toContain("k\u00a0odeslání");
+    expect(text).toContain("v\u00a0ochraně údajů");
+    expect(text).toContain("s\u00a0myší");
+    expect(text).toContain(DEVICE_LINK_MARKETING_TEXT.label);
+  });
+
   it("auto: oba nadpisy v HTML ze serveru, nesprávný schová CSS podle ukazatele", () => {
     const html = renderToString(<DeviceLinkForm variant="auto" />);
     const doc = new DOMParser().parseFromString(html, "text/html");
     const headings = [...doc.querySelectorAll("h2")];
     expect(headings.map((h) => h.textContent)).toEqual([
-      "Nejlíp to jde na počítači s myší. Pošleme vám odkaz.",
+      "Nejlíp to jde na počítači s\u00a0myší. Pošleme vám odkaz.",
       DESKTOP_HEADING,
     ]);
     expect(headings[0]!.className).toContain("pointer-fine:hidden");

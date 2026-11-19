@@ -102,6 +102,14 @@ describe("DEVICE_LINK_MARKETING_TEXT", () => {
     expect(DEVICE_LINK_MARKETING_TEXT.required).toBe(false);
   });
 
+  it("popisek drží jednopísmenná slova nezlomitelnou mezerou", () => {
+    const { label } = DEVICE_LINK_MARKETING_TEXT;
+    expect(label).toContain("k\u00a0učebně");
+    expect(label).toContain("a\u00a0občas");
+    expect(label).toContain("z\u00a0učebny");
+    expect(label).not.toMatch(/(^|\s)[ksvzaiouKSVZAIOU] /);
+  });
+
   it("zmiňuje předání hashe do Meta", () => {
     expect(DEVICE_LINK_MARKETING_TEXT.full).toMatch(/Meta Platforms Ireland/);
     expect(DEVICE_LINK_MARKETING_TEXT.full).toMatch(/hash/);

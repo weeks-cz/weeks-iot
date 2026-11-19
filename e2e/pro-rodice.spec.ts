@@ -60,7 +60,7 @@ test("stránka se neindexuje", async ({ request }) => {
 /** Telefon: formulář nad „Přesto zkusit na telefonu“, odkaz vede do lekce 1. */
 async function expectPhoneLayout(page: Page) {
   const main = page.locator("main");
-  await expect(main.getByRole("heading", { name: /Nejlíp to jde na počítači s\smyší/ })).toBeVisible({
+  await expect(main.getByRole("heading", { name: /Nejlíp to jde na počítači s\u00a0myší/ })).toBeVisible({
     timeout: 30_000,
   });
   await expect(main.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeHidden();
@@ -142,7 +142,7 @@ test("snímky stránky pro posouzení", async ({ page }, testInfo) => {
   await page.goto("/pro-rodice/");
   const heading =
     testInfo.project.name === "mobile"
-      ? /Nejlíp to jde na počítači s\smyší/
+      ? /Nejlíp to jde na počítači s\u00a0myší/
       : "Poslat odkaz na jiný počítač";
   await expect(page.getByRole("heading", { name: heading })).toBeVisible({ timeout: 30_000 });
   await dismissCookies(page);

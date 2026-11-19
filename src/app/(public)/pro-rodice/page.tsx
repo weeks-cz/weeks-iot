@@ -78,7 +78,7 @@ const PRO_RODICE = [
   {
     icon: UserRound,
     title: "Účet zakládá rodič",
-    body: "Pro uložení postupu a certifikát založíte účet vy, ne dítě.",
+    body: `Pro uložení postupu a${NBSP}certifikát založíte účet vy, ne dítě.`,
   },
 ] as const;
 

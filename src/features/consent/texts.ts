@@ -265,11 +265,13 @@ nezávisle na tomto souhlasu, protože bez nich nelze účet provozovat.`,
  */
 export const DEVICE_LINK_MARKETING_TEXT: ConsentText = {
   kind: "marketing",
+  /* Nezlomitelné mezery v popisku (19. 11. 2026) verzi nemění: v1 ještě
+     nebyla nasazená, v ledgeru žádný souhlas pod ní není. */
   version: "marketing-odkaz-v1",
   required: false,
   label:
-    "Pošlete mi jednou připomínku, kdyby se dítě k učebně nedostalo, " +
-    "a občas tip z učebny nebo nabídku táborů Weeks.",
+    "Pošlete mi jednou připomínku, kdyby se dítě k\u00a0učebně nedostalo, " +
+    "a\u00a0občas tip z\u00a0učebny nebo nabídku táborů Weeks.",
   full: `SOUHLAS SE ZASÍLÁNÍM OBCHODNÍCH SDĚLENÍ
 
 Správce osobních údajů: ${CONTROLLER_LINE}
