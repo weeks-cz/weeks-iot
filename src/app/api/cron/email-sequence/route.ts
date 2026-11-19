@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendTemplate } from "@/lib/email/send";
 import { campCityForRegion } from "@/lib/camp-offer";
+import { maskEmail, safeRunDeviceLinkJobs } from "@/features/device-link/jobs";
 import {
   COURSE_SLUG,
   SEQUENCE,
@@ -37,13 +38,6 @@ export const maxDuration = 60;
 /** Kolik e-mailů nejvýš za jeden běh. Chrání limit Resendu i dobu běhu. */
 const BATCH = 100;
 
-/** `rodic@example.com` → `ro***@example.com`. Účet se pozná, adresa neunikne. */
-function maskEmail(email: string): string {
-  const at = email.indexOf("@");
-  if (at < 1) return "***";
-  return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`;
-}
-
 export async function GET(request: Request) {
   /* Vercel podepisuje cron požadavky hlavičkou s CRON_SECRET.
      Chybějící tajemství znamená ODMÍTNOUT, ne pustit. Dřív tu bylo
@@ -68,6 +62,11 @@ export async function GET(request: Request) {
      který se nedá vyzkoušet nanečisto, se bude zkoušet naostro. */
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
 
+  /* Odkaz na počítač (připomínka + anonymizace) běží PŘED dotazem na rodiče,
+     aby ho nepřeskočil early return, a nesmí shodit sekvenci: chyba se
+     zaloguje a jde do odpovědi jako `deviceLink: { error }`. */
+  const deviceLink = await safeRunDeviceLinkJobs({ dryRun });
+
   const service = createServiceClient();
   const results = { sent: 0, skipped: 0, failed: 0, missed: 0 };
   /* Do výpisu jde maskovaná adresa, ne skutečná. Na kontrolu „komu by to
@@ -84,7 +83,12 @@ export async function GET(request: Request) {
     .limit(1000);
 
   if (!parents?.length) {
-    return NextResponse.json({ ...results, note: "žádné dokončené účty" });
+    return NextResponse.json({
+      ...(dryRun ? { dryRun: true } : {}),
+      ...results,
+      note: "žádné dokončené účty",
+      deviceLink,
+    });
   }
 
   const ids = parents.map((p) => p.id);
@@ -246,5 +250,7 @@ export async function GET(request: Request) {
   }
 
   console.info("[cron/email-sequence]", { dryRun, ...results });
-  return NextResponse.json(dryRun ? { dryRun: true, ...results, plan } : results);
+  return NextResponse.json(
+    dryRun ? { dryRun: true, ...results, plan, deviceLink } : { ...results, deviceLink },
+  );
 }
