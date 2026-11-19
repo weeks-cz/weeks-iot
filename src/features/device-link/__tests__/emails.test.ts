@@ -31,7 +31,7 @@ describe("deviceLinkEmail", () => {
 
   it("drží číslo s jednotkou nezlomitelnou mezerou", () => {
     const text = allText(deviceLinkEmail({ lessonUrl: LESSON, unsubscribeUrl: null }));
-    expect(text).toContain("20 minut");
+    expect(text).toContain("20\u00a0minut");
   });
 
   it("odkaz na odhlášení je jen když je předaný", () => {
@@ -54,6 +54,30 @@ describe("deviceLinkReminderEmail", () => {
     expect(t.content.secondaryLink?.url).toBe(UNSUB);
     expect(allText(t)).not.toContain("!");
     expect(allText(t)).not.toMatch(/uvidíte|postup dítěte/i);
+  });
+
+  it("netvrdí, že odkaz nikdo neotevřel (otevření na telefonu nevidíme)", () => {
+    const text = allText(deviceLinkReminderEmail({ lessonUrl: LESSON, unsubscribeUrl: UNSUB }));
+    expect(text).not.toMatch(/nikdo|neotevřel/i);
+    expect(text).toContain("Pokud se k\u00a0ní dítě ještě nedostalo, tady je odkaz znovu.");
+    expect(text).toMatch(/jediná připomínka/);
+  });
+
+  it("nezlomitelné mezery: číslo s jednotkou a jednopísmenná slova", () => {
+    const text = allText(deviceLinkReminderEmail({ lessonUrl: LESSON, unsubscribeUrl: UNSUB }));
+    expect(text).toContain("20\u00a0minut");
+    expect(text).toContain("a\u00a0jde otevřít");
+    expect(text).toContain("a\u00a0prohlížeč");
+  });
+});
+
+describe("nezlomitelné mezery v e-mailu s odkazem", () => {
+  it("s myší, v prohlížeči, 20 minut", () => {
+    const text = allText(deviceLinkEmail({ lessonUrl: LESSON, unsubscribeUrl: null }));
+    expect(text).toContain("s\u00a0myší");
+    expect(text).toContain("v\u00a0prohlížeči");
+    expect(text).toContain("20\u00a0minut");
+    expect(text).toContain("a\u00a0získalo");
   });
 });
 
