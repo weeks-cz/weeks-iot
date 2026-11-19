@@ -17,7 +17,7 @@ import { DeviceLinkForm } from "../components/DeviceLinkForm";
 import { DeviceOrder } from "../components/DeviceOrder";
 
 const MOBILE_HEADING = /^Nejlíp to jde na počítači s\u00a0myší\. Pošleme vám odkaz\.$/;
-const DESKTOP_HEADING = "Poslat odkaz na jiný počítač";
+const DESKTOP_HEADING = "Nemáte teď čas? Pošleme vám odkaz e-mailem.";
 
 /** `fine` = myš (počítač), jinak prst (telefon). */
 function stubPointer(fine: boolean) {
@@ -96,14 +96,14 @@ describe("DeviceLinkForm", () => {
     expect(screen.getAllByRole("textbox").map((el) => el.getAttribute("name"))).toEqual(["email"]);
   });
 
-  it("na telefonu radí počítač, na počítači nabízí jiný počítač", () => {
+  it("na telefonu radí počítač, na počítači nabízí odkaz na později", () => {
     const { unmount } = render(<DeviceLinkForm variant="mobile" />);
     expect(screen.getByRole("heading", { name: MOBILE_HEADING })).toBeTruthy();
     unmount();
 
     render(<DeviceLinkForm variant="desktop" />);
     expect(screen.getByRole("heading", { name: DESKTOP_HEADING })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Poslat odkaz na počítač" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Poslat odkaz e-mailem" })).toBeTruthy();
   });
 
   it("HTML ze serveru drží nezlomitelné mezery (k odeslání, v ochraně, s myší)", () => {

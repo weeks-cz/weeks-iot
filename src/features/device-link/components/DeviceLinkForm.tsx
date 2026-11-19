@@ -38,7 +38,14 @@ const NBSP = "\u00a0";
 
 const HEADING: Record<DeviceVariant, string> = {
   mobile: `Nejlíp to jde na počítači s${NBSP}myší. Pošleme vám odkaz.`,
-  desktop: "Poslat odkaz na jiný počítač",
+  /* Na počítači rodič lekci může spustit hned; formulář je pro „teď ne“,
+     ne pro jiný počítač – ten by tomu, kdo u počítače sedí, nedával smysl. */
+  desktop: "Nemáte teď čas? Pošleme vám odkaz e-mailem.",
+};
+
+const SUBMIT_LABEL: Record<DeviceVariant, string> = {
+  mobile: "Poslat odkaz na počítač",
+  desktop: "Poslat odkaz e-mailem",
 };
 
 const HEADING_CLASS =
@@ -240,7 +247,14 @@ export function DeviceLinkForm({
             fullWidth
             loading={pending}
           >
-            Poslat odkaz na počítač
+            {variant === "auto" ? (
+              <>
+                <span className="pointer-fine:hidden">{SUBMIT_LABEL.mobile}</span>
+                <span className="hidden pointer-fine:inline">{SUBMIT_LABEL.desktop}</span>
+              </>
+            ) : (
+              SUBMIT_LABEL[variant]
+            )}
           </Button>
 
           <p className="text-sm leading-relaxed text-ink-500">

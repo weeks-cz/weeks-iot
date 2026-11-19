@@ -66,7 +66,7 @@ async function expectPhoneLayout(page: Page) {
   const mobileHeading = main.getByRole("heading", { name: /Nejlíp to jde na počítači s\smyší/ });
   await expect(mobileHeading).toBeVisible({ timeout: 30_000 });
   expect(await mobileHeading.textContent()).toContain("s\u00a0myší");
-  await expect(main.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeHidden();
+  await expect(main.getByRole("heading", { name: "Nemáte teď čas? Pošleme vám odkaz e-mailem." })).toBeHidden();
   await expect(main.getByRole("link", { name: "Začít první lekci" })).toBeHidden();
 
   const submit = main.getByRole("button", { name: "Poslat odkaz na počítač" });
@@ -84,7 +84,7 @@ async function expectPhoneLayout(page: Page) {
 /** Počítač: první viditelné tlačítko je „Začít první lekci“, hned po načtení. */
 async function expectDesktopLayout(page: Page) {
   const main = page.locator("main");
-  await expect(main.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeVisible({
+  await expect(main.getByRole("heading", { name: "Nemáte teď čas? Pošleme vám odkaz e-mailem." })).toBeVisible({
     timeout: 30_000,
   });
   await expect(main.getByRole("heading", { name: /Nejlíp to jde/ })).toBeHidden();
@@ -93,6 +93,8 @@ async function expectDesktopLayout(page: Page) {
   const lesson = main.getByRole("link", { name: "Začít první lekci" });
   await expect(lesson).toBeInViewport();
   await expect(lesson).toHaveAttribute("href", LESSON_HREF);
+  await expect(main.getByRole("button", { name: "Poslat odkaz e-mailem" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Poslat odkaz na počítač" })).toBeHidden();
 
   const first = await main.evaluate((root) => {
     const ctas = [...root.querySelectorAll<HTMLElement>("a[href], button")].filter((el) => {
@@ -146,7 +148,7 @@ test("snímky stránky pro posouzení", async ({ page }, testInfo) => {
   const heading =
     testInfo.project.name === "mobile"
       ? /Nejlíp to jde na počítači s\smyší/ // getByRole slévá NBSP do mezery
-      : "Poslat odkaz na jiný počítač";
+      : "Nemáte teď čas? Pošleme vám odkaz e-mailem.";
   await expect(page.getByRole("heading", { name: heading })).toBeVisible({ timeout: 30_000 });
   await dismissCookies(page);
 
