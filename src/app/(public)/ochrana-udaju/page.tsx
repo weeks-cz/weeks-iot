@@ -93,9 +93,9 @@ export default function PrivacyPage() {
           v&nbsp;textu souhlasu. Meta v tom případě jedná jako samostatný správce.
         </p>
         <p>
-          Adresa, jejíž majitel odkaz neotevřel, dostane nejvýš jednu připomínku. Tipy
-          a nabídky posíláme jen těm, kdo odkaz aspoň jednou otevřeli, protože tím
-          prokázali, že schránka je jejich.
+          Pokud jste dali souhlas a&nbsp;odkaz na počítači neotevřeli, pošleme nejvýš
+          jednu připomínku. Tipy a&nbsp;nabídky posíláme jen těm, kdo odkaz aspoň
+          jednou otevřeli, protože tím prokázali, že schránka je jejich.
         </p>
         <p>
           Souhlas odvoláte odkazem &bdquo;Nechci další e-maily&ldquo; v každém takovém

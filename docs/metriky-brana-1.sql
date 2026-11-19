@@ -342,6 +342,7 @@ where onboarding_completed_at is not null;
 -- prvním). opened_at = první otevření na počítači, verified_at = na
 -- jakémkoli zařízení. Registrace = dokončený onboarding s utm_term
 -- z odkazu nebo z připomínky.
+-- Pozor: dashboard (queries.ts) filtruje podle zvoleného období, tenhle SQL počítá za celou dobu.
 
 select
   (select count(*) from public.device_link_requests)                      as vyzadano,
