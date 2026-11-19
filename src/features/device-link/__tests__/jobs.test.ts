@@ -79,6 +79,45 @@ describe("planDeviceLinkJobs – připomínka", () => {
   });
 });
 
+describe("planDeviceLinkJobs – víc žádostí na stejnou adresu", () => {
+  const OLDER = "11111111-5d4a-4c6b-9a1e-0123456789ab";
+  const NEWER = "22222222-5d4a-4c6b-9a1e-0123456789ab";
+  const older = row({ id: OLDER, created_at: ago(100 * H) });
+  const newer = row({ id: NEWER, created_at: ago(60 * H) });
+
+  it("dvě způsobilé žádosti: připomene jen jednu, tu novější", () => {
+    expect(plan([older, newer]).remind).toEqual([NEWER]);
+    expect(plan([newer, older]).remind).toEqual([NEWER]);
+  });
+
+  it("adresu sdružuje bez ohledu na velikost písmen", () => {
+    const upper = row({ id: NEWER, email: "Jana@Seznam.CZ", created_at: ago(60 * H) });
+    expect(plan([older, upper]).remind).toEqual([NEWER]);
+  });
+
+  it("různé adresy dostanou každá svou", () => {
+    const other = row({ id: NEWER, email: "karel@x.cz" });
+    expect(plan([older, other]).remind.sort()).toEqual([OLDER, NEWER].sort());
+  });
+
+  for (const [what, over] of [
+    ["otevřená na počítači", { opened_at: ago(H) }],
+    ["už připomenutá", { reminder_sent_at: ago(H) }],
+    ["odhlášená", { unsubscribed_at: ago(H), marketing_consent: false }],
+  ] as const) {
+    it(`jiná žádost na stejnou adresu ${what}: žádná připomínka`, () => {
+      /* Sourozenec není mezi kandidáty (filtr ho vyřadil), přichází zvlášť. */
+      const sibling = row({ id: NEWER, created_at: ago(200 * H), ...over });
+      expect(planDeviceLinkJobs([older], none, NOW, [sibling]).remind).toEqual([]);
+    });
+  }
+
+  it("sourozenec bez blokujícího stavu připomínku nezastaví", () => {
+    const sibling = row({ id: NEWER, created_at: ago(10 * H), sent_at: ago(10 * H) });
+    expect(planDeviceLinkJobs([older], none, NOW, [sibling]).remind).toEqual([OLDER]);
+  });
+});
+
 describe("planDeviceLinkJobs – anonymizace", () => {
   const old = { created_at: ago(91 * 24 * H) };
   it("91 dní bez souhlasu ano", () => {
@@ -107,6 +146,7 @@ function setup(
   opts: {
     rows?: DeviceLinkRequestRow[];
     registered?: string[];
+    siblings?: DeviceLinkRequestRow[];
     claim?: boolean;
     sendOk?: boolean;
     listFails?: boolean;
@@ -119,6 +159,7 @@ function setup(
       return rows;
     }),
     registeredEmails: vi.fn(async (..._a: unknown[]) => new Set(opts.registered ?? [])),
+    siblingsByEmail: vi.fn(async (..._a: unknown[]) => opts.siblings ?? []),
     claimReminder: vi.fn(async (..._a: unknown[]) => opts.claim !== false),
     anonymize: vi.fn(async (..._a: unknown[]) => true),
   } satisfies JobsStore;
@@ -192,6 +233,32 @@ describe("runDeviceLinkJobs", () => {
       { email: "ka***@x.cz", job: "anonymizace" },
       { email: "ja***@seznam.cz", job: "připomínka" },
     ]);
+  });
+
+  it("dvě žádosti na stejnou adresu: jedna připomínka, pro novější žádost", async () => {
+    const older = row({ id: "11111111-5d4a-4c6b-9a1e-0123456789ab", created_at: ago(100 * H) });
+    const newer = row({ id: "22222222-5d4a-4c6b-9a1e-0123456789ab", created_at: ago(60 * H) });
+    const { store, send, deps } = setup({ rows: [older, newer] });
+    const res = await runDeviceLinkJobs({ dryRun: false, now: NOW }, deps);
+    expect(store.claimReminder).toHaveBeenCalledTimes(1);
+    expect(store.claimReminder).toHaveBeenCalledWith(newer.id, NOW);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(res.reminded).toBe(1);
+  });
+
+  it("načte další žádosti na adresy kandidátů a otevřená blokuje připomínku", async () => {
+    const opened = row({
+      id: "22222222-5d4a-4c6b-9a1e-0123456789ab",
+      created_at: ago(200 * H),
+      opened_at: ago(150 * H),
+    });
+    const { store, send, deps } = setup({ siblings: [opened] });
+    await runDeviceLinkJobs({ dryRun: false, now: NOW }, deps);
+    expect(store.siblingsByEmail).toHaveBeenCalledWith(
+      expect.arrayContaining(["jana@seznam.cz"]),
+    );
+    expect(store.claimReminder).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("anonymizuje", async () => {

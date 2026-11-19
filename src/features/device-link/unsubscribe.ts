@@ -12,6 +12,7 @@ import { requestTokenSecret, verifyRequestToken } from "./token";
 export type UnsubscribeResult = "done" | "already" | "invalid" | "error";
 
 export type UnsubscribeRow = {
+  email: string | null;
   marketing_consent: boolean;
   unsubscribed_at: string | null;
   anonymized_at: string | null;
@@ -32,6 +33,12 @@ export type WithdrawalInsert = {
 export interface UnsubscribeStore {
   /** null = řádek neexistuje. Chyba databáze se HAZÍ, nesmí vypadat jako null. */
   find(id: string): Promise<UnsubscribeRow | null>;
+  /**
+   * Id ostatních žádostí na stejnou adresu (citext, bez ohledu na velikost
+   * písmen), které mají platný souhlas a nejsou odhlášené. Chyba se HAZÍ:
+   * prázdný seznam by vypadal jako „nic dalšího není“.
+   */
+  findSiblings(email: string, exceptId: string): Promise<string[]>;
   /** true = doklad je v ledgeru. */
   insertConsent(row: WithdrawalInsert): Promise<boolean>;
   /** `marketing_consent = false`, `unsubscribed_at = at`. true = příznak je shozený. */
@@ -55,11 +62,22 @@ export function supabaseUnsubscribeStore(): UnsubscribeStore {
     async find(id) {
       const { data, error } = await db
         .from("device_link_requests")
-        .select("marketing_consent, unsubscribed_at, anonymized_at")
+        .select("email, marketing_consent, unsubscribed_at, anonymized_at")
         .eq("id", id)
         .maybeSingle();
       if (error) throw new Error(error.message);
       return data ?? null;
+    },
+    async findSiblings(email, exceptId) {
+      const { data, error } = await db
+        .from("device_link_requests")
+        .select("id")
+        .eq("email", email)
+        .neq("id", exceptId)
+        .eq("marketing_consent", true)
+        .is("unsubscribed_at", null);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r) => r.id);
     },
     async insertConsent(row) {
       const { error } = await db.from("consents").insert(row);
@@ -104,30 +122,57 @@ export async function unsubscribe(
     console.error("[odkaz-na-pc] Čtení žádosti selhalo:", err instanceof Error ? err.message : err);
     return "error";
   }
-  /* Smazaná, anonymizovaná, bez souhlasu nebo už odhlášená žádost: není co
-     odvolávat. Uživateli to říkáme stejně jako úspěch (další e-maily
-     nechodí), jen se do ledgeru nic nepíše. */
-  if (!row || row.anonymized_at || !row.marketing_consent || row.unsubscribed_at) {
-    return "already";
+  /* Smazaná nebo anonymizovaná žádost: není co odvolávat a bez adresy ani
+     koho dalšího hledat. Uživateli to říkáme stejně jako úspěch (další
+     e-maily nechodí), jen se do ledgeru nic nepíše. */
+  if (!row || row.anonymized_at || !row.email) return "already";
+
+  /* „Nechci další e-maily“ platí pro adresu, ne pro jednu žádost: rodič,
+     který si odkaz nechal poslat dvakrát, by jinak dál dostával e-maily
+     z té druhé. Proto se odvolávají i ostatní žádosti se souhlasem. */
+  let siblings: string[];
+  try {
+    siblings = await service.findSiblings(row.email, id);
+  } catch (err) {
+    console.error(
+      "[odkaz-na-pc] Čtení dalších žádostí selhalo:",
+      err instanceof Error ? err.message : err,
+    );
+    return "error";
   }
 
-  const recorded = await service.insertConsent({
-    parent_id: null,
-    child_id: null,
-    kind: "marketing",
-    version: DEVICE_LINK_MARKETING_TEXT.version,
-    text_snapshot: DEVICE_LINK_MARKETING_TEXT.full,
-    granted: false,
-    ip: ctx.ip,
-    user_agent: ctx.userAgent,
-    device_link_request_id: id,
-  });
-  /* Bez dokladu se příznak nemění: kdo to zkusí znovu, nenarazí na „už je
-     odhlášeno", které by nebyla pravda. */
-  if (!recorded) return "error";
+  const clickedActive = row.marketing_consent && !row.unsubscribed_at;
+  const affected = [...(clickedActive ? [id] : []), ...siblings];
+  /* Bez souhlasu nebo už odhlášená a nic dalšího: už je hotovo. */
+  if (affected.length === 0) return "already";
 
-  /* Doklad je v ledgeru, ale příznak se nepodařilo shodit: e-maily by dál
-     chodily, tak „hotovo" neříkáme. Opakování je bezpečné (další doklad
+  /* Doklad pro každou žádost PŘED změnou jakéhokoli příznaku. Bez dokladu se
+     příznak nemění: kdo to zkusí znovu, nenarazí na „už je odhlášeno“, které
+     by nebyla pravda. */
+  for (const requestId of affected) {
+    const recorded = await service.insertConsent({
+      parent_id: null,
+      child_id: null,
+      kind: "marketing",
+      version: DEVICE_LINK_MARKETING_TEXT.version,
+      text_snapshot: DEVICE_LINK_MARKETING_TEXT.full,
+      granted: false,
+      ip: ctx.ip,
+      user_agent: ctx.userAgent,
+      device_link_request_id: requestId,
+    });
+    if (!recorded) return "error";
+  }
+
+  /* Kliknutý řádek se shazuje až nakonec. Kdyby selhal příznak u jiné
+     žádosti, opakování kliknutí projde celou cestou znovu, místo aby
+     narazilo na „už je odhlášeno“ a ostatní žádosti nechalo být.
+     Doklad je v ledgeru, ale příznak se nepodařilo shodit: e-maily by dál
+     chodily, tak „hotovo“ neříkáme. Opakování je bezpečné (další doklad
      jen zopakuje odvolání). */
-  return (await service.markUnsubscribed(id, now)) ? "done" : "error";
+  const flagOrder = [...siblings, ...(clickedActive ? [id] : [])];
+  for (const requestId of flagOrder) {
+    if (!(await service.markUnsubscribed(requestId, now))) return "error";
+  }
+  return "done";
 }

@@ -47,15 +47,47 @@ function needsReminder(
   return !registered.has(r.email.toLowerCase());
 }
 
-/** Čistá funkce: vrací id řádků. `registeredEmails` jsou malými písmeny. */
+/** Stav, po kterém už adresa žádnou připomínku nedostane, ať je u které žádosti. */
+function blocksAddress(r: DeviceLinkRequestRow): boolean {
+  return Boolean(r.opened_at || r.reminder_sent_at || r.unsubscribed_at);
+}
+
+/**
+ * Čistá funkce: vrací id řádků. `registeredEmails` jsou malými písmeny.
+ *
+ * `siblings` jsou ostatní žádosti na adresy kandidátů, bez filtru stavu a
+ * stáří (předvýběr kandidátů vyřazuje právě ty řádky, které připomínku
+ * blokují). Připomínka je jedna na ADRESU, ne na žádost: rodič, který si
+ * odkaz nechal poslat dvakrát, dostane nejvýš jednu, a to k novější žádosti.
+ * Adresu, u které už některá žádost byla otevřená na počítači, připomenutá
+ * nebo odhlášená, přeskočí celou.
+ */
 export function planDeviceLinkJobs(
   rows: DeviceLinkRequestRow[],
   registeredEmails: ReadonlySet<string>,
   now: Date,
+  siblings: DeviceLinkRequestRow[] = [],
 ): { remind: string[]; anonymize: string[] } {
   const t = now.getTime();
+
+  const blocked = new Set<string>();
+  for (const r of [...rows, ...siblings]) {
+    if (r.email && blocksAddress(r)) blocked.add(r.email.toLowerCase());
+  }
+
+  const newestByEmail = new Map<string, DeviceLinkRequestRow>();
+  for (const r of rows) {
+    if (!needsReminder(r, registeredEmails, t)) continue;
+    const key = r.email!.toLowerCase();
+    if (blocked.has(key)) continue;
+    const current = newestByEmail.get(key);
+    if (!current || new Date(r.created_at).getTime() > new Date(current.created_at).getTime()) {
+      newestByEmail.set(key, r);
+    }
+  }
+
   return {
-    remind: rows.filter((r) => needsReminder(r, registeredEmails, t)).map((r) => r.id),
+    remind: [...newestByEmail.values()].map((r) => r.id),
     anonymize: rows.filter((r) => needsAnonymizing(r, t)).map((r) => r.id),
   };
 }
@@ -65,9 +97,15 @@ export interface JobsStore {
   listCandidates(now: Date): Promise<DeviceLinkRequestRow[]>;
   /** Které z e-mailů mají účet v `parents` (vrací malými písmeny). */
   registeredEmails(emails: string[]): Promise<Set<string>>;
-  /** `reminder_sent_at = at where id = ? and reminder_sent_at is null`. true = nárok získán. */
+  /** Všechny žádosti na tyto adresy (citext), bez filtru stavu a stáří. Chyba se HAZÍ. */
+  siblingsByEmail(emails: string[]): Promise<DeviceLinkRequestRow[]>;
+  /**
+   * `reminder_sent_at = at` jen pro řádek, který připomínku pořád smí dostat
+   * (souhlas, neotevřený, neodhlášený, neanonymizovaný, nepřipomenutý).
+   * Stav se mohl změnit mezi plánem a odesláním. true = nárok získán.
+   */
   claimReminder(id: string, at: Date): Promise<boolean>;
-  /** `email = null, anonymized_at = at`. true = zapsáno. */
+  /** `email = null, send_error = null, anonymized_at = at`. true = zapsáno. */
   anonymize(id: string, at: Date): Promise<boolean>;
 }
 
@@ -132,12 +170,25 @@ export function supabaseJobsStore(): JobsStore {
       if (error) throw new Error(error.message);
       return new Set((data ?? []).map((p) => p.email.toLowerCase()));
     },
+    async siblingsByEmail(emails) {
+      if (emails.length === 0) return [];
+      const { data, error } = await db
+        .from("device_link_requests")
+        .select(COLUMNS)
+        .in("email", emails);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
     async claimReminder(id, at) {
       const { data, error } = await db
         .from("device_link_requests")
         .update({ reminder_sent_at: at.toISOString() })
         .eq("id", id)
         .is("reminder_sent_at", null)
+        .eq("marketing_consent", true)
+        .is("unsubscribed_at", null)
+        .is("opened_at", null)
+        .is("anonymized_at", null)
         .select("id");
       if (error) {
         console.error("[odkaz-na-pc] Nárok na připomínku selhal:", error.message);
@@ -148,7 +199,8 @@ export function supabaseJobsStore(): JobsStore {
     async anonymize(id, at) {
       const { error } = await db
         .from("device_link_requests")
-        .update({ email: null, anonymized_at: at.toISOString() })
+        /* `send_error` může obsahovat adresu (hláška Resendu), maže se s ní. */
+        .update({ email: null, send_error: null, anonymized_at: at.toISOString() })
         .eq("id", id)
         .is("anonymized_at", null);
       if (error) console.error("[odkaz-na-pc] Anonymizace selhala:", error.message);
@@ -172,8 +224,10 @@ export async function runDeviceLinkJobs(
       rows.filter((r) => r.email).flatMap((r) => [r.email!, r.email!.toLowerCase()]),
     ),
   ];
-  const registered = emails.length ? await store.registeredEmails(emails) : new Set<string>();
-  const { remind, anonymize } = planDeviceLinkJobs(rows, registered, now);
+  const [registered, siblings] = emails.length
+    ? await Promise.all([store.registeredEmails(emails), store.siblingsByEmail(emails)])
+    : [new Set<string>(), []];
+  const { remind, anonymize } = planDeviceLinkJobs(rows, registered, now, siblings);
   const byId = new Map(rows.map((r) => [r.id, r]));
 
   /* Anonymizace první: řádek, který se maže, připomínku nedostane. */
