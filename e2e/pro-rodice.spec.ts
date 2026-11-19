@@ -60,9 +60,12 @@ test("stránka se neindexuje", async ({ request }) => {
 /** Telefon: formulář nad „Přesto zkusit na telefonu“, odkaz vede do lekce 1. */
 async function expectPhoneLayout(page: Page) {
   const main = page.locator("main");
-  await expect(main.getByRole("heading", { name: /Nejlíp to jde na počítači s\u00a0myší/ })).toBeVisible({
-    timeout: 30_000,
-  });
+  /* getByRole slévá bílé znaky ve jménu (i nezlomitelnou mezeru) do mezery,
+     takže s \u00a0 by lokátor nic nenašel. Nezlomitelnou mezeru hlídá
+     textContent nadpisu. */
+  const mobileHeading = main.getByRole("heading", { name: /Nejlíp to jde na počítači s\smyší/ });
+  await expect(mobileHeading).toBeVisible({ timeout: 30_000 });
+  expect(await mobileHeading.textContent()).toContain("s\u00a0myší");
   await expect(main.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeHidden();
   await expect(main.getByRole("link", { name: "Začít první lekci" })).toBeHidden();
 
@@ -142,7 +145,7 @@ test("snímky stránky pro posouzení", async ({ page }, testInfo) => {
   await page.goto("/pro-rodice/");
   const heading =
     testInfo.project.name === "mobile"
-      ? /Nejlíp to jde na počítači s\u00a0myší/
+      ? /Nejlíp to jde na počítači s\smyší/ // getByRole slévá NBSP do mezery
       : "Poslat odkaz na jiný počítač";
   await expect(page.getByRole("heading", { name: heading })).toBeVisible({ timeout: 30_000 });
   await dismissCookies(page);
