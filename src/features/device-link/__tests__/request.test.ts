@@ -4,6 +4,8 @@ import {
   DEDUPE_WINDOW_MS,
   GENERIC_ERROR,
   RATE_LIMIT_ERROR,
+  canonicalMailbox,
+  emailKey,
   handleDeviceLinkRequest,
   type DeviceLinkStore,
 } from "../request";
@@ -28,11 +30,11 @@ function input(over: Record<string, unknown> = {}) {
   });
 }
 
-function setup(opts: { recent?: { id: string; marketing_consent: boolean } | null; sendOk?: boolean; limitDenied?: string } = {}) {
+function setup(opts: { recent?: { id: string; marketing_consent: boolean } | null; sendOk?: boolean; limitDenied?: string; consentFails?: boolean } = {}) {
   const store = {
     findRecentSent: vi.fn(async () => opts.recent ?? null),
     insertRequest: vi.fn(async () => REQ_ID),
-    insertConsent: vi.fn(async () => {}),
+    insertConsent: vi.fn(async (..._a: unknown[]) => !opts.consentFails),
     setMarketingConsent: vi.fn(async () => {}),
     markSent: vi.fn(async () => {}),
     markSendError: vi.fn(async () => {}),
@@ -103,6 +105,10 @@ describe("handleDeviceLinkRequest", () => {
     expect(template.content.button?.url).toContain("utm_term=odkaz-na-pc");
     expect(template.content.button?.url).toContain("utm_source=ig");
 
+    expect(t.store.insertRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ marketing_consent: false }),
+    );
+    expect(t.store.setMarketingConsent).toHaveBeenCalledWith(REQ_ID);
     expect(t.store.markSent).toHaveBeenCalledWith(REQ_ID, NOW);
     expect(t.meta).toHaveBeenCalledTimes(1);
     const metaArg = t.meta.mock.calls[0]![0] as never as { eventName: string; eventId: string; userData: Record<string, unknown>; eventSourceUrl: string };
@@ -197,6 +203,51 @@ describe("handleDeviceLinkRequest", () => {
     expect(emailCall[1]).not.toContain("seznam");
   });
 
+  it("selhal zápis souhlasu (první žádost): příznak se nenastaví, bez odhlášení a bez Lead", async () => {
+    const t = setup({ consentFails: true });
+    const r = await t.run(input({ marketingConsent: "on" }));
+    expect(r.ok).toBe(true);
+    expect(t.store.setMarketingConsent).not.toHaveBeenCalled();
+    expect(t.store.insertRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ marketing_consent: false }),
+    );
+    const [, template, , headers] = t.send.mock.calls[0] as unknown as [string, { content: { secondaryLink?: unknown } }, unknown, Record<string, string>];
+    expect(headers).toEqual({});
+    expect(template.content.secondaryLink).toBeUndefined();
+    expect(t.meta).not.toHaveBeenCalled();
+    expect(t.store.insertEvent).toHaveBeenCalledWith("device_link_submit", {
+      env: "instagram",
+      consent: false,
+    });
+  });
+
+  it("selhal zápis souhlasu (dedupe): příznak se nenastaví", async () => {
+    const t = setup({ recent: { id: "old", marketing_consent: false }, consentFails: true });
+    const r = await t.run(input({ marketingConsent: "on" }));
+    expect(r.ok).toBe(true);
+    expect(t.store.insertConsent).toHaveBeenCalledTimes(1);
+    expect(t.store.setMarketingConsent).not.toHaveBeenCalled();
+  });
+
+  it("bez eventId z prohlížeče se Lead neposílá", async () => {
+    const t = setup();
+    await t.run(input({ marketingConsent: "on", eventId: "" }));
+    expect(t.store.insertConsent).toHaveBeenCalled();
+    expect(t.meta).not.toHaveBeenCalled();
+  });
+
+  it("chybějící secret nespotřebuje rate limit ani nic nezapíše", async () => {
+    const t = setup();
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await t.run(input(), {
+      secret: () => {
+        throw new Error("x");
+      },
+    });
+    spy.mockRestore();
+    expect(t.limit).not.toHaveBeenCalled();
+  });
+
   it("chybějící secret: obecná chyba, žádný zápis", async () => {
     const t = setup();
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -209,5 +260,26 @@ describe("handleDeviceLinkRequest", () => {
     expect(r).toEqual({ ok: false, error: GENERIC_ERROR });
     expect(t.store.insertRequest).not.toHaveBeenCalled();
     expect(t.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("canonicalMailbox", () => {
+  it("gmail tečky, +tag a googlemail dávají stejný klíč", () => {
+    expect(canonicalMailbox("jana.novak+x@gmail.com")).toBe("jananovak@gmail.com");
+    expect(canonicalMailbox("JanaNovak@googlemail.com")).toBe("jananovak@gmail.com");
+    expect(emailKey("jana.novak+x@gmail.com", SECRET)).toBe(
+      emailKey("JanaNovak@googlemail.com", SECRET),
+    );
+  });
+
+  it("jiné domény: jen +tag, tečky zůstávají", () => {
+    expect(canonicalMailbox("jana+x@seznam.cz")).toBe("jana@seznam.cz");
+    expect(canonicalMailbox("jana.novak@seznam.cz")).toBe("jana.novak@seznam.cz");
+  });
+
+  it("klíč je HMAC: závisí na secretu a neobsahuje e-mail", () => {
+    const k = emailKey("jana@seznam.cz", SECRET);
+    expect(k).not.toBe(emailKey("jana@seznam.cz", "jiny-secret-bbbbbbbbbbbbbbbbbbbbbbbb"));
+    expect(k).toMatch(/^[0-9a-f]{32}$/);
   });
 });

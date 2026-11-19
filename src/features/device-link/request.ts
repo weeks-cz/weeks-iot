@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash, randomUUID } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { rateLimit, type RateLimitName, type RateLimitResult } from "@/lib/rate-limit";
 import { buildFbc, sendMetaEvent, type MetaEventInput } from "@/lib/meta-capi";
@@ -52,7 +52,8 @@ export interface DeviceLinkStore {
     since: Date,
   ): Promise<{ id: string; marketing_consent: boolean } | null>;
   insertRequest(row: NewRequestRow): Promise<string | null>;
-  insertConsent(row: ConsentInsert): Promise<void>;
+  /** true = doklad je v ledgeru. */
+  insertConsent(row: ConsentInsert): Promise<boolean>;
   setMarketingConsent(id: string): Promise<void>;
   markSent(id: string, at: Date): Promise<void>;
   markSendError(id: string, error: string): Promise<void>;
@@ -119,27 +120,63 @@ export function supabaseStore(): DeviceLinkStore {
     async insertConsent(row) {
       const { error } = await db.from("consents").insert(row);
       if (error) console.error("[odkaz-na-pc] Zápis souhlasu selhal:", error.message);
+      return !error;
     },
     async setMarketingConsent(id) {
-      await db.from("device_link_requests").update({ marketing_consent: true }).eq("id", id);
+      const { error } = await db
+        .from("device_link_requests")
+        .update({ marketing_consent: true })
+        .eq("id", id);
+      if (error) console.error("[odkaz-na-pc] Nastavení souhlasu selhalo:", error.message);
     },
     async markSent(id, at) {
-      await db.from("device_link_requests").update({ sent_at: at.toISOString() }).eq("id", id);
+      const { error } = await db
+        .from("device_link_requests")
+        .update({ sent_at: at.toISOString() })
+        .eq("id", id);
+      if (error) console.error("[odkaz-na-pc] Zápis sent_at selhal:", error.message);
     },
     async markSendError(id, error) {
-      await db.from("device_link_requests").update({ send_error: error }).eq("id", id);
+      const { error: dbError } = await db
+        .from("device_link_requests")
+        .update({ send_error: error })
+        .eq("id", id);
+      if (dbError) console.error("[odkaz-na-pc] Zápis send_error selhal:", dbError.message);
     },
     async insertEvent(type, props) {
-      await db
+      const { error } = await db
         .from("learning_events")
         .insert({ type, anon_id: null, parent_id: null, props });
+      if (error) console.error("[odkaz-na-pc] Zápis události selhal:", error.message);
     },
   };
 }
 
-/* Do kbelíku rate limitu (tabulka v databázi) nepatří čitelný e-mail. */
-function emailKey(email: string): string {
-  return createHash("sha256").update(email).digest("hex").slice(0, 32);
+/**
+ * Jedna skutečná schránka = jeden klíč: bez `+tagu`, u Gmailu navíc bez teček
+ * a s googlemail.com jako gmail.com. Slouží jen pro rate limit; do řádku se
+ * ukládá běžně normalizovaný e-mail.
+ */
+export function canonicalMailbox(email: string): string {
+  const lower = email.trim().toLowerCase();
+  const at = lower.lastIndexOf("@");
+  if (at < 0) return lower;
+  let local = lower.slice(0, at);
+  let domain = lower.slice(at + 1);
+  const plus = local.indexOf("+");
+  if (plus >= 0) local = local.slice(0, plus);
+  if (domain === "googlemail.com") domain = "gmail.com";
+  if (domain === "gmail.com") local = local.replaceAll(".", "");
+  return `${local}@${domain}`;
+}
+
+/* Do kbelíku rate limitu (tabulka v databázi) nepatří čitelný e-mail,
+   ani prostý hash (šel by uhodnout slovníkem). */
+export function emailKey(email: string, secret: string): string {
+  return createHmac("sha256", secret)
+    .update(canonicalMailbox(email))
+    .digest("hex")
+    .slice(0, 32);
 }
 
 function consentRow(requestId: string, ctx: DeviceLinkContext): ConsentInsert {
@@ -175,14 +212,8 @@ export async function handleDeviceLinkRequest(
   };
   const now = ctx.now ?? new Date();
 
-  /* 2. Rate limit: IP, pak e-mail. */
-  const ipLimit = await deps.limit("deviceLinkIp", ctx.ip ?? "anonym");
-  if (!ipLimit.allowed) return { ok: false, error: RATE_LIMIT_ERROR };
-  const mailLimit = await deps.limit("deviceLinkEmail", emailKey(email));
-  if (!mailLimit.allowed) return { ok: false, error: RATE_LIMIT_ERROR };
-
   /* Fail-closed: bez secretu by odkaz nešlo ověřit, tak ho nevydáme.
-     Kontrola je před zápisem, ať nevzniká řádek bez tokenu. */
+     Čte se před rate limitem (klíč je HMAC) i před zápisem. */
   let secret: string;
   try {
     secret = deps.secret();
@@ -191,6 +222,12 @@ export async function handleDeviceLinkRequest(
     return { ok: false, error: GENERIC_ERROR };
   }
 
+  /* 2. Rate limit: IP, pak e-mail. */
+  const ipLimit = await deps.limit("deviceLinkIp", ctx.ip ?? "anonym");
+  if (!ipLimit.allowed) return { ok: false, error: RATE_LIMIT_ERROR };
+  const mailLimit = await deps.limit("deviceLinkEmail", emailKey(email, secret));
+  if (!mailLimit.allowed) return { ok: false, error: RATE_LIMIT_ERROR };
+
   /* 3. Dedupe: stejný e-mail během 10 minut = další e-mail neodejde. */
   const recent = await deps.service.findRecentSent(
     email,
@@ -198,8 +235,10 @@ export async function handleDeviceLinkRequest(
   );
   if (recent) {
     if (input.marketingConsent && !recent.marketing_consent) {
-      await deps.service.insertConsent(consentRow(recent.id, ctx));
-      await deps.service.setMarketingConsent(recent.id);
+      /* Příznak se nastaví jen s dokladem v ledgeru. */
+      if (await deps.service.insertConsent(consentRow(recent.id, ctx))) {
+        await deps.service.setMarketingConsent(recent.id);
+      }
     }
     return { ok: true, email };
   }
@@ -214,18 +253,21 @@ export async function handleDeviceLinkRequest(
     utm_term: input.utmTerm ?? null,
     referrer: input.referrer ?? null,
     env: input.env === "unknown" ? null : input.env,
-    marketing_consent: input.marketingConsent,
+    /* Příznak se zapíná až po zapsaném dokladu (krok 5). */
+    marketing_consent: false,
   });
   if (!requestId) return { ok: false, error: GENERIC_ERROR };
 
   /* 5. Doklad souhlasu do ledgeru. */
+  let consented = false;
   if (input.marketingConsent) {
-    await deps.service.insertConsent(consentRow(requestId, ctx));
+    consented = await deps.service.insertConsent(consentRow(requestId, ctx));
+    if (consented) await deps.service.setMarketingConsent(requestId);
   }
 
   /* 6. Odeslání. List-Unsubscribe jen se souhlasem (RFC 2369, v lomítkách). */
   const token = signRequestId(requestId, secret);
-  const unsubscribeUrl = input.marketingConsent ? buildUnsubscribeLink(token) : null;
+  const unsubscribeUrl = consented ? buildUnsubscribeLink(token) : null;
   const template = deviceLinkEmail({
     lessonUrl: buildLessonLink(
       {
@@ -252,8 +294,9 @@ export async function handleDeviceLinkRequest(
   else await deps.service.markSendError(requestId, result.error ?? "neznámá chyba");
 
   /* 8. CAPI Lead jen se souhlasem, stejné eventId jako Pixel v prohlížeči. */
-  if (input.marketingConsent) {
-    const eventId = input.eventId ?? randomUUID();
+  /* Bez eventId z prohlížeče by se Pixel a CAPI nedaly sloučit. */
+  const eventId = input.eventId;
+  if (consented && eventId) {
     deps.defer(() =>
       deps.meta({
         eventName: "Lead",
@@ -273,7 +316,7 @@ export async function handleDeviceLinkRequest(
   /* 9. Událost bez e-mailu a bez anon_id. */
   await deps.service.insertEvent(EVENT.DEVICE_LINK_SUBMIT, {
     env: input.env,
-    consent: input.marketingConsent,
+    consent: consented,
   });
 
   return { ok: true, email };

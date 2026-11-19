@@ -22,7 +22,7 @@ export const deviceLinkFormSchema = z.object({
     .optional()
     .transform((v) => v === "on"),
   /** Honeypot. Lidé ho nevidí; vyplněný ho řeší až handler (bot nemá dostat chybu). */
-  website: z.string().max(500).optional().default(""),
+  website: z.string().optional().default(""),
   utmSource: optionalText(200),
   utmMedium: optionalText(200),
   utmCampaign: optionalText(200),
