@@ -57,17 +57,14 @@ test("stránka se neindexuje", async ({ request }) => {
   expect(robots?.[1]).toContain("noindex");
 });
 
-test("telefon: formulář je nad odkazem „Přesto zkusit na telefonu“", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "mobile", "jen dotykové zařízení");
-  const hydration = await readOnly(page);
-  await page.goto("/pro-rodice/");
-
-  expect(await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches)).toBe(true);
-
+/** Telefon: formulář nad „Přesto zkusit na telefonu“, odkaz vede do lekce 1. */
+async function expectPhoneLayout(page: Page) {
   const main = page.locator("main");
-  await expect(
-    main.getByRole("heading", { name: "Nejlíp to jde na počítači s myší. Pošleme vám odkaz." }),
-  ).toBeVisible({ timeout: 30_000 });
+  await expect(main.getByRole("heading", { name: /Nejlíp to jde na počítači s\smyší/ })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(main.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeHidden();
+  await expect(main.getByRole("link", { name: "Začít první lekci" })).toBeHidden();
 
   const submit = main.getByRole("button", { name: "Poslat odkaz na počítač" });
   const phone = main.getByRole("link", { name: /Přesto zkusit na telefonu/ });
@@ -79,19 +76,16 @@ test("telefon: formulář je nad odkazem „Přesto zkusit na telefonu“", asyn
   expect(submitBox && phoneBox && submitBox.y < phoneBox.y).toBe(true);
   // Formulář je hned v prvním výhledu, ne až pod videem.
   await expect(main.getByLabel(/e-mail/i)).toBeInViewport();
-  expect(hydration).toEqual([]);
-});
+}
 
-test("počítač: první viditelné tlačítko je „Začít první lekci“", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "chromium", "jen počítač s myší");
-  const hydration = await readOnly(page);
-  await page.goto("/pro-rodice/");
-
+/** Počítač: první viditelné tlačítko je „Začít první lekci“, hned po načtení. */
+async function expectDesktopLayout(page: Page) {
   const main = page.locator("main");
-  // Nadpis se prohodí až po hydrataci – teprve pak je pořadí platné.
   await expect(main.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(main.getByRole("heading", { name: /Nejlíp to jde/ })).toBeHidden();
+  await expect(main.getByRole("link", { name: /Přesto zkusit na telefonu/ })).toBeHidden();
 
   const lesson = main.getByRole("link", { name: "Začít první lekci" });
   await expect(lesson).toBeInViewport();
@@ -107,7 +101,37 @@ test("počítač: první viditelné tlačítko je „Začít první lekci“", a
     return ctas[0]?.textContent?.trim();
   });
   expect(first).toBe("Začít první lekci");
+}
+
+test("telefon: formulář je nad odkazem „Přesto zkusit na telefonu“", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "jen dotykové zařízení");
+  const hydration = await readOnly(page);
+  await page.goto("/pro-rodice/");
+  expect(await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches)).toBe(true);
+  await expectPhoneLayout(page);
   expect(hydration).toEqual([]);
+});
+
+test("počítač: první viditelné tlačítko je „Začít první lekci“", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "jen počítač s myší");
+  const hydration = await readOnly(page);
+  await page.goto("/pro-rodice/");
+  expect(await page.evaluate(() => window.matchMedia("(pointer: fine)").matches)).toBe(true);
+  await expectDesktopLayout(page);
+  expect(hydration).toEqual([]);
+});
+
+/* Bez JavaScriptu musí být rozvržení správně na obou zařízeních – o pořadí
+   a textech rozhoduje CSS (`pointer-fine:`), skript nic neprohazuje. */
+test.describe("bez JavaScriptu", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("rozvržení podle zařízení platí i bez skriptu", async ({ page }, testInfo) => {
+    await readOnly(page);
+    await page.goto("/pro-rodice/");
+    if (testInfo.project.name === "mobile") await expectPhoneLayout(page);
+    else await expectDesktopLayout(page);
+  });
 });
 
 /* Snímky k posouzení textů. Pouští se jen na vyžádání:
@@ -118,7 +142,7 @@ test("snímky stránky pro posouzení", async ({ page }, testInfo) => {
   await page.goto("/pro-rodice/");
   const heading =
     testInfo.project.name === "mobile"
-      ? "Nejlíp to jde na počítači s myší. Pošleme vám odkaz."
+      ? /Nejlíp to jde na počítači s\smyší/
       : "Poslat odkaz na jiný počítač";
   await expect(page.getByRole("heading", { name: heading })).toBeVisible({ timeout: 30_000 });
   await dismissCookies(page);

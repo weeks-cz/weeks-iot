@@ -20,15 +20,31 @@ import { fbqTrack } from "@/features/cookies/vendors";
 import type { ActionState } from "@/features/actions";
 import { cn } from "@/lib/cn";
 import { requestDeviceLink } from "../actions";
+import { detectDevice, type DeviceVariant } from "../device";
 
-export type DeviceVariant = "mobile" | "desktop";
+export type { DeviceVariant };
+
+/**
+ * `auto`: o podobě rozhodne CSS podle ukazatele (`pointer-fine:`), takže
+ * HTML ze serveru je správně na telefonu i na počítači, i bez skriptu.
+ * JavaScript zařízení zjišťuje jen kvůli měření.
+ */
+export type FormVariant = DeviceVariant | "auto";
 
 const EMPTY: ActionState = {};
 
 const HEADING: Record<DeviceVariant, string> = {
-  mobile: "Nejlíp to jde na počítači s\u00a0myší. Pošleme vám odkaz.",
+  mobile: "Nejlíp to jde na počítači s myší. Pošleme vám odkaz.",
   desktop: "Poslat odkaz na jiný počítač",
 };
+
+const HEADING_CLASS =
+  "mb-4 font-display text-xl font-semibold leading-snug text-balance text-ink";
+
+/* Vzhled varianty „secondary“ z `Button.tsx`, jen pod `pointer-fine:`.
+   Amber patří hlavní akci: na telefonu odeslání, na počítači lekce. */
+const SUBMIT_ON_DESKTOP =
+  "pointer-fine:bg-ink pointer-fine:text-paper pointer-fine:hover:bg-ink-700";
 
 const GENERIC_ERROR = "Odeslání se nepovedlo. Zkuste to prosím znovu.";
 
@@ -42,8 +58,8 @@ function newEventId(): string {
  * Formulář „Pošlete si odkaz na počítač“.
  *
  * Znovupoužitelný: dnes stojí na `/pro-rodice`, později může i na `/`.
- * O tom, jestli je návštěvník na telefonu, rozhoduje rodič komponenty
- * (`variant`); tady se podle toho mění jen nadpis a váha tlačítka.
+ * Podle zařízení se mění jen nadpis a váha tlačítka. Pevná `variant`
+ * vykreslí jednu podobu, `auto` obě a tu nesprávnou schová CSS.
  *
  * Na server jde jen to, co rodič vyplnil, a zdroj návštěvy z anonymní
  * relace (UTM, referrer, fbclid, prostředí). Nikdy `anonId` ani postup
@@ -56,34 +72,33 @@ function newEventId(): string {
  */
 export function DeviceLinkForm({
   variant,
-  trackView = true,
   className,
 }: {
-  variant: DeviceVariant;
-  /** `false`, dokud rodič komponenty nezná zařízení – jinak by se
-      zobrazení na počítači změřilo jako „mobile“ z HTML ze serveru. */
-  trackView?: boolean;
+  variant: FormVariant;
   className?: string;
 }) {
   const [state, formAction, pending] = useActionState(requestDeviceLink, EMPTY);
-  /* Potvrzení, které rodič zavřel tlačítkem „Zadat jiný e-mail“. */
+  /* Potvrzení, které rodič zavřel tlačítkem „Poslat na jiný e-mail“. */
   const [dismissed, setDismissed] = useState<ActionState | null>(null);
 
   const eventId = useRef("");
   const submittedEventId = useRef("");
   const leadSentFor = useRef<ActionState | null>(null);
   const viewSent = useRef(false);
+  const successBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!eventId.current) eventId.current = newEventId();
   }, []);
 
-  /* Jednou za připojení, a až když je jasné, jaké je zařízení. */
+  /* Jednou za připojení. U `auto` se zařízení zjistí až tady, v prohlížeči. */
   useEffect(() => {
-    if (!trackView || viewSent.current) return;
+    if (viewSent.current) return;
     viewSent.current = true;
-    void track(EVENT.DEVICE_LINK_VIEW, { variant });
-  }, [trackView, variant]);
+    void track(EVENT.DEVICE_LINK_VIEW, {
+      variant: variant === "auto" ? detectDevice() : variant,
+    });
+  }, [variant]);
 
   /* Pixel `Lead` jednou za úspěšné odeslání, s id, které odešlo na server.
      Bez souhlasu s cookies Pixel není načtený a volání nic neudělá.
@@ -93,6 +108,8 @@ export function DeviceLinkForm({
     leadSentFor.current = state;
     fbqTrack("Lead", {}, submittedEventId.current || undefined);
     eventId.current = newEventId();
+    /* Formulář zmizel i s fokusem; čtečka má potvrzení přečíst hned. */
+    successBox.current?.focus();
   }, [state]);
 
   /* React 19 po odeslání formuláře s `action` vynuluje pole i při chybě.
@@ -134,15 +151,22 @@ export function DeviceLinkForm({
         className,
       )}
     >
-      <h2 className="mb-4 font-display text-xl font-semibold leading-snug text-balance text-ink">
-        {HEADING[variant]}
-      </h2>
+      {variant === "auto" ? (
+        <>
+          <h2 className={cn(HEADING_CLASS, "pointer-fine:hidden")}>{HEADING.mobile}</h2>
+          <h2 className={cn(HEADING_CLASS, "hidden pointer-fine:block")}>{HEADING.desktop}</h2>
+        </>
+      ) : (
+        <h2 className={HEADING_CLASS}>{HEADING[variant]}</h2>
+      )}
 
       {showSuccess ? (
         <div className="flex flex-col items-start gap-3">
-          <Alert tone="success" title="Odesláno" className="w-full">
-            {state.success}
-          </Alert>
+          <div ref={successBox} tabIndex={-1} className="w-full outline-none">
+            <Alert tone="success" title="Odesláno">
+              {state.success}
+            </Alert>
+          </div>
           <button
             type="button"
             onClick={() => setDismissed(state)}
@@ -182,21 +206,18 @@ export function DeviceLinkForm({
             </label>
           </div>
 
-          <Button
-            type="submit"
-            variant={variant === "mobile" ? "primary" : "secondary"}
-            fullWidth
-            loading={pending}
-          >
-            Poslat odkaz na počítač
-          </Button>
-
+          {/* Souhlas stojí před tlačítkem (návrh §2, cíl 6): kdo ho chce dát,
+              musí ho vidět dřív, než odešle. Znění se ukládá do ledgeru,
+              mění se jen velikost písma, aby tlačítko na telefonu zůstalo
+              co nejvýš. */}
           <Checkbox
             name="marketingConsent"
             /* Žádné defaultChecked. Předvyplněný souhlas není souhlas. */
-            label={DEVICE_LINK_MARKETING_TEXT.label}
+            label={
+              <span className="block text-xs leading-snug">{DEVICE_LINK_MARKETING_TEXT.label}</span>
+            }
             details={
-              <details className="mt-2">
+              <details className="mt-1">
                 <summary className="cursor-pointer text-xs text-primary-600 underline underline-offset-4">
                   Zobrazit plné znění
                 </summary>
@@ -209,8 +230,18 @@ export function DeviceLinkForm({
             }
           />
 
+          <Button
+            type="submit"
+            variant={variant === "desktop" ? "secondary" : "primary"}
+            className={variant === "auto" ? SUBMIT_ON_DESKTOP : undefined}
+            fullWidth
+            loading={pending}
+          >
+            Poslat odkaz na počítač
+          </Button>
+
           <p className="text-sm leading-relaxed text-ink-500">
-            E-mail použijeme k{"\u00a0"}odeslání odkazu. Více v{"\u00a0"}
+            E-mail použijeme k{" "}odeslání odkazu. Více v{" "}
             <Link
               href="/ochrana-udaju"
               className="font-semibold text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink"

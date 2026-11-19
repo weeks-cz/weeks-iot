@@ -1,26 +1,31 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const track = vi.hoisted(() => vi.fn());
+const requestDeviceLink = vi.hoisted(() => vi.fn(async () => ({}) as Record<string, string>));
 
 vi.mock("@/features/analytics/track", async (orig) => ({
   ...(await orig<typeof import("@/features/analytics/track")>()),
   track,
 }));
 /* Formulář v testu nikdy nic neodešle: akce je podvržená. */
-vi.mock("../actions", () => ({
-  requestDeviceLink: vi.fn(async () => ({})),
-}));
+vi.mock("../actions", () => ({ requestDeviceLink }));
 
+import { DEVICE_LINK_MARKETING_TEXT } from "@/features/consent/texts";
 import { DeviceLinkForm } from "../components/DeviceLinkForm";
 import { DeviceOrder } from "../components/DeviceOrder";
 
-function stubPointer(coarse: boolean) {
+const MOBILE_HEADING = /^Nejlíp to jde na počítači s myší\. Pošleme vám odkaz\.$/;
+const DESKTOP_HEADING = "Poslat odkaz na jiný počítač";
+
+/** `fine` = myš (počítač), jinak prst (telefon). */
+function stubPointer(fine: boolean) {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
     value: (query: string) => ({
-      matches: query === "(pointer: coarse)" ? coarse : false,
+      matches: query === "(pointer: fine)" ? fine : query === "(pointer: coarse)" ? !fine : false,
       media: query,
       onchange: null,
       addEventListener: () => {},
@@ -36,6 +41,8 @@ const viewCalls = () => track.mock.calls.filter(([name]) => name === "device_lin
 
 beforeEach(() => {
   track.mockReset();
+  requestDeviceLink.mockReset();
+  requestDeviceLink.mockResolvedValue({});
 });
 afterEach(() => {
   cleanup();
@@ -44,11 +51,27 @@ afterEach(() => {
 });
 
 describe("DeviceLinkForm", () => {
-  it("souhlas s dalšími e-maily není předvyplněný", () => {
+  it("souhlas s dalšími e-maily není předvyplněný a znění je beze změny", () => {
     render(<DeviceLinkForm variant="mobile" />);
     const consent = screen.getByRole("checkbox");
     expect(consent).toHaveProperty("checked", false);
     expect(consent.getAttribute("name")).toBe("marketingConsent");
+    expect(screen.getByLabelText(DEVICE_LINK_MARKETING_TEXT.label)).toBe(consent);
+    expect(screen.getByText("Zobrazit plné znění")).toBeTruthy();
+  });
+
+  it("souhlas stojí mezi e-mailem a tlačítkem, věta o údajích pod tlačítkem", () => {
+    render(<DeviceLinkForm variant="mobile" />);
+    const email = screen.getByRole("textbox", { name: /e-mail/i });
+    const consent = screen.getByRole("checkbox");
+    const submit = screen.getByRole("button", { name: "Poslat odkaz na počítač" });
+    const privacy = screen.getByRole("link", { name: "ochraně údajů" });
+
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(email, consent)).toBe(true);
+    expect(follows(consent, submit)).toBe(true);
+    expect(follows(submit, privacy)).toBe(true);
   });
 
   it("honeypot je skrytý před lidmi i čtečkou", () => {
@@ -63,68 +86,105 @@ describe("DeviceLinkForm", () => {
 
   it("na telefonu radí počítač, na počítači nabízí jiný počítač", () => {
     const { unmount } = render(<DeviceLinkForm variant="mobile" />);
-    expect(
-      screen.getByRole("heading", { name: /^Nejlíp to jde na počítači s\u00a0myší\. Pošleme vám odkaz\.$/ }),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: MOBILE_HEADING })).toBeTruthy();
     unmount();
 
     render(<DeviceLinkForm variant="desktop" />);
-    expect(screen.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: DESKTOP_HEADING })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Poslat odkaz na počítač" })).toBeTruthy();
   });
 
-  it("zobrazení měří jednou, s variantou", () => {
+  it("auto: oba nadpisy v HTML ze serveru, nesprávný schová CSS podle ukazatele", () => {
+    const html = renderToString(<DeviceLinkForm variant="auto" />);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const headings = [...doc.querySelectorAll("h2")];
+    expect(headings.map((h) => h.textContent)).toEqual([
+      "Nejlíp to jde na počítači s myší. Pošleme vám odkaz.",
+      DESKTOP_HEADING,
+    ]);
+    expect(headings[0]!.className).toContain("pointer-fine:hidden");
+    expect(headings[1]!.className).toMatch(/(^|\s)hidden(\s|$)/);
+    expect(headings[1]!.className).toContain("pointer-fine:block");
+    /* Tlačítko je amber a na počítači ho přebarví CSS. */
+    expect(doc.querySelector('button[type="submit"]')?.className).toContain("pointer-fine:bg-ink");
+  });
+
+  it("zobrazení měří jednou, s pevnou variantou", () => {
     const { rerender } = render(<DeviceLinkForm variant="desktop" />);
     rerender(<DeviceLinkForm variant="desktop" />);
     expect(viewCalls()).toEqual([["device_link_view", { variant: "desktop" }]]);
   });
 
-  it("dokud není zařízení rozpoznané, zobrazení neměří", () => {
-    const { rerender } = render(<DeviceLinkForm variant="mobile" trackView={false} />);
-    expect(viewCalls()).toEqual([]);
-    rerender(<DeviceLinkForm variant="desktop" trackView />);
+  it("auto měří zařízení podle ukazatele; bez matchMedia jako telefon", () => {
+    stubPointer(true);
+    const first = render(<DeviceLinkForm variant="auto" />);
     expect(viewCalls()).toEqual([["device_link_view", { variant: "desktop" }]]);
+    first.unmount();
+
+    track.mockReset();
+    stubPointer(false);
+    const second = render(<DeviceLinkForm variant="auto" />);
+    expect(viewCalls()).toEqual([["device_link_view", { variant: "mobile" }]]);
+    second.unmount();
+
+    track.mockReset();
+    delete (window as { matchMedia?: unknown }).matchMedia;
+    render(<DeviceLinkForm variant="auto" />);
+    expect(viewCalls()).toEqual([["device_link_view", { variant: "mobile" }]]);
+  });
+
+  it("po úspěchu přejde fokus na potvrzení", async () => {
+    requestDeviceLink.mockResolvedValue({
+      success: "Hotovo. Odkaz je na cestě na rodic@example.cz. Otevřete ho na počítači.",
+    });
+    render(<DeviceLinkForm variant="mobile" />);
+    fireEvent.change(screen.getByRole("textbox", { name: /e-mail/i }), {
+      target: { value: "rodic@example.cz" },
+    });
+    await act(async () => {
+      fireEvent.submit(screen.getByRole("button", { name: "Poslat odkaz na počítač" }).closest("form")!);
+    });
+
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain("Odkaz je na cestě");
+    expect(document.activeElement).toBe(status.parentElement);
+    expect(document.activeElement?.getAttribute("tabindex")).toBe("-1");
   });
 });
 
 describe("DeviceOrder", () => {
   const href = "/kurz/iot/rozsvit-ledku";
 
-  it("na počítači nahoře lekce, formulář je druhá možnost", async () => {
-    stubPointer(false);
-    await act(async () => {
-      render(<DeviceOrder lessonHref={href} />);
-    });
+  it("HTML ze serveru má obě cesty do lekce a pořadí řeší CSS", () => {
+    const html = renderToString(<DeviceOrder lessonHref={href} />);
+    const doc = new DOMParser().parseFromString(html, "text/html");
 
-    const lesson = screen.getByRole("link", { name: /Začít první lekci/ });
-    expect(lesson.getAttribute("href")).toMatch(/\/kurz\/iot\/rozsvit-ledku\/?$/);
-    expect(screen.getByRole("heading", { name: "Poslat odkaz na jiný počítač" })).toBeTruthy();
-    expect(viewCalls()).toEqual([["device_link_view", { variant: "desktop" }]]);
-  });
-
-  it("na telefonu formulář a pod ním odkaz do lekce", async () => {
-    stubPointer(true);
-    await act(async () => {
-      render(<DeviceOrder lessonHref={href} />);
-    });
-
-    const lesson = screen.getByRole("link", { name: /Přesto zkusit na telefonu/ });
-    expect(lesson.getAttribute("href")).toMatch(/\/kurz\/iot\/rozsvit-ledku\/?$/);
-    expect(viewCalls()).toEqual([["device_link_view", { variant: "mobile" }]]);
-  });
-
-  it("klik do lekce měří umístění", async () => {
-    stubPointer(true);
-    await act(async () => {
-      render(<DeviceOrder lessonHref={href} />);
-    });
-    screen.getByRole("link", { name: /Přesto zkusit na telefonu/ }).addEventListener(
-      "click",
-      (e) => e.preventDefault(),
+    const phone = [...doc.querySelectorAll("a")].find((a) =>
+      a.textContent?.includes("Přesto zkusit na telefonu"),
     );
-    act(() => {
-      screen.getByRole("link", { name: /Přesto zkusit na telefonu/ }).click();
+    const primary = [...doc.querySelectorAll("a")].find((a) =>
+      a.textContent?.includes("Začít první lekci"),
+    );
+    expect(phone?.getAttribute("href")).toMatch(/\/kurz\/iot\/rozsvit-ledku\/?$/);
+    expect(primary?.getAttribute("href")).toMatch(/\/kurz\/iot\/rozsvit-ledku\/?$/);
+    expect(phone?.parentElement?.className).toContain("pointer-fine:hidden");
+    expect(primary?.parentElement?.className).toContain("pointer-fine:block");
+
+    const form = doc.querySelector("form")!;
+    expect(form.closest(".order-1")?.className).toContain("pointer-fine:order-2");
+    expect(phone?.closest(".order-2")?.className).toContain("pointer-fine:order-1");
+  });
+
+  it("každý odkaz do lekce měří své umístění", async () => {
+    await act(async () => {
+      render(<DeviceOrder lessonHref={href} />);
     });
+    for (const name of [/Přesto zkusit na telefonu/, /Začít první lekci/]) {
+      const link = screen.getByRole("link", { name });
+      link.addEventListener("click", (e) => e.preventDefault());
+      act(() => link.click());
+    }
     expect(track).toHaveBeenCalledWith("parent_page_lesson_click", { placement: "phone_anyway" });
+    expect(track).toHaveBeenCalledWith("parent_page_lesson_click", { placement: "primary" });
   });
 });

@@ -14,7 +14,7 @@ import { DeviceOrder } from "@/features/device-link/components/DeviceOrder";
  * (rozhoduje `DeviceOrder`). Návrh: docs/superpowers/specs/2026-11-19-…
  *
  * Texty vykají a tvrdí JEN to, co je ověřené: zdarma, nic se neinstaluje,
- * v prohlížeči, 7 lekcí po 20–30 minutách, certifikát, první lekce bez
+ * v prohlížeči, lekce po 20–30 minutách (počet z osnovy), certifikát, první lekce bez
  * účtu, pro děti od 9 let. Nic dalšího – žádné počty, žádné „uvidíte
  * postup dítěte“. Čísla s jednotkou drží pohromadě nezlomitelnou mezerou.
  */
@@ -34,10 +34,21 @@ export const metadata: Metadata = {
 /* Jako `/`: osnova se mění zřídka, změna se má projevit bez nasazení. */
 export const revalidate = 300;
 
-const CO_CEKA = [
+/** „1 lekce“, „3 lekce“, „7 lekcí“. */
+function lekci(count: number): string {
+  const word = count >= 1 && count <= 4 ? "lekce" : "lekcí";
+  return `${count}${NBSP}${word}`;
+}
+
+/* Počet lekcí se bere z osnovy (jen publikované, jako na `/`), aby text
+   nesliboval jiný počet, než kolik jich v kurzu opravdu je. */
+const coCeka = (lessonCount: number) => [
   {
     icon: Clock,
-    title: `7${NBSP}lekcí po 20–30${NBSP}minutách`,
+    title:
+      lessonCount > 0
+        ? `${lekci(lessonCount)} po 20–30${NBSP}minutách`
+        : `Lekce po 20–30${NBSP}minutách`,
     body: `V${NBSP}každé lekci dítě zapojí obvod a${NBSP}naprogramuje ho.`,
   },
   {
@@ -50,7 +61,7 @@ const CO_CEKA = [
     title: "Certifikát na konci",
     body: "Za dokončený kurz dostane dítě certifikát.",
   },
-] as const;
+];
 
 const PRO_RODICE = [
   { icon: Gift, title: "Zdarma", body: "Lekce nic nestojí." },
@@ -75,6 +86,7 @@ export default async function ProRodicePage() {
   const outline = await getCourseOutline("iot");
   const firstLesson = firstPlayableLesson(outline);
   const lessonHref = firstLesson ? `/kurz/iot/${firstLesson.slug}` : "/kurz/iot";
+  const lessonCount = outline?.lessons.filter((l) => l.isPublished).length ?? 0;
 
   return (
     <main>
@@ -140,7 +152,7 @@ export default async function ProRodicePage() {
           <h2 className="heading-2 mb-10 text-balance">Co dítě čeká</h2>
 
           <ul className="grid gap-8 md:grid-cols-3 md:gap-6">
-            {CO_CEKA.map((item) => (
+            {coCeka(lessonCount).map((item) => (
               <li key={item.title}>
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-md border border-ink bg-white text-accent-600 shadow-hard-sm">
                   <item.icon className="h-7 w-7" aria-hidden="true" />
