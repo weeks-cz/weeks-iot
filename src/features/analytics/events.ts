@@ -79,6 +79,18 @@ export const EVENT = {
   /** Zapisuje VÝHRADNĚ server z callbacku brány. Klient nikdy. */
   PURCHASE: "purchase",
 
+  /* ── Stránka pro rodiče (/pro-rodice) a odkaz na počítač ──────────────
+     `device_link_submit` a `device_link_open` zapisuje server bez anon_id. */
+
+  /** Zobrazení `/pro-rodice`. */
+  DEVICE_LINK_VIEW: "device_link_view",
+  /** Odeslaný formulář s žádostí o odkaz. Server, props `env`, `consent`, nikdy e-mail. */
+  DEVICE_LINK_SUBMIT: "device_link_submit",
+  /** Otevření odkazu z e-mailu. Server, props říkají, jestli na počítači. */
+  DEVICE_LINK_OPEN: "device_link_open",
+  /** Klik z `/pro-rodice` rovnou do první lekce. */
+  PARENT_PAGE_LESSON_CLICK: "parent_page_lesson_click",
+
   CHILD_PROFILE_CREATED: "child_profile_created",
   CHILD_PROFILE_SWITCHED: "child_profile_switched",
   CONSENT_GRANTED: "consent_granted",

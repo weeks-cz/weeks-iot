@@ -35,6 +35,10 @@ export const RATE_LIMITS = {
   passwordSet: { limit: 10, windowMs: 60 * 60_000 },
   /** Heslo při přihlášení, na IP. Účet navíc chrání Supabase. */
   signIn: { limit: 10, windowMs: 15 * 60_000 },
+  /** Žádost o odkaz na počítač (/pro-rodice), na IP. */
+  deviceLinkIp: { limit: 5, windowMs: 3_600_000 },
+  /** Totéž na e-mail (hashovaný) – brání bombardování cizí schránky. */
+  deviceLinkEmail: { limit: 3, windowMs: 3_600_000 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
