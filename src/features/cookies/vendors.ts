@@ -57,10 +57,25 @@ export function ensureGtag(gaId: string): void {
   }
 }
 
+/** Parametry s podepsaným tokenem (odkaz do lekce, odhlášení). Do GA nepatří. */
+const SECRET_PARAMS = ["odkaz", "t"] as const;
+
+/** Adresa pro `page_location` bez tokenů. Když ji nejde rozebrat, bez dotazu. */
+export function pageLocation(href: string): string {
+  try {
+    const url = new URL(href);
+    if (!SECRET_PARAMS.some((p) => url.searchParams.has(p))) return href;
+    for (const p of SECRET_PARAMS) url.searchParams.delete(p);
+    return url.toString();
+  } catch {
+    return href.split(/[?#]/)[0] ?? "";
+  }
+}
+
 export function gaPageView(path: string): void {
   if (typeof window === "undefined" || typeof window.gtag !== "function") return;
   window.gtag("event", "page_view", {
-    page_location: window.location.href,
+    page_location: pageLocation(window.location.href),
     page_path: path,
   });
 }
