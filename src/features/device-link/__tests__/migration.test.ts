@@ -36,6 +36,16 @@ describe("migrace 015 – device_link_requests", () => {
     expect(sql).not.toMatch(/grant[^;]*to (anon|authenticated)/);
   });
 
+  it("klientským rolím výslovně odebere práva zděděná z výchozích privilegií Supabase", () => {
+    expect(sql).toMatch(
+      /revoke all on public\.device_link_requests from anon, authenticated;/,
+    );
+    /* Až po zapnutí RLS: obě pojistky na jednom místě. */
+    expect(sql.indexOf("revoke all on public.device_link_requests")).toBeGreaterThan(
+      sql.indexOf("alter table public.device_link_requests enable row level security"),
+    );
+  });
+
   it("má sloupce pro původ návštěvy, souhlas a životní cyklus", () => {
     for (const col of [
       "utm_source text",
@@ -63,10 +73,12 @@ describe("migrace 015 – device_link_requests", () => {
     expect(sql).not.toMatch(/anon_id/);
   });
 
-  it("indexuje e-mail pro rate limit a vyhledání", () => {
+  it("indexuje e-mail pro rate limit a vyhledání (citext, dotazy přes eq)", () => {
     expect(sql).toMatch(
-      /create index[^;]*on public\.device_link_requests \(lower\(email::text\), created_at desc\)/,
+      /create index[^;]*on public\.device_link_requests \(email, created_at desc\)/,
     );
+    /* Index nad lower(email::text) by dotaz `email = ?` na citext nepoužil. */
+    expect(sql).not.toMatch(/lower\(email/);
   });
 
   it("ledger souhlasů se váže na žádost a přežije její smazání", () => {

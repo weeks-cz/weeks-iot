@@ -9,9 +9,10 @@
 --
 -- ── Co se mění ─────────────────────────────────────────────────────────────
 -- 1. device_link_requests – jedna žádost = jeden řádek. Čistě serverová
---    tabulka: RLS zapnuté, žádná politika, žádný grant pro anon ani
---    authenticated. Zapisuje výhradně Server Action pod servisní rolí
---    (default privileges z migrace 009 jí práva dají samy).
+--    tabulka: RLS zapnuté, žádná politika, anon a authenticated mají
+--    práva výslovně odebraná (výchozí privilegia Supabase jim je jinak
+--    na nové tabulce v public dají). Zapisuje výhradně Server Action pod
+--    servisní rolí (default privileges z migrace 009 jí práva dají samy).
 --    - email je nullable: po anonymizaci (řádek bez platného souhlasu
 --      starší 90 dní) se smaže a řádek zůstane jako statistika. Check
 --      zajistí, že e-mail chybí jen u anonymizovaného řádku.
@@ -59,15 +60,20 @@ create table public.device_link_requests (
     check ((email is not null) or (anonymized_at is not null))
 );
 
--- Rate limit a vyhledání podle adresy (case-insensitive).
+-- Rate limit, odhlášení a připomínka hledají podle adresy dotazem
+-- `email = ?`. Sloupec je citext, takže rovnost i index jsou bez ohledu na
+-- velikost písmen; index nad lower(email::text) by tenhle dotaz nepoužil.
 create index device_link_requests_email_idx
-  on public.device_link_requests (lower(email::text), created_at desc);
+  on public.device_link_requests (email, created_at desc);
 
--- Tabulka je čistě serverová. Bez politik a bez grantu pro anon/authenticated
--- se k ní klient nedostane; RLS je pojistka pro případ, že by grant někdo
--- později přidal.
+-- Tabulka je čistě serverová. Bez politik se k ní klient nedostane; RLS je
+-- pojistka pro případ, že by grant někdo později přidal. Výchozí privilegia
+-- Supabase dávají anon a authenticated práva na každou novou tabulku
+-- v public, proto je výslovně odebíráme.
 alter table public.device_link_requests
   enable row level security;
+
+revoke all on public.device_link_requests from anon, authenticated;
 
 alter table public.consents
   add column device_link_request_id uuid
