@@ -29,9 +29,9 @@ const CAMP_CITY_BY_REGION: Partial<Record<RegionCode, CampCity>> = {
 /*
  * `nabidka` říká, na co se ve městě přihlašuje — dokud byl jediný tábor
  * chytrých technologií, stála ve větě karty natvrdo „skutečné Arduino
- * a 3D tisk". Od 10. 11. 2026 je v Praze otevřený jen tábor herního vývoje
- * (weeks-web `praha-2027-herni-vyvoj`), pražský tábor chytrých technologií
- * je pořád „chystáme". Až se otevře, upraví se `nabidka` tady.
+ * a 3D tisk". Od 20. 11. 2026 jsou v Praze otevřené tři tábory (weeks-web
+ * `praha-2027-herni-vyvoj`, `praha-2027-3d-tisk`, `praha-2027-umela-inteligence`)
+ * a věta je jmenuje všechny – krátkými názvy táborů z weeks-web.
  */
 export const CAMP_CITIES: Record<
   CampCity,
@@ -45,7 +45,7 @@ export const CAMP_CITIES: Record<
   praha: {
     locative: "v Praze",
     prihlasky: true,
-    nabidka: "vlastní hra v enginu Godot, tábor s Arduinem a 3D tiskem připravujeme",
+    nabidka: "3D tisk a elektronika, vlastní hra v enginu Godot nebo AI a chytrá elektronika",
   },
 };
 

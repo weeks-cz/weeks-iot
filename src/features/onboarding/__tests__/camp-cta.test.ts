@@ -15,9 +15,9 @@ describe("CampCta podle kraje", () => {
     expect(html).toContain("/tabory?mesto=karlovy-vary&amp;utm_source=ucebna");
   });
 
-  it("Praha otevřená: jmenuje herní tábor, Arduino jen jako připravované", () => {
+  it("Praha otevřená: jmenuje všechny tři pražské tábory", () => {
     const html = render({ segment: "camp", offer: { kind: "open", city: "praha" }, placement: "ucet" });
-    expect(html).toContain("Příměstský tábor v Praze — vlastní hra v enginu Godot");
+    expect(html).toContain("Příměstský tábor v Praze — 3D tisk a elektronika, vlastní hra v enginu Godot nebo AI a chytrá elektronika.");
     expect(html).toContain("Podívat se na termíny");
     expect(html).not.toContain("— skutečné Arduino a 3D tisk.");
   });

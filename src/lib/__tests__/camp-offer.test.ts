@@ -55,15 +55,16 @@ describe("campEmail podle města", () => {
     expect(t.content.button?.url).toContain("/tabory?mesto=karlovy-vary&");
   });
 
-  // Od 10. 11. 2026 je v Praze otevřený tábor herního vývoje; tábor
-  // s Arduinem a 3D tiskem se tam pořád jen chystá — e-mail musí říct obojí.
-  it("Praha: přihlašuje na herní tábor, Arduino jen jako připravované", () => {
+  // Od 20. 11. 2026 jsou v Praze otevřené tři tábory a e-mail jmenuje všechny.
+  it("Praha: přihlašuje na všechny tři pražské tábory", () => {
     expect(CAMP_CITIES.praha.prihlasky).toBe(true);
     const t = campEmail({ ...base, campCity: "praha" });
     const text = t.content.paragraphs.join(" ");
     expect(text).toContain("je otevřené");
+    expect(text).toContain("3D tisk a elektronika");
     expect(text).toContain("Godot");
-    expect(text).toContain("připravujeme");
+    expect(text).toContain("AI a chytrá elektronika");
+    expect(text).not.toContain("připravujeme");
     expect(t.content.button?.label).toBe("Podívat se na termíny");
     expect(t.content.button?.url).toContain("/tabory?mesto=praha&");
   });
