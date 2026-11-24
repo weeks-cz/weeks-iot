@@ -17,7 +17,7 @@ describe("CampCta podle kraje", () => {
 
   it("Praha otevřená: jmenuje všechny tři pražské tábory", () => {
     const html = render({ segment: "camp", offer: { kind: "open", city: "praha" }, placement: "ucet" });
-    expect(html).toContain("Příměstský tábor v Praze — 3D tisk a elektronika, vlastní hra v enginu Godot nebo AI a chytrá elektronika.");
+    expect(html).toContain("Příměstský tábor v Praze — 3D tisk a elektronika, vlastní hra v enginu Godot, AI a chytrá elektronika nebo vlastní web.");
     expect(html).toContain("Podívat se na termíny");
     expect(html).not.toContain("— skutečné Arduino a 3D tisk.");
   });
